@@ -1,0 +1,3 @@
+[submodule "plugins/flutter_config"]
+	path = plugins/flutter_config
+	url = https://github.com/sbezhuk/flutter_config.git
