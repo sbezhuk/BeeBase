@@ -100,7 +100,7 @@ packages:
       path: "plugins/flutter_config"
       relative: true
     source: path
-    version: "2.0.2"
+    version: "3.0.0"
   flutter_lints:
     dependency: "direct dev"
     description:
