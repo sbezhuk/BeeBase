@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="beebase"
+        android:label="@string/APP_DISPLAY_NAME"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

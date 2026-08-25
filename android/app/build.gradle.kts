@@ -43,12 +43,15 @@ android {
     productFlavors {
         create("prod") {
             dimension = "environment"
+            resValue("string", "APP_DISPLAY_NAME", "BeeBase")
         }
         create("stage") {
             dimension = "environment"
+            resValue("string", "APP_DISPLAY_NAME", "BeeBase (stage)")
         }
         create("sandbox") {
             dimension = "environment"
+            resValue("string", "APP_DISPLAY_NAME", "BeeBase (sandbox)")
         }
     }
 
