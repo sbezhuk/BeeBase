@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-Only one flavor exists today: **`prod`** (`android/app/build.gradle.kts` → `productFlavors { create("prod") {...} }`). All build types (`debug`, `release`, and even a leftover `anothercustombuild` entry) map to the same root `.env` file — there is no dev/staging environment wired up yet, despite the flavor-style scaffolding. `.env` is gitignored and must exist locally (see keys in `.env` at repo root: `API_END_POINT`, `MAPBOX_PUBLIC_KEY`, `APPLE_*`, `GOOGLE_*`, `ENVIRONMENT`).
+Only one flavor exists today: **`production`** (`android/app/build.gradle.kts` → `productFlavors { create("production") {...} }`). All build types (`debug`, `release`, and even a leftover `anothercustombuild` entry) map to the same root `.env` file — there is no dev/staging environment wired up yet, despite the flavor-style scaffolding. `.env` is gitignored and must exist locally (see keys in `.env` at repo root: `API_END_POINT`, `MAPBOX_PUBLIC_KEY`, `APPLE_*`, `GOOGLE_*`, `ENVIRONMENT`).
 
 ```bash
 # Install dependencies
 flutter pub get
 
 # Run (only flavor/entry point that exists)
-flutter run --flavor prod --target lib/main_prod.dart
+flutter run --flavor production --target lib/main_prod.dart
 
 # Codegen — REQUIRED after editing AutoRoute routes, json_serializable models, or DI-related annotations
 flutter pub run build_runner build --delete-conflicting-outputs
@@ -25,14 +25,14 @@ flutter analyze     # must be clean; analysis_options.yaml promotes several lint
 dart format .
 
 # Build
-flutter build apk --flavor prod --target lib/main_prod.dart
+flutter build apk --flavor production --target lib/main_prod.dart
 ```
 
 There is **no `test/` directory** — the project currently has no automated tests. Generated files (`*.g.dart`, `*.gr.dart`) are gitignored and excluded from `flutter analyze` (`analysis_options.yaml`) — regenerate with `build_runner` rather than hand-editing them.
 
 ## Architecture
 
-Clean architecture, three layers under `lib/`, dependencies point inward (`presentation` → `domain` ← `data`), with `core/` as cross-cutting infrastructure shared by all. Entry point is `lib/main_prod.dart` → `lib/application.dart`. `main()` initializes `EasyLocalization`, loads `AppConfig` (`Enviroment.prod` — the enum currently has a single value, so this doesn't actually branch on environment yet), runs `initDi()`, preloads SVG/image assets (`utils/images/preload_resources.dart`), sets the Mapbox access token, then `runApp`.
+Clean architecture, three layers under `lib/`, dependencies point inward (`presentation` → `domain` ← `data`), with `core/` as cross-cutting infrastructure shared by all. Entry point is `lib/main_prod.dart` → `lib/application.dart`. `main()` initializes `EasyLocalization`, loads `AppConfig` (`Enviroment.production` — the enum currently has a single value, so this doesn't actually branch on environment yet), runs `initDi()`, preloads SVG/image assets (`utils/images/preload_resources.dart`), sets the Mapbox access token, then `runApp`.
 
 ```text
 lib/
@@ -55,7 +55,7 @@ lib/
  │   └─ router/             # AutoRoute config (app_router.dart), guardes/, wrapper_pages/, placeholders/
  ├─ utils/                  # Either, AppConfig, di, themes/ (ThemeExtensions), extensions/, images/
  ├─ application.dart        # MaterialApp.router + ThemeData.extensions
- └─ main_prod.dart          # Only entry point (single "prod" flavor)
+ └─ main_prod.dart          # Only entry point (single "production" flavor)
 ```
 
 ### Interface segregation is the dominant pattern

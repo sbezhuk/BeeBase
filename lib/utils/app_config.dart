@@ -2,17 +2,21 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_config/flutter_config.dart';
 
 enum Enviroment {
-  prod('Production');
+  production('Production'),
+  staging('Staging'),
+  development('Development');
 
   const Enviroment(this.enviromentName);
 
   final String enviromentName;
 
   factory Enviroment.fromDartDefine() {
-    const env = String.fromEnvironment('env', defaultValue: 'prod');
+    const env = String.fromEnvironment('env', defaultValue: 'production');
     return switch (env) {
-      'prod' => Enviroment.prod,
-      _ => Enviroment.prod,
+      'production' => Enviroment.production,
+      'staging' => Enviroment.staging,
+      'development' => Enviroment.development,
+      _ => Enviroment.production,
     };
   }
 }
@@ -24,7 +28,9 @@ final class AppConfig {
 
   Future<void> load(Enviroment env) async {
     final status = switch (env) {
-      Enviroment.prod => '🌍 Starting Production Mode',
+      Enviroment.production => '🌍 Starting Production Mode',
+      Enviroment.staging => '🚧 Starting Staging Mode',
+      Enviroment.development => '🛠️ Starting Development Mode',
     };
 
     debugPrint(status);

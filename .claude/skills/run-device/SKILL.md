@@ -47,7 +47,7 @@ takes minutes; a screenshot takes a second.
 background process so you own hot reload:
 
 ```bash
-flutter run --flavor prod --target lib/main_prod.dart --pid-file /tmp/ft-run.pid
+flutter run --flavor production --target lib/main_prod.dart --pid-file /tmp/ft-run.pid
 ```
 
 Then, after each edit:

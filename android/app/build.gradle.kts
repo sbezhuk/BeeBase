@@ -5,9 +5,9 @@ plugins {
 }
 
 project.extra["envConfigFiles"] = mapOf(
-    "prod" to ".env",
-    "stage" to ".env.stage",
-    "sandbox" to ".env.sandbox",
+    "production" to ".env",
+    "staging" to ".env.staging",
+    "development" to ".env.development",
 )
 
 apply(from = project(":flutter_config").projectDir.path + "/dotenv.gradle.kts")
@@ -41,17 +41,20 @@ android {
     flavorDimensions += "environment"
 
     productFlavors {
-        create("prod") {
+        create("production") {
             dimension = "environment"
             resValue("string", "APP_DISPLAY_NAME", "BeeBase")
+            applicationIdSuffix = ".production"
         }
-        create("stage") {
+        create("staging") {
             dimension = "environment"
-            resValue("string", "APP_DISPLAY_NAME", "BeeBase (stage)")
+            resValue("string", "APP_DISPLAY_NAME", "BeeBase (staging)")
+            applicationIdSuffix = ".staging"
         }
-        create("sandbox") {
+        create("development") {
             dimension = "environment"
-            resValue("string", "APP_DISPLAY_NAME", "BeeBase (sandbox)")
+            resValue("string", "APP_DISPLAY_NAME", "BeeBase (development)")
+            applicationIdSuffix = ".development"
         }
     }
 
