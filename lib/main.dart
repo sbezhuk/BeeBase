@@ -1,24 +1,22 @@
+import 'package:beebase/application.dart';
+import 'package:beebase/utils/app_config.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_config/flutter_config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await FlutterConfig.loadEnvVariables();
 
-  runApp(const MainApp());
-}
+  final env = Enviroment.fromDartDefine();
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+  await EasyLocalization.ensureInitialized();
+  await AppConfig.instance.load(env);
 
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
-        ),
-      ),
-    );
-  }
+  runApp(
+    EasyLocalization(
+      supportedLocales: const [Locale('en', 'US')],
+      path: 'assets/langs',
+      fallbackLocale: const Locale('en', 'US'),
+      child: const Application(),
+    ),
+  );
 }

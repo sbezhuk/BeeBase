@@ -4,6 +4,12 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+project.extra["envConfigFiles"] = mapOf(
+    "prod" to ".env",
+    "stage" to ".env.stage",
+    "sandbox" to ".env.sandbox",
+)
+
 apply(from = project(":flutter_config").projectDir.path + "/dotenv.gradle.kts")
 
 android {
@@ -30,6 +36,20 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+    }
+
+    flavorDimensions += "environment"
+
+    productFlavors {
+        create("prod") {
+            dimension = "environment"
+        }
+        create("stage") {
+            dimension = "environment"
+        }
+        create("sandbox") {
+            dimension = "environment"
+        }
     }
 
     buildTypes {

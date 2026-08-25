@@ -1,0 +1,44 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "prod",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart",
+            "args": [
+                "--flavor", "prod",
+                "--target", "lib/main.dart"
+            ],
+            "toolArgs": [
+                "--dart-define", "env=prod"
+            ]
+        },
+        {
+            "name": "stage",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart",
+            "args": [
+                "--flavor", "stage",
+                "--target", "lib/main.dart"
+            ],
+            "toolArgs": [
+                "--dart-define", "env=stage"
+            ]
+        },
+        {
+            "name": "sandbox",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart",
+            "args": [
+                "--flavor", "sandbox",
+                "--target", "lib/main.dart"
+            ],
+            "toolArgs": [
+                "--dart-define", "env=sandbox"
+            ]
+        }
+    ]
+}
