@@ -2,8 +2,8 @@ import 'package:auto_route/auto_route.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/presentation/authentication/auth_field_errors.dart';
 import 'package:beebase/presentation/authentication/cubit/register_cubit/register_cubit.dart';
+import 'package:beebase/presentation/authentication/widget/auth_text_field.dart';
 import 'package:beebase/presentation/component/buttons/primary_button.dart';
-import 'package:beebase/presentation/component/font.dart';
 import 'package:beebase/presentation/component/honeycomb_pattern.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/utils/di.dart';
@@ -120,28 +120,4 @@ final class _RegisterPageState extends State<RegisterPage> {
       ),
     );
   }
-}
-
-// The error text is rendered by the caller (flush with the field label)
-// rather than by [InputDecoration.errorText], so only the border reacts to
-// [hasError] here.
-InputDecoration _authFieldDecoration({required BuildContext context, required String hintText, bool hasError = false}) {
-  final colors = context.colors;
-  final normalBorder = OutlineInputBorder(
-    borderRadius: BorderRadius.circular(10),
-    borderSide: BorderSide(color: colors.honeyBorder),
-  );
-  final errorBorder = normalBorder.copyWith(borderSide: BorderSide(color: colors.error));
-  return InputDecoration(
-    hintText: hintText,
-    hintStyle: TextStyle(fontFamily: AppFont.regular, fontSize: 15, color: colors.honeyPlaceholder),
-    filled: true,
-    fillColor: colors.background,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    border: hasError ? errorBorder : normalBorder,
-    enabledBorder: hasError ? errorBorder : normalBorder,
-    focusedBorder: hasError
-        ? errorBorder.copyWith(borderSide: BorderSide(color: colors.error, width: 1.5))
-        : normalBorder.copyWith(borderSide: BorderSide(color: colors.primary, width: 1.5)),
-  );
 }
