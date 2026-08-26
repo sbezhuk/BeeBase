@@ -38,6 +38,25 @@
       }
     }
   },
+  "main": {
+    "nav": {
+      "home": "Home",
+      "notifications": "Notifications",
+      "profile": "Profile"
+    }
+  },
+  "notification": {
+    "page": {
+      "title": "Notifications",
+      "item": "Notification #{index}"
+    }
+  },
+  "profile": {
+    "page": {
+      "title": "Profile",
+      "placeholder": "Profile details go here."
+    }
+  },
   "core": {
     "errors": {
       "requestCancelled": "The request was cancelled. Please try again.",

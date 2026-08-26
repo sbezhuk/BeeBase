@@ -3,19 +3,28 @@ import 'package:beebase/presentation/authentication/cubit/authentication_cubit/a
 import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
 import 'package:beebase/utils/extensions/theme_text_styles.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 @RoutePage()
-final class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+final class ProfilePage extends StatelessWidget {
+  const ProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.colors.background,
-      appBar: AppBar(title: const Text('BeeBase')),
-      body: Center(
+      appBar: AppBar(
+        title: Text('profile.page.title'.tr()),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => context.read<AuthenticationCubit>().logout(),
+          ),
+        ],
+      ),
+      body: SafeArea(
         child: Padding(
           padding: EdgeInsets.all(context.spacing.lg),
           child: BlocBuilder<AuthenticationCubit, AuthenticationState>(
@@ -25,12 +34,15 @@ final class HomePage extends StatelessWidget {
                 _ => null,
               };
               return Column(
-                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Welcome to BeeBase', style: context.textStyles.title),
-                  SizedBox(height: context.spacing.sm),
                   if (email != null)
-                    Text(email, style: context.textStyles.body),
+                    Text(email, style: context.textStyles.title),
+                  SizedBox(height: context.spacing.sm),
+                  Text(
+                    'profile.page.placeholder'.tr(),
+                    style: context.textStyles.body,
+                  ),
                 ],
               );
             },
