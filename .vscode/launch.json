@@ -8,9 +8,7 @@
             "program": "lib/main.dart",
             "args": [
                 "--flavor", "production",
-                "--target", "lib/main.dart"
-            ],
-            "toolArgs": [
+                "--target", "lib/main.dart",
                 "--dart-define", "env=production"
             ]
         },
@@ -21,9 +19,7 @@
             "program": "lib/main.dart",
             "args": [
                 "--flavor", "staging",
-                "--target", "lib/main.dart"
-            ],
-            "toolArgs": [
+                "--target", "lib/main.dart",
                 "--dart-define", "env=staging"
             ]
         },
@@ -34,9 +30,7 @@
             "program": "lib/main.dart",
             "args": [
                 "--flavor", "development",
-                "--target", "lib/main.dart"
-            ],
-            "toolArgs": [
+                "--target", "lib/main.dart",
                 "--dart-define", "env=development"
             ]
         }
