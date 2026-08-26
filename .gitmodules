@@ -1,3 +1,6 @@
 [submodule "plugins/flutter_config"]
 	path = plugins/flutter_config
 	url = https://github.com/sbezhuk/flutter_config.git
+[submodule "plugins/liquid_glass_widgets"]
+	path = plugins/liquid_glass_widgets
+	url = https://github.com/sbezhuk/liquid_glass_widgets.git
