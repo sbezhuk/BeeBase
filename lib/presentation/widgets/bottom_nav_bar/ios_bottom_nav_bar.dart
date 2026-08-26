@@ -30,10 +30,24 @@ final class IosBottomNavigationBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return GlassScaffold(
       body: body,
-      bottomBar: GlassTabBar.bottom(
-        tabs: [for (final destination in destinations) _toGlassTab(destination)],
-        selectedIndex: selectedIndex,
-        onTabSelected: onDestinationSelected,
+      // GlassTabBar's label/badge text renders outside any ancestor
+      // DefaultTextStyle that resolves to a real style — without this it
+      // falls back to a bare TextStyle() and paints with a debug-yellow
+      // double underline. `Material` fixes that (it unconditionally wraps
+      // its child in a fresh AnimatedDefaultTextStyle sourced from
+      // Theme.textTheme.bodyMedium), but MaterialType.canvas also paints an
+      // opaque surface that blocks the glass shader's backdrop sampling.
+      // `MaterialType.transparency` gets the same DefaultTextStyle fix while
+      // painting nothing, so the blur/refraction underneath is untouched.
+      bottomBar: Material(
+        type: MaterialType.transparency,
+        child: GlassTabBar.bottom(
+          tabs: [
+            for (final destination in destinations) _toGlassTab(destination),
+          ],
+          selectedIndex: selectedIndex,
+          onTabSelected: onDestinationSelected,
+        ),
       ),
     );
   }
@@ -45,9 +59,13 @@ GlassTab _toGlassTab(BottomNavDestination destination) {
     // GlassTab has no first-class disabled state; dim manually. Taps are
     // already swallowed upstream in PlatformBottomNavigationBar before
     // onTabSelected is invoked, so this is presentation-only.
-    final styled = destination.enabled ? glyph : Opacity(opacity: 0.4, child: glyph);
+    final styled = destination.enabled
+        ? glyph
+        : Opacity(opacity: 0.4, child: glyph);
     final badgeCount = destination.badgeCount;
-    return badgeCount == null ? styled : GlassBadge(count: badgeCount, child: styled);
+    return badgeCount == null
+        ? styled
+        : GlassBadge(count: badgeCount, child: styled);
   }
 
   // GlassTabBar's internal layout wraps the whole icon+label subtree
