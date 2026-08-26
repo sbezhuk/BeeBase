@@ -42,9 +42,7 @@ final class IosBottomNavigationBar extends StatelessWidget {
       bottomBar: Material(
         type: MaterialType.transparency,
         child: GlassTabBar.bottom(
-          tabs: [
-            for (final destination in destinations) _toGlassTab(destination),
-          ],
+          tabs: [for (final destination in destinations) _toGlassTab(destination)],
           selectedIndex: selectedIndex,
           onTabSelected: onDestinationSelected,
         ),
@@ -59,13 +57,9 @@ GlassTab _toGlassTab(BottomNavDestination destination) {
     // GlassTab has no first-class disabled state; dim manually. Taps are
     // already swallowed upstream in PlatformBottomNavigationBar before
     // onTabSelected is invoked, so this is presentation-only.
-    final styled = destination.enabled
-        ? glyph
-        : Opacity(opacity: 0.4, child: glyph);
+    final styled = destination.enabled ? glyph : Opacity(opacity: 0.4, child: glyph);
     final badgeCount = destination.badgeCount;
-    return badgeCount == null
-        ? styled
-        : GlassBadge(count: badgeCount, child: styled);
+    return badgeCount == null ? styled : GlassBadge(count: badgeCount, child: styled);
   }
 
   // GlassTabBar's internal layout wraps the whole icon+label subtree

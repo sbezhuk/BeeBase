@@ -5,11 +5,7 @@ part of '../android_bottom_nav_bar.dart';
 /// a bottom bar once there's enough width for a rail (tablets, foldables,
 /// landscape).
 final class _AndroidNavigationRail extends StatelessWidget {
-  const _AndroidNavigationRail({
-    required this.destinations,
-    required this.selectedIndex,
-    required this.onDestinationSelected,
-  });
+  const _AndroidNavigationRail({required this.destinations, required this.selectedIndex, required this.onDestinationSelected});
 
   final List<BottomNavDestination> destinations;
   final int selectedIndex;
@@ -25,10 +21,7 @@ final class _AndroidNavigationRail extends StatelessWidget {
         for (final destination in destinations)
           NavigationRailDestination(
             icon: _DestinationIcon(destination: destination, selected: false),
-            selectedIcon: _DestinationIcon(
-              destination: destination,
-              selected: true,
-            ),
+            selectedIcon: _DestinationIcon(destination: destination, selected: true),
             label: Semantics(
               label: destination.accessibilityLabel,
               child: ExcludeSemantics(child: Text(destination.label)),

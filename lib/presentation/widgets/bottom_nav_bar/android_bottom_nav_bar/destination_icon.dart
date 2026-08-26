@@ -11,9 +11,7 @@ final class _DestinationIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icon = Icon(
-      selected ? destination.materialIconSelected : destination.materialIcon,
-    );
+    final icon = Icon(selected ? destination.materialIconSelected : destination.materialIcon);
     final badgeCount = destination.badgeCount;
     if (badgeCount == null || badgeCount <= 0) return icon;
     return Badge.count(count: badgeCount, child: icon);
