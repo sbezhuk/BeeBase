@@ -39,4 +39,6 @@ final class AppConfig {
   }
 
   static String get environment => FlutterConfig.get('ENVIRONMENT');
+
+  static String get apiEndPoint => FlutterConfig.get('API_END_POINT');
 }

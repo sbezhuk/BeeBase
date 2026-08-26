@@ -28,7 +28,7 @@ dart format .
 flutter build apk --flavor production --target lib/main_prod.dart
 ```
 
-There is **no `test/` directory** — the project currently has no automated tests. Generated files (`*.g.dart`, `*.gr.dart`) are gitignored and excluded from `flutter analyze` (`analysis_options.yaml`) — regenerate with `build_runner` rather than hand-editing them.
+Generated files (`*.g.dart`, `*.gr.dart`) are gitignored and excluded from `flutter analyze` (`analysis_options.yaml`) — regenerate with `build_runner` rather than hand-editing them.
 
 ## Architecture
 
@@ -47,7 +47,7 @@ lib/
  │   └─ repositories/       # Repository interfaces (reader/writer) + base Repository class
  ├─ presentation/
  │   ├─ <feature>/          # authentication, gear, profile, session, search, user_invites, main, notification
- │   │   ├─ cubit/          #   one subfolder per cubit: *_cubit.dart, *_state.dart (part), mixin/*_emitter.dart (part)
+ │   │   ├─ cubit/          #   one subfolder per cubit: *_cubit.dart, state/ (sealed state + one file per variant, part), mixin/*_emitter.dart (part)
  │   │   ├─ widget(s)/      #   feature-specific UI (naming inconsistent, see Conventions)
  │   │   └─ extension(s)/   #   feature-specific extensions (naming inconsistent, see Conventions)
  │   ├─ component/          # Design-system primitives: AppColor, AppFont/AppTextStyles, AppImage, buttons/, checkbox/
@@ -131,10 +131,12 @@ Many `AppImage` SVG/PNG assets are eagerly preloaded at startup in `lib/utils/im
 
 `easy_localization`, but only one locale is actually wired up today: `assets/langs/en-US.json`, registered as the sole `supportedLocales` entry in `lib/main_prod.dart` (the plural `langs` folder name is a leftover from scaffolding, not a sign of multi-language support). Use `'some.dotted.key'.tr()`. After adding/editing keys, run `flutter pub run easy_localization:generate`. Pick the contextually correct nested key for the screen you're on (e.g. `main.profileEdit.validations.emailRequired`) rather than a similarly named sibling key.
 
+Every user-facing string resolves through a `.tr()` key — this includes error and validation text, not just static labels. A form validator, a snackbar, or a `ServerFailure.code`/field-code → copy mapping (see `presentation/authentication/extension/server_failure_message_extension.dart` for the pattern: a `Map<String, String>` of API code → localization key, resolved via `.tr()`) must all read from `assets/langs/en-US.json`, never return a literal English string.
+
 ## State Management (BLoC/Cubit)
 
 - **Cubit only** — folders are literally named `cubit/`, there is no `Bloc` usage despite the `flutter_bloc` dependency name.
-- State is a `sealed class` with `final class` subtypes (e.g. `GearSetupListInitial/Loading/Loaded/Error`), declared in a `*_state.dart` file included via `part` into the cubit file, alongside `part 'mixin/<name>_emitter.dart'` for the private emitter mixin (see Data flow above).
+- State is a `sealed class` with `final class` subtypes (e.g. `GearSetupListInitial/Loading/Loaded/Error`). Each variant gets its own file under `cubit/<name>/state/` (one class per file — see Conventions), declared `part of '../<name>_cubit.dart'`; the cubit file lists a `part` directive per state file, alongside `part 'mixin/<name>_emitter.dart'` for the private emitter mixin (see Data flow above).
 - Use pattern matching / `is` checks on the sealed state — avoid manual enum-based casting.
 - Emit **immutable states** only; use `copyWith` for updates.
 - **Always dispose resources** — `ValueNotifier`, `StreamController`, `TextEditingController`:
@@ -177,7 +179,14 @@ void _onTap() async {
 ## Conventions
 
 - `snake_case` file names, `PascalCase` class names; target ≤200 lines per file.
+- **One class per file.** A file may declare exactly one class.
+  - Two unrelated classes (no sealed hierarchy between them, e.g. two DTOs, two exception types) split into separate files with ordinary imports — e.g. `core/networking/models/api_error_response.dart` importing `api_error.dart`, or `core/networking/exceptions/server_exception.dart` / `internal_exception.dart` / `cancellation_exception.dart`.
+  - A `sealed class` and its `final class` variants (cubit state, `Either`/`Left`/`Right` in `lib/utils/`, `Failure`'s subtypes in `core/networking/failures/`, `ErrorText`'s subtypes in `core/error/`) must stay in one `part`/`part of` library — Dart requires every direct subtype of a sealed class to be declared in the same library as the base, or exhaustiveness checking breaks.
+  - A private helper class only its own file's class uses (e.g. a page's private `_EmailField`/`_PasswordField`/`_SubmitButton`) also needs `part`/`part of`, since a leading-underscore identifier isn't visible outside its library — see `presentation/authentication/login_page.dart` + `login_page/*.dart`.
+  - Exception: a `StatefulWidget` and its own `State<T>` subclass stay together in one file — Flutter treats that pairing as a single unit, not two classes.
+- **Don't let `build()` sprawl** — a widget tree nested many levels deep in one `build()` method is hard to read and hard to change. Split it into smaller private widget classes (preferred — each gets its own `const` constructor and rebuild scope) or, for a trivial piece, a `_buildX()` helper method. Extract a section as soon as it reads as its own concern, not once the method has already become spaghetti.
 - `always_use_package_imports` is enforced (`analysis_options.yaml`) — use `package:ft_mobile/...`, never relative imports. `implicit-casts`/`implicit-dynamic` are disabled (`strong-mode`).
 - `prefer_single_quotes`, `require_trailing_commas`, `prefer_const_constructors` are lints; `unused_import`, `dead_code`, `invalid_assignment` are promoted to **errors** — `flutter analyze` gates every PR.
+- **Mark every class `final` unless it is designed to be inherited.** This applies uniformly — cubits, repositories, data sources, services, widgets, DTOs, all of it. Only drop `final` (using `base`, `interface`, `abstract`, or no modifier) when the class is deliberately built as a base class or interface for others to extend/implement, **or** when a `test/` file mocks it via mocktail's `class MockX extends Mock implements X {}` — `final` blocks `implements` from outside the library, so any class with such a mock must stay unmarked.
 - **Two folder-naming inconsistencies exist** — follow whatever the feature you're editing already uses, don't "fix" it as a drive-by: singular vs. plural widget folders (`presentation/session/widget` is singular; `presentation/user_invites/widgets` and top-level `presentation/widgets` are plural), and singular vs. plural extension folders (`presentation/profile/extension`, `presentation/authentication/extension` are singular; `presentation/gear/extensions`, `presentation/session/extensions` are plural).
 - Generic, business-logic-free helpers and constants go in `lib/utils/` (e.g. `Either`, `AppConfig`, `di`, theme extensions) — no business logic there.

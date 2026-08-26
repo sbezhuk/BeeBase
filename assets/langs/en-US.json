@@ -1,1 +1,45 @@
-{}
+{
+  "authentication": {
+    "login": {
+      "title": "Log in",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "submit": "Log in",
+      "createAccount": "Create an account",
+      "validations": {
+        "emailInvalid": "Enter a valid email",
+        "passwordTooShort": "At least 8 characters"
+      }
+    },
+    "register": {
+      "title": "Create an account",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "submit": "Sign up",
+      "haveAccount": "Already have an account? Log in",
+      "validations": {
+        "emailInvalid": "Enter a valid email",
+        "passwordTooShort": "At least 8 characters"
+      }
+    }
+  },
+  "core": {
+    "errors": {
+      "requestCancelled": "The request was cancelled. Please try again.",
+      "unexpectedNetworkError": "Something went wrong. Please check your connection and try again.",
+      "requestFailed": "Something went wrong. Please try again.",
+      "noActiveSession": "No active session. Please log in again."
+    }
+  },
+  "server": {
+    "errors": {
+      "invalid_credentials": "Invalid email or password.",
+      "validation_error": "Please check the highlighted fields.",
+      "email_invalid": "Enter a valid email address.",
+      "email_required": "Email is required.",
+      "email_taken": "An account with this email already exists.",
+      "password_required": "Password is required.",
+      "password_too_short": "Password must be at least 8 characters."
+    }
+  }
+}

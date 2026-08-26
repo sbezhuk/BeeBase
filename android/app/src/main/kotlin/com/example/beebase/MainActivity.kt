@@ -1,4 +1,4 @@
-package com.example.beebase
+package com.beebase
 
 import io.flutter.embedding.android.FlutterActivity
 

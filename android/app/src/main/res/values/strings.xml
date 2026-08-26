@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      flutter_config's Android plugin reflects on "<packageName>.BuildConfig"
+      to read env vars, using the app's runtime package name by default. The
+      production/staging/development flavors only change the applicationId
+      via applicationIdSuffix (e.g. com.beebase.production) — the
+      BuildConfig class is always generated under the app's namespace
+      (com.beebase). Without this override, the reflection lookup
+      fails for every non-default flavor and FlutterConfig.get returns null.
+    -->
+    <string name="build_config_package" translatable="false">com.beebase</string>
+</resources>

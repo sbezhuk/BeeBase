@@ -13,7 +13,7 @@ project.extra["envConfigFiles"] = mapOf(
 apply(from = project(":flutter_config").projectDir.path + "/dotenv.gradle.kts")
 
 android {
-    namespace = "com.example.beebase"
+    namespace = "com.beebase"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -29,7 +29,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.beebase"
+        applicationId = "com.beebase"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -63,6 +63,13 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // R8/resource shrinking is on by default for this AGP version and strips
+            // the BuildConfig fields and string resources that flutter_config reads
+            // via reflection at runtime (they're never referenced from code/XML, so
+            // the shrinker treats them as unused). Disabled until proguard/keep rules
+            // are set up to preserve them explicitly.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
