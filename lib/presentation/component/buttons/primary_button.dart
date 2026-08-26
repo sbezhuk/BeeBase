@@ -3,12 +3,7 @@ import 'package:beebase/presentation/component/font.dart';
 import 'package:flutter/material.dart';
 
 final class PrimaryButton extends StatelessWidget {
-  const PrimaryButton({
-    required this.label,
-    required this.onPressed,
-    this.isLoading = false,
-    super.key,
-  });
+  const PrimaryButton({required this.label, required this.onPressed, this.isLoading = false, super.key});
 
   final String label;
   final VoidCallback? onPressed;
@@ -16,25 +11,33 @@ final class PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return Container(
       width: double.infinity,
-      height: 48,
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColor.primary,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      height: 56,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColor.primary, AppColor.primaryDark],
         ),
-        child: isLoading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColor.background,
-                ),
-              )
-            : Text(label, style: AppTextStyles.button),
+        boxShadow: [BoxShadow(color: AppColor.primaryDark.withValues(alpha: 0.35), blurRadius: 24, offset: const Offset(0, 14))],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: isLoading ? null : onPressed,
+          child: Center(
+            child: isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColor.background),
+                  )
+                : Text(label, style: AppTextStyles.button),
+          ),
+        ),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';
+import 'package:beebase/presentation/component/color.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/themes/spacing.dart';
@@ -17,8 +18,7 @@ final class Application extends StatefulWidget {
 
 final class _ApplicationState extends State<Application> {
   late final AppRouter _appRouter;
-  late final StreamSubscription<AuthenticationState>
-  _authenticationSubscription;
+  late final StreamSubscription<AuthenticationState> _authenticationSubscription;
 
   @override
   void initState() {
@@ -26,9 +26,7 @@ final class _ApplicationState extends State<Application> {
     _appRouter = di<AppRouter>();
     // Any place in the app can lose the session (e.g. a 401 whose refresh
     // also failed) — react here so the redirect isn't tied to a screen.
-    _authenticationSubscription = di<AuthenticationCubit>().stream.listen((
-      state,
-    ) {
+    _authenticationSubscription = di<AuthenticationCubit>().stream.listen((state) {
       if (state is AuthenticationUnauthenticated) {
         _appRouter.replaceAll([const LoginRoute()]);
       }
@@ -46,7 +44,14 @@ final class _ApplicationState extends State<Application> {
     return BlocProvider.value(
       value: di<AuthenticationCubit>(),
       child: MaterialApp.router(
-        theme: ThemeData(extensions: const [Spacing.standard()]),
+        theme: ThemeData(
+          extensions: const [Spacing.standard()],
+          textSelectionTheme: TextSelectionThemeData(
+            cursorColor: AppColor.primary,
+            selectionColor: AppColor.primary.withValues(alpha: 0.3),
+            selectionHandleColor: AppColor.primary,
+          ),
+        ),
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,
         locale: context.locale,

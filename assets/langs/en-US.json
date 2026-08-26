@@ -1,22 +1,37 @@
 {
   "authentication": {
     "login": {
-      "title": "Log in",
+      "title": "Welcome Back, Beekeeper",
+      "subtitle": "Return to your hive and keep every colony thriving.",
       "emailLabel": "Email",
+      "emailHint": "Enter email",
       "passwordLabel": "Password",
-      "submit": "Log in",
-      "createAccount": "Create an account",
+      "passwordHint": "Password",
+      "submit": "Log In",
+      "createAccountPrompt": "Don't have a hive yet? ",
+      "createAccountAction": "Sign Up",
       "validations": {
         "emailInvalid": "Enter a valid email",
         "passwordTooShort": "At least 8 characters"
       }
     },
     "register": {
-      "title": "Create an account",
+      "title": "Start Your Own Hive",
+      "subtitle": "Create your beekeeper account in just a few steps.",
       "emailLabel": "Email",
+      "emailHint": "Enter email",
       "passwordLabel": "Password",
-      "submit": "Sign up",
-      "haveAccount": "Already have an account? Log in",
+      "passwordHint": "Password",
+      "submit": "Sign Up",
+      "haveAccountPrompt": "Already have a hive? ",
+      "haveAccountAction": "Log In",
+      "termsNotice": {
+        "prefix": "By creating an account, you agree to our ",
+        "termsAndConditions": "Terms & Conditions",
+        "and": " and ",
+        "privacyPolicy": "Privacy Policy",
+        "suffix": "."
+      },
       "validations": {
         "emailInvalid": "Enter a valid email",
         "passwordTooShort": "At least 8 characters"

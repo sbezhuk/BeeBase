@@ -5,14 +5,18 @@ import 'package:beebase/presentation/authentication/cubit/login_cubit/login_cubi
 import 'package:beebase/presentation/component/buttons/primary_button.dart';
 import 'package:beebase/presentation/component/color.dart';
 import 'package:beebase/presentation/component/font.dart';
+import 'package:beebase/presentation/component/honeycomb_pattern.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+part 'login_page/create_account_prompt.dart';
 part 'login_page/email_field.dart';
+part 'login_page/form_content.dart';
 part 'login_page/password_field.dart';
 part 'login_page/submit_button.dart';
 
@@ -74,43 +78,66 @@ final class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColor.background,
-      body: SafeArea(
-        child: BlocListener<LoginCubit, LoginState>(
-          listener: _handleStateChange,
-          child: Padding(
-            padding: EdgeInsets.all(context.spacing.lg),
-            child: Form(
-              key: _formKey,
-              child: ListView(
-                children: [
-                  SizedBox(height: context.spacing.xl),
-                  Text('authentication.login.title'.tr(), style: AppTextStyles.title),
-                  SizedBox(height: context.spacing.lg),
-                  _EmailField(
-                    controller: _emailController,
-                    serverError: _emailServerError,
-                    onChanged: () => setState(() => _emailServerError = null),
-                  ),
-                  SizedBox(height: context.spacing.md),
-                  _PasswordField(
-                    controller: _passwordController,
-                    serverError: _passwordServerError,
-                    onChanged: () => setState(() => _passwordServerError = null),
-                  ),
-                  SizedBox(height: context.spacing.lg),
-                  _SubmitButton(onPressed: _submit),
-                  SizedBox(height: context.spacing.md),
-                  TextButton(
-                    onPressed: () => context.router.push(const RegisterRoute()),
-                    child: Text('authentication.login.createAccount'.tr()),
-                  ),
-                ],
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [AppColor.honeyCream, AppColor.honeyCreamLight, AppColor.background],
+                  stops: [0, 0.42, 1],
+                ),
               ),
             ),
           ),
-        ),
+          const Positioned(top: 0, left: 0, right: 0, height: 320, child: HoneycombPattern()),
+          SafeArea(
+            child: BlocListener<LoginCubit, LoginState>(
+              listener: _handleStateChange,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: context.spacing.lg),
+                child: Form(
+                  key: _formKey,
+                  child: _LoginFormContent(
+                    emailController: _emailController,
+                    passwordController: _passwordController,
+                    emailServerError: _emailServerError,
+                    passwordServerError: _passwordServerError,
+                    onEmailChanged: () => setState(() => _emailServerError = null),
+                    onPasswordChanged: () => setState(() => _passwordServerError = null),
+                    onSubmit: _submit,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+// The error text is rendered by the caller (flush with the field label)
+// rather than by [InputDecoration.errorText], so only the border reacts to
+// [hasError] here.
+InputDecoration _authFieldDecoration({required String hintText, bool hasError = false}) {
+  final normalBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.circular(10),
+    borderSide: const BorderSide(color: AppColor.honeyBorder),
+  );
+  final errorBorder = normalBorder.copyWith(borderSide: const BorderSide(color: AppColor.error));
+  return InputDecoration(
+    hintText: hintText,
+    hintStyle: const TextStyle(fontFamily: AppFont.regular, fontSize: 15, color: AppColor.honeyPlaceholder),
+    filled: true,
+    fillColor: AppColor.background,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    border: hasError ? errorBorder : normalBorder,
+    enabledBorder: hasError ? errorBorder : normalBorder,
+    focusedBorder: hasError
+        ? errorBorder.copyWith(borderSide: const BorderSide(color: AppColor.error, width: 1.5))
+        : normalBorder.copyWith(borderSide: const BorderSide(color: AppColor.primary, width: 1.5)),
+  );
 }
