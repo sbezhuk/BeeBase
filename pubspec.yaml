@@ -36,3 +36,23 @@ flutter:
   uses-material-design: true
   assets:
     - assets/langs/
+  fonts:
+    - family: RobotoSlab-Bold
+      fonts:
+        - asset: assets/fonts/RobotoSlab/RobotoSlab-Bold.ttf
+          weight: 700
+    - family: RobotoSlab-Regular
+      fonts:
+        - asset: assets/fonts/RobotoSlab/RobotoSlab-Regular.ttf
+          weight: 400
+    - family: IBMPlexSans-Bold
+      fonts:
+        - asset: assets/fonts/IBMPlexSans/IBMPlexSans-Bold.ttf
+          weight: 700
+    - family: IBMPlexSans-Regular
+      fonts:
+        - asset: assets/fonts/IBMPlexSans/IBMPlexSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexSans/IBMPlexSans-Italic.ttf
+          weight: 400
+          style: italic

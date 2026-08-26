@@ -60,6 +60,7 @@ final class _ApplicationState extends State<Application> {
 ThemeData _buildTheme(AppColor colors, Brightness brightness) {
   return ThemeData(
     brightness: brightness,
+    fontFamily: AppFont.regular,
     scaffoldBackgroundColor: colors.background,
     colorScheme: ColorScheme.fromSeed(
       seedColor: colors.primary,
