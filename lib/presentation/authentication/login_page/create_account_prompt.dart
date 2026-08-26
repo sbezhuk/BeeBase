@@ -26,10 +26,14 @@ final class _CreateAccountPromptState extends State<_CreateAccountPrompt> {
   Widget build(BuildContext context) {
     return Text.rich(
       TextSpan(
-        style: AppTextStyles.authMuted,
+        style: context.textStyles.authMuted,
         children: [
           TextSpan(text: 'authentication.login.createAccountPrompt'.tr()),
-          TextSpan(text: 'authentication.login.createAccountAction'.tr(), style: AppTextStyles.authLink, recognizer: _recognizer),
+          TextSpan(
+            text: 'authentication.login.createAccountAction'.tr(),
+            style: context.textStyles.authLink,
+            recognizer: _recognizer,
+          ),
         ],
       ),
       textAlign: TextAlign.center,

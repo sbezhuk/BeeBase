@@ -29,9 +29,13 @@ final class _RegisterFormContent extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 SizedBox(height: context.spacing.xl * 2),
-                Text('authentication.register.title'.tr(), textAlign: TextAlign.center, style: AppTextStyles.authTitle),
+                Text('authentication.register.title'.tr(), textAlign: TextAlign.center, style: context.textStyles.authTitle),
                 SizedBox(height: context.spacing.sm),
-                Text('authentication.register.subtitle'.tr(), textAlign: TextAlign.center, style: AppTextStyles.authSubtitle),
+                Text(
+                  'authentication.register.subtitle'.tr(),
+                  textAlign: TextAlign.center,
+                  style: context.textStyles.authSubtitle,
+                ),
                 SizedBox(height: context.spacing.xl),
                 _EmailField(controller: emailController, serverError: emailServerError, onChanged: onEmailChanged),
                 SizedBox(height: context.spacing.md),

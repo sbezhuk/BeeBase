@@ -23,19 +23,26 @@ final class _EmailField extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('authentication.login.emailLabel'.tr(), style: AppTextStyles.authFieldLabel),
+            Text('authentication.login.emailLabel'.tr(), style: context.textStyles.authFieldLabel),
             SizedBox(height: context.spacing.xs),
             TextField(
               controller: controller,
               keyboardType: TextInputType.emailAddress,
-              style: const TextStyle(fontFamily: AppFont.regular, fontSize: 15, color: AppColor.hiveBrown),
-              decoration: _authFieldDecoration(hintText: 'authentication.login.emailHint'.tr(), hasError: field.hasError),
+              style: TextStyle(fontFamily: AppFont.regular, fontSize: 15, color: context.colors.hiveBrown),
+              decoration: _authFieldDecoration(
+                context: context,
+                hintText: 'authentication.login.emailHint'.tr(),
+                hasError: field.hasError,
+              ),
               onChanged: (value) {
                 field.didChange(value);
                 onChanged();
               },
             ),
-            if (field.hasError) ...[SizedBox(height: context.spacing.xs), Text(field.errorText!, style: AppTextStyles.error)],
+            if (field.hasError) ...[
+              SizedBox(height: context.spacing.xs),
+              Text(field.errorText!, style: context.textStyles.error),
+            ],
           ],
         );
       },

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';
 import 'package:beebase/presentation/component/color.dart';
+import 'package:beebase/presentation/component/font.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/themes/spacing.dart';
@@ -44,14 +45,9 @@ final class _ApplicationState extends State<Application> {
     return BlocProvider.value(
       value: di<AuthenticationCubit>(),
       child: MaterialApp.router(
-        theme: ThemeData(
-          extensions: const [Spacing.standard()],
-          textSelectionTheme: TextSelectionThemeData(
-            cursorColor: AppColor.primary,
-            selectionColor: AppColor.primary.withValues(alpha: 0.3),
-            selectionHandleColor: AppColor.primary,
-          ),
-        ),
+        theme: _buildTheme(const AppColor.light(), Brightness.light),
+        darkTheme: _buildTheme(const AppColor.dark(), Brightness.dark),
+        themeMode: ThemeMode.system,
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,
         locale: context.locale,
@@ -59,4 +55,24 @@ final class _ApplicationState extends State<Application> {
       ),
     );
   }
+}
+
+ThemeData _buildTheme(AppColor colors, Brightness brightness) {
+  return ThemeData(
+    brightness: brightness,
+    scaffoldBackgroundColor: colors.background,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: colors.primary,
+      brightness: brightness,
+      primary: colors.primary,
+      error: colors.error,
+      surface: colors.surface,
+    ),
+    extensions: [const Spacing.standard(), colors, AppTextStyles.fromColors(colors)],
+    textSelectionTheme: TextSelectionThemeData(
+      cursorColor: colors.primary,
+      selectionColor: colors.primary.withValues(alpha: 0.3),
+      selectionHandleColor: colors.primary,
+    ),
+  );
 }

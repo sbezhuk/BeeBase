@@ -120,10 +120,13 @@ Single `get_it` container `di` in `lib/utils/di.dart`, populated by `initDi()` a
 
 ### Theming & UI
 
-Two separate systems, don't mix them up:
+Three systems, don't mix them up:
 
 - **Dimensions** (`Spacing`, `AppSize`, `AppRadius`) are `ThemeExtension`s registered on `ThemeData.extensions` in `lib/application.dart`, accessed through context extensions in `lib/utils/extensions/theme_spacing.dart`: `context.spacing`, `context.appSize`, `context.appRadius`. Extend these classes for new dimension constants rather than hardcoding numbers.
-- **Colors, typography, and image paths** are plain static-const classes in `lib/presentation/component/`, *not* theme extensions: `AppColor` (`color.dart`), `AppImage` (`image.dart`), and `AppFont`/`AppTextStyles` (both in `font.dart` — `AppFont` holds font-family name strings, `AppTextStyles` holds the ready-made `TextStyle` presets built from them; use `AppTextStyles.*` in widgets, not raw `TextStyle`s). Font family is `AvertaStd` (Bold/Semibold/Regular, declared in `pubspec.yaml`).
+- **Colors and typography** are `ThemeExtension`s too, because they switch between light and dark palettes: `AppColor` (`lib/presentation/component/color.dart`, light via `AppColor.light()`, dark via `AppColor.dark()`) and `AppTextStyles` (`lib/presentation/component/font.dart`, built from an `AppColor` via `AppTextStyles.fromColors()`). `lib/application.dart`'s `_buildTheme()` registers one of each per brightness on `ThemeData.extensions`/`ThemeData.darkTheme`, gated by `themeMode: ThemeMode.system`. Read them via `context.colors` (`lib/utils/extensions/theme_colors.dart`) and `context.textStyles` (`lib/utils/extensions/theme_text_styles.dart`) — never `AppColor.xxx`/`AppTextStyles.xxx` as static members, and never hardcode a `Color`/`TextStyle` in a widget. Because these are resolved from `context`, widgets that use them can't stay `const`. Adding a new color or text style means adding a field to both `AppColor` (with light *and* dark values, plus its `copyWith`/`lerp`) and, for a text style, `AppTextStyles.fromColors()`.
+- **Image paths** are a plain static-const class, not a theme extension: `AppImage` (`lib/presentation/component/image.dart`). Font family is `AvertaStd` (Bold/Semibold/Regular, declared in `pubspec.yaml`).
+
+Every `context.xxx` getter above (`spacing`, `colors`, `textStyles`, and any future one) is a one-line wrapper around the generic `context.themeExtension<T>(fallback)` helper in `lib/utils/extensions/theme_extension_x.dart` — it does the `Theme.of(context).extension<T>() ?? fallback` lookup once, generically. **Adding a brand-new themed value** (e.g. `AppElevation`) means: write it as a `final class` extending `ThemeExtension<T>`, register a light/dark instance in `_buildTheme`, and add a one-line context extension calling `themeExtension`; don't hand-roll another `Theme.of(context).extension<T>() ?? ...` lookup.
 
 Many `AppImage` SVG/PNG assets are eagerly preloaded at startup in `lib/utils/images/preload_resources.dart` — add new frequently-used images there.
 

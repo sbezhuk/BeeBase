@@ -26,12 +26,12 @@ final class _LoginPromptState extends State<_LoginPrompt> {
   Widget build(BuildContext context) {
     return Text.rich(
       TextSpan(
-        style: AppTextStyles.authMuted,
+        style: context.textStyles.authMuted,
         children: [
           TextSpan(text: 'authentication.register.haveAccountPrompt'.tr()),
           TextSpan(
             text: 'authentication.register.haveAccountAction'.tr(),
-            style: AppTextStyles.authLink,
+            style: context.textStyles.authLink,
             recognizer: _recognizer,
           ),
         ],

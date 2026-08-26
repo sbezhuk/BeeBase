@@ -3,12 +3,13 @@ import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/presentation/authentication/auth_field_errors.dart';
 import 'package:beebase/presentation/authentication/cubit/login_cubit/login_cubit.dart';
 import 'package:beebase/presentation/component/buttons/primary_button.dart';
-import 'package:beebase/presentation/component/color.dart';
 import 'package:beebase/presentation/component/font.dart';
 import 'package:beebase/presentation/component/honeycomb_pattern.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/utils/di.dart';
+import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
+import 'package:beebase/utils/extensions/theme_text_styles.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -77,17 +78,18 @@ final class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       body: Stack(
         children: [
           Positioned.fill(
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [AppColor.honeyCream, AppColor.honeyCreamLight, AppColor.background],
-                  stops: [0, 0.42, 1],
+                  colors: [colors.honeyCream, colors.honeyCreamLight, colors.background],
+                  stops: const [0, 0.42, 1],
                 ),
               ),
             ),
@@ -122,22 +124,23 @@ final class _LoginPageState extends State<LoginPage> {
 // The error text is rendered by the caller (flush with the field label)
 // rather than by [InputDecoration.errorText], so only the border reacts to
 // [hasError] here.
-InputDecoration _authFieldDecoration({required String hintText, bool hasError = false}) {
+InputDecoration _authFieldDecoration({required BuildContext context, required String hintText, bool hasError = false}) {
+  final colors = context.colors;
   final normalBorder = OutlineInputBorder(
     borderRadius: BorderRadius.circular(10),
-    borderSide: const BorderSide(color: AppColor.honeyBorder),
+    borderSide: BorderSide(color: colors.honeyBorder),
   );
-  final errorBorder = normalBorder.copyWith(borderSide: const BorderSide(color: AppColor.error));
+  final errorBorder = normalBorder.copyWith(borderSide: BorderSide(color: colors.error));
   return InputDecoration(
     hintText: hintText,
-    hintStyle: const TextStyle(fontFamily: AppFont.regular, fontSize: 15, color: AppColor.honeyPlaceholder),
+    hintStyle: TextStyle(fontFamily: AppFont.regular, fontSize: 15, color: colors.honeyPlaceholder),
     filled: true,
-    fillColor: AppColor.background,
+    fillColor: colors.background,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     border: hasError ? errorBorder : normalBorder,
     enabledBorder: hasError ? errorBorder : normalBorder,
     focusedBorder: hasError
-        ? errorBorder.copyWith(borderSide: const BorderSide(color: AppColor.error, width: 1.5))
-        : normalBorder.copyWith(borderSide: const BorderSide(color: AppColor.primary, width: 1.5)),
+        ? errorBorder.copyWith(borderSide: BorderSide(color: colors.error, width: 1.5))
+        : normalBorder.copyWith(borderSide: BorderSide(color: colors.primary, width: 1.5)),
   );
 }
