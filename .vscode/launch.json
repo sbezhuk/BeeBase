@@ -9,7 +9,7 @@
             "args": [
                 "--flavor", "production",
                 "--target", "lib/main.dart",
-                "--dart-define", "env=production"
+                "--dart-define-from-file", "config/production.json"
             ]
         },
         {
@@ -20,7 +20,7 @@
             "args": [
                 "--flavor", "staging",
                 "--target", "lib/main.dart",
-                "--dart-define", "env=staging"
+                "--dart-define-from-file", "config/staging.json"
             ]
         },
         {
@@ -31,7 +31,7 @@
             "args": [
                 "--flavor", "development",
                 "--target", "lib/main.dart",
-                "--dart-define", "env=development"
+                "--dart-define-from-file", "config/development.json"
             ]
         }
     ]
