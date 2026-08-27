@@ -21,30 +21,36 @@ final class _LoginFormContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(height: context.spacing.xl * 2),
-                Text('authentication.login.title'.tr(), textAlign: TextAlign.center, style: context.textStyles.authTitle),
-                SizedBox(height: context.spacing.sm),
-                Text('authentication.login.subtitle'.tr(), textAlign: TextAlign.center, style: context.textStyles.authSubtitle),
-                SizedBox(height: context.spacing.xl),
-                _EmailField(controller: emailController, serverError: emailServerError, onChanged: onEmailChanged),
-                SizedBox(height: context.spacing.md),
-                _PasswordField(controller: passwordController, serverError: passwordServerError, onChanged: onPasswordChanged),
-                SizedBox(height: context.spacing.lg),
-                _SubmitButton(onPressed: onSubmit),
-              ],
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: EdgeInsets.only(bottom: bottomInset),
+          clipBehavior: Clip.none,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: Column(
+                children: [
+                  SizedBox(height: context.spacing.xl * 2),
+                  Text('authentication.login.title'.tr(), textAlign: TextAlign.center, style: context.textStyles.authTitle),
+                  SizedBox(height: context.spacing.sm),
+                  Text('authentication.login.subtitle'.tr(), textAlign: TextAlign.center, style: context.textStyles.authSubtitle),
+                  SizedBox(height: context.spacing.xl),
+                  _EmailField(controller: emailController, serverError: emailServerError, onChanged: onEmailChanged),
+                  SizedBox(height: context.spacing.md),
+                  _PasswordField(controller: passwordController, serverError: passwordServerError, onChanged: onPasswordChanged),
+                  SizedBox(height: context.spacing.lg),
+                  _SubmitButton(onPressed: onSubmit),
+                  const Spacer(),
+                  const _CreateAccountPrompt(),
+                  SizedBox(height: context.spacing.sm),
+                ],
+              ),
             ),
           ),
-        ),
-        const _CreateAccountPrompt(),
-        SizedBox(height: context.spacing.sm),
-      ],
+        );
+      },
     );
   }
 }

@@ -21,36 +21,42 @@ final class _RegisterFormContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(height: context.spacing.xl * 2),
-                Text('authentication.register.title'.tr(), textAlign: TextAlign.center, style: context.textStyles.authTitle),
-                SizedBox(height: context.spacing.sm),
-                Text(
-                  'authentication.register.subtitle'.tr(),
-                  textAlign: TextAlign.center,
-                  style: context.textStyles.authSubtitle,
-                ),
-                SizedBox(height: context.spacing.xl),
-                _EmailField(controller: emailController, serverError: emailServerError, onChanged: onEmailChanged),
-                SizedBox(height: context.spacing.md),
-                _PasswordField(controller: passwordController, serverError: passwordServerError, onChanged: onPasswordChanged),
-                SizedBox(height: context.spacing.lg),
-                _SubmitButton(onPressed: onSubmit),
-                SizedBox(height: context.spacing.xl),
-                const _LoginPrompt(),
-              ],
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: EdgeInsets.only(bottom: bottomInset),
+          clipBehavior: Clip.none,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: Column(
+                children: [
+                  SizedBox(height: context.spacing.xl * 2),
+                  Text('authentication.register.title'.tr(), textAlign: TextAlign.center, style: context.textStyles.authTitle),
+                  SizedBox(height: context.spacing.sm),
+                  Text(
+                    'authentication.register.subtitle'.tr(),
+                    textAlign: TextAlign.center,
+                    style: context.textStyles.authSubtitle,
+                  ),
+                  SizedBox(height: context.spacing.xl),
+                  _EmailField(controller: emailController, serverError: emailServerError, onChanged: onEmailChanged),
+                  SizedBox(height: context.spacing.md),
+                  _PasswordField(controller: passwordController, serverError: passwordServerError, onChanged: onPasswordChanged),
+                  SizedBox(height: context.spacing.lg),
+                  _SubmitButton(onPressed: onSubmit),
+                  SizedBox(height: context.spacing.xl),
+                  const _LoginPrompt(),
+                  const Spacer(),
+                  const _TermsAndConditionsNotice(),
+                  SizedBox(height: context.spacing.sm),
+                ],
+              ),
             ),
           ),
-        ),
-        const _TermsAndConditionsNotice(),
-        SizedBox(height: context.spacing.sm),
-      ],
+        );
+      },
     );
   }
 }
