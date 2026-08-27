@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:auto_route/auto_route.dart';
 import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';
 import 'package:beebase/presentation/component/color.dart';
 import 'package:beebase/presentation/component/font.dart';
@@ -51,7 +52,9 @@ final class _ApplicationState extends State<Application> {
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,
         locale: context.locale,
-        routerConfig: _appRouter.config(),
+        routerConfig: _appRouter.config(
+          navigatorObservers: () => [AutoRouteObserver()],
+        ),
       ),
     );
   }

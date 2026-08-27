@@ -1,4 +1,5 @@
 import 'package:beebase/presentation/widgets/bottom_nav_bar/bottom_nav_destination.dart';
+import 'package:beebase/presentation/widgets/bottom_nav_bar/bottom_nav_primary_action.dart';
 import 'package:flutter/material.dart';
 
 part 'android_bottom_nav_bar/destination_icon.dart';
@@ -23,6 +24,7 @@ final class AndroidBottomNavigationBar extends StatelessWidget {
     required this.selectedIndex,
     required this.onDestinationSelected,
     required this.body,
+    this.primaryAction,
     super.key,
   });
 
@@ -30,13 +32,22 @@ final class AndroidBottomNavigationBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
   final Widget body;
+  final BottomNavPrimaryAction? primaryAction;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Set on the *outer* Scaffold (the one that also owns the bottom
+        // bar/rail) rather than a per-page Scaffold, so Flutter's own FAB
+        // layout floats it above the bar with the standard Material margin,
+        // instead of a per-page FAB competing with the bar for the same
+        // corner.
+        final floatingActionButton = _toFab(primaryAction);
+
         if (constraints.maxWidth >= _expandedLayoutBreakpoint) {
           return Scaffold(
+            floatingActionButton: floatingActionButton,
             body: Row(
               children: [
                 _AndroidNavigationRail(
@@ -58,8 +69,19 @@ final class AndroidBottomNavigationBar extends StatelessWidget {
             selectedIndex: selectedIndex,
             onDestinationSelected: onDestinationSelected,
           ),
+          floatingActionButton: floatingActionButton,
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         );
       },
     );
   }
+}
+
+Widget? _toFab(BottomNavPrimaryAction? action) {
+  if (action == null) return null;
+  return FloatingActionButton.extended(
+    onPressed: action.onPressed,
+    icon: Icon(action.materialIcon),
+    label: Text(action.label),
+  );
 }

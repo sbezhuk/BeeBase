@@ -28,7 +28,7 @@ class TokenRefresher {
   Future<String?> refresh() async {
     try {
       final response = await dioClient.post<Map<String, dynamic>>(
-        ApiEndpoints.authRefresh,
+        ApiEndpoints.auth.refresh,
       );
       final accessToken = response.data?['access_token'] as String?;
       if (accessToken == null) {

@@ -5,10 +5,20 @@ import 'package:beebase/core/networking/interceptors/interceptor_resolver.dart';
 import 'package:beebase/core/services/session_service.dart';
 import 'package:beebase/core/storage/secure_storage.dart';
 import 'package:beebase/core/storage/token_storage.dart';
+import 'package:beebase/data/data_source/apiary_data_source.dart';
 import 'package:beebase/data/data_source/authentication_data_source.dart';
+import 'package:beebase/data/data_source/interface/apiary_data_source.dart';
 import 'package:beebase/data/data_source/interface/authentication_data_source.dart';
+import 'package:beebase/data/repositories/apiary_repository_impl.dart';
 import 'package:beebase/data/repositories/authentication_repository_impl.dart';
+import 'package:beebase/domain/entity/apiary.dart';
+import 'package:beebase/domain/repositories/apiary_reader.dart';
+import 'package:beebase/domain/repositories/apiary_writer.dart';
 import 'package:beebase/domain/repositories/authentication_repository.dart';
+import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
+import 'package:beebase/presentation/apiary/cubit/apiary_delete_cubit/apiary_delete_cubit.dart';
+import 'package:beebase/presentation/apiary/cubit/apiary_form_cubit/apiary_form_cubit.dart';
+import 'package:beebase/presentation/apiary/cubit/apiary_list_cubit/apiary_list_cubit.dart';
 import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';
 import 'package:beebase/presentation/authentication/cubit/login_cubit/login_cubit.dart';
 import 'package:beebase/presentation/authentication/cubit/register_cubit/register_cubit.dart';
@@ -29,6 +39,9 @@ Future<void> initDi() async {
     () => TokenStorage(secureStorage: di()),
   );
   di.registerLazySingleton<SessionService>(() => SessionService());
+  di.registerLazySingleton<ApiaryListRefreshNotifier>(
+    ApiaryListRefreshNotifier.new,
+  );
   // #endregion
 
   // #region External
@@ -74,12 +87,21 @@ Future<void> initDi() async {
   di.registerLazySingleton<IAuthenticationDataSource>(
     () => di<AuthenticationDataSource>(),
   );
+  di.registerLazySingleton<ApiaryDataSource>(
+    () => ApiaryDataSource(dioClient: di(), resolver: di()),
+  );
+  di.registerLazySingleton<IApiaryDataSource>(() => di<ApiaryDataSource>());
   // #endregion
 
   // #region Repositories
   di.registerLazySingleton<AuthenticationRepository>(
     () => AuthenticationRepositoryImpl(dataSource: di(), tokenStorage: di()),
   );
+  di.registerLazySingleton<ApiaryRepositoryImpl>(
+    () => ApiaryRepositoryImpl(dataSource: di()),
+  );
+  di.registerLazySingleton<IApiaryReader>(() => di<ApiaryRepositoryImpl>());
+  di.registerLazySingleton<IApiaryWriter>(() => di<ApiaryRepositoryImpl>());
   // #endregion
 
   // #region Router
@@ -100,6 +122,17 @@ Future<void> initDi() async {
   );
   di.registerFactory<RegisterCubit>(
     () => RegisterCubit(repository: di(), authenticationCubit: di()),
+  );
+  di.registerFactory<ApiaryListCubit>(
+    () => ApiaryListCubit(reader: di(), refreshNotifier: di()),
+  );
+  di.registerFactoryParam<ApiaryFormCubit, Apiary?, void>(
+    (initial, _) =>
+        ApiaryFormCubit(writer: di(), refreshNotifier: di(), initial: initial),
+  );
+  di.registerFactoryParam<ApiaryDeleteCubit, Apiary, void>(
+    (apiary, _) =>
+        ApiaryDeleteCubit(writer: di(), apiary: apiary, refreshNotifier: di()),
   );
   // #endregion
 }

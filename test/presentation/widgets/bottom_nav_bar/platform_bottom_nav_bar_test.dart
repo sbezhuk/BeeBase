@@ -3,6 +3,7 @@ import 'dart:ui' show Tristate;
 import 'package:beebase/presentation/component/color.dart';
 import 'package:beebase/presentation/widgets/bottom_nav_bar/android_bottom_nav_bar.dart';
 import 'package:beebase/presentation/widgets/bottom_nav_bar/bottom_nav_destination.dart';
+import 'package:beebase/presentation/widgets/bottom_nav_bar/bottom_nav_primary_action.dart';
 import 'package:beebase/presentation/widgets/bottom_nav_bar/ios_bottom_nav_bar.dart';
 import 'package:beebase/presentation/widgets/bottom_nav_bar/platform_bottom_nav_bar.dart';
 import 'package:flutter/cupertino.dart';
@@ -48,6 +49,7 @@ void main() {
     required int selectedIndex,
     required ValueChanged<int> onDestinationSelected,
     Brightness brightness = Brightness.light,
+    BottomNavPrimaryAction? primaryAction,
     // A phone-width viewport by default — the framework's default test
     // surface (800x600) is already past the tablet breakpoint, which would
     // silently exercise the NavigationRail branch instead of the bar one.
@@ -73,6 +75,7 @@ void main() {
           destinations: destinations,
           selectedIndex: selectedIndex,
           onDestinationSelected: onDestinationSelected,
+          primaryAction: primaryAction,
           body: const SizedBox.expand(),
         ),
       ),
@@ -191,6 +194,31 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.byType(IosBottomNavigationBar), findsOneWidget);
     });
+
+    testWidgets('renders and invokes the primary action as an extra button', (
+      tester,
+    ) async {
+      var tapped = false;
+      await pumpNavBar(
+        tester,
+        platform: TargetPlatform.iOS,
+        destinations: destinations(),
+        selectedIndex: 0,
+        onDestinationSelected: (_) {},
+        primaryAction: BottomNavPrimaryAction(
+          label: 'Add',
+          materialIcon: Icons.add,
+          cupertinoIcon: CupertinoIcons.add,
+          onPressed: () => tapped = true,
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.bySemanticsLabel('Add'));
+      await tester.pump();
+
+      expect(tapped, isTrue);
+    });
   });
 
   group('Android platform', () {
@@ -305,5 +333,47 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.byType(AndroidBottomNavigationBar), findsOneWidget);
     });
+
+    testWidgets('omits the FAB when no primary action is given', (
+      tester,
+    ) async {
+      await pumpNavBar(
+        tester,
+        platform: TargetPlatform.android,
+        destinations: destinations(),
+        selectedIndex: 0,
+        onDestinationSelected: (_) {},
+      );
+
+      expect(find.byType(FloatingActionButton), findsNothing);
+    });
+
+    testWidgets(
+      'renders and invokes the primary action as a floating action button',
+      (tester) async {
+        var tapped = false;
+        await pumpNavBar(
+          tester,
+          platform: TargetPlatform.android,
+          destinations: destinations(),
+          selectedIndex: 0,
+          onDestinationSelected: (_) {},
+          primaryAction: BottomNavPrimaryAction(
+            label: 'Add',
+            materialIcon: Icons.add,
+            cupertinoIcon: CupertinoIcons.add,
+            onPressed: () => tapped = true,
+          ),
+        );
+
+        expect(find.byType(FloatingActionButton), findsOneWidget);
+        expect(find.text('Add'), findsOneWidget);
+
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pump();
+
+        expect(tapped, isTrue);
+      },
+    );
   });
 }

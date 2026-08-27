@@ -1,5 +1,6 @@
 import 'package:beebase/presentation/widgets/bottom_nav_bar/android_bottom_nav_bar.dart';
 import 'package:beebase/presentation/widgets/bottom_nav_bar/bottom_nav_destination.dart';
+import 'package:beebase/presentation/widgets/bottom_nav_bar/bottom_nav_primary_action.dart';
 import 'package:beebase/presentation/widgets/bottom_nav_bar/ios_bottom_nav_bar.dart';
 import 'package:flutter/material.dart';
 
@@ -16,6 +17,7 @@ final class PlatformBottomNavigationBar extends StatelessWidget {
     required this.selectedIndex,
     required this.onDestinationSelected,
     required this.body,
+    this.primaryAction,
     super.key,
   });
 
@@ -23,6 +25,10 @@ final class PlatformBottomNavigationBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
   final Widget body;
+
+  /// Optional platform-styled primary action (e.g. "create") shown
+  /// alongside the bar. See [BottomNavPrimaryAction].
+  final BottomNavPrimaryAction? primaryAction;
 
   @override
   Widget build(BuildContext context) {
@@ -36,12 +42,14 @@ final class PlatformBottomNavigationBar extends StatelessWidget {
         selectedIndex: selectedIndex,
         onDestinationSelected: selectIfEnabled,
         body: body,
+        primaryAction: primaryAction,
       ),
       _ => AndroidBottomNavigationBar(
         destinations: destinations,
         selectedIndex: selectedIndex,
         onDestinationSelected: selectIfEnabled,
         body: body,
+        primaryAction: primaryAction,
       ),
     };
   }

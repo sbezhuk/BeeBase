@@ -34,7 +34,7 @@ final class AuthenticationDataSource implements IAuthenticationDataSource {
     required String password,
   }) async {
     final response = await _publicClient.post<Map<String, dynamic>>(
-      ApiEndpoints.authRegister,
+      ApiEndpoints.auth.register,
       data: RegisterRequest(email: email, password: password).toJson(),
     );
     return SessionResponse.fromJson(response.data!);
@@ -46,7 +46,7 @@ final class AuthenticationDataSource implements IAuthenticationDataSource {
     required String password,
   }) async {
     final response = await _publicClient.post<Map<String, dynamic>>(
-      ApiEndpoints.authLogin,
+      ApiEndpoints.auth.login,
       data: LoginRequest(email: email, password: password).toJson(),
     );
     return SessionResponse.fromJson(response.data!);
@@ -55,11 +55,11 @@ final class AuthenticationDataSource implements IAuthenticationDataSource {
   @override
   Future<UserResponse> getCurrentUser() async {
     final response = await _authClient.get<Map<String, dynamic>>(
-      ApiEndpoints.authMe,
+      ApiEndpoints.auth.me,
     );
     return UserResponse.fromJson(response.data!);
   }
 
   @override
-  Future<void> logout() => _publicClient.post<void>(ApiEndpoints.authLogout);
+  Future<void> logout() => _publicClient.post<void>(ApiEndpoints.auth.logout);
 }

@@ -18,12 +18,11 @@ List<BottomNavDestination> buildMainDestinations() {
       cupertinoIconSelected: CupertinoIcons.house_fill,
     ),
     BottomNavDestination(
-      label: 'main.nav.notifications'.tr(),
-      materialIcon: Icons.notifications_outlined,
-      materialIconSelected: Icons.notifications,
-      cupertinoIcon: CupertinoIcons.bell,
-      cupertinoIconSelected: CupertinoIcons.bell_fill,
-      badgeCount: 3,
+      label: 'main.nav.apiaries'.tr(),
+      materialIcon: Icons.hive_outlined,
+      materialIconSelected: Icons.hive,
+      cupertinoIcon: CupertinoIcons.square_grid_2x2,
+      cupertinoIconSelected: CupertinoIcons.square_grid_2x2_fill,
     ),
     BottomNavDestination(
       label: 'main.nav.profile'.tr(),

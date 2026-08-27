@@ -42,6 +42,14 @@ class DioClient {
     return _run(() => _dio.post<T>(path, data: data));
   }
 
+  Future<Response<T>> put<T>(String path, {Object? data}) {
+    return _run(() => _dio.put<T>(path, data: data));
+  }
+
+  Future<Response<T>> delete<T>(String path) {
+    return _run(() => _dio.delete<T>(path));
+  }
+
   Future<Response<T>> fetch<T>(RequestOptions requestOptions) {
     return _run(() => _dio.fetch<T>(requestOptions));
   }

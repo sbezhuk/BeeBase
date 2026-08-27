@@ -41,14 +41,40 @@
   "main": {
     "nav": {
       "home": "Home",
-      "notifications": "Notifications",
+      "apiaries": "Apiaries",
       "profile": "Profile"
     }
   },
-  "notification": {
-    "page": {
-      "title": "Notifications",
-      "item": "Notification #{index}"
+  "apiary": {
+    "list": {
+      "title": "Apiaries",
+      "addApiary": "Add Apiary",
+      "emptyTitle": "No apiaries yet",
+      "emptySubtitle": "Create your first apiary to start tracking your hives.",
+      "retry": "Retry"
+    },
+    "details": {
+      "title": "Apiary Details",
+      "edit": "Edit",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "deleteConfirmTitle": "Delete apiary?",
+      "deleteConfirmMessage": "This will permanently remove this apiary. This action cannot be undone."
+    },
+    "form": {
+      "createTitle": "New Apiary",
+      "editTitle": "Edit Apiary",
+      "nameLabel": "Name",
+      "nameHint": "e.g. Back Garden Apiary",
+      "descriptionLabel": "Description",
+      "descriptionHint": "Add any notes about this apiary",
+      "locationLabel": "Location",
+      "locationHint": "e.g. Springfield, IL",
+      "submitCreate": "Create Apiary",
+      "submitUpdate": "Save Changes",
+      "validations": {
+        "nameRequired": "Apiary name is required"
+      }
     }
   },
   "profile": {
