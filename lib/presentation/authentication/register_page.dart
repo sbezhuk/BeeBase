@@ -6,6 +6,8 @@ import 'package:beebase/presentation/authentication/widget/auth_text_field.dart'
 import 'package:beebase/presentation/component/buttons/primary_button.dart';
 import 'package:beebase/presentation/component/honeycomb_pattern.dart';
 import 'package:beebase/presentation/router/app_router.dart';
+import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar.dart';
+import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar_variant.dart';
 import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
@@ -74,7 +76,7 @@ final class _RegisterPageState extends State<RegisterPage> {
       return;
     }
     final message = failure.message.resolve();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.show(context, message: message, variant: AppSnackBarVariant.error);
   }
 
   @override
