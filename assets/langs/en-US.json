@@ -46,6 +46,9 @@
     }
   },
   "apiary": {
+    "common": {
+      "back": "Back"
+    },
     "list": {
       "title": "Apiaries",
       "addApiary": "Add Apiary",
@@ -58,6 +61,7 @@
       "edit": "Edit",
       "delete": "Delete",
       "cancel": "Cancel",
+      "addedOn": "Added {date}",
       "deleteConfirmTitle": "Delete apiary?",
       "deleteConfirmMessage": "This will permanently remove this apiary. This action cannot be undone."
     },

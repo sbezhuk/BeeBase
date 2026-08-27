@@ -15,19 +15,27 @@ final class _ApiaryListErrorView extends StatelessWidget {
           children: [
             Icon(Icons.error_outline, size: 48, color: context.colors.error),
             SizedBox(height: context.spacing.md),
-            Text(
-              failure.message.resolve(),
-              style: context.textStyles.body,
-              textAlign: TextAlign.center,
-            ),
+            Text(failure.message.resolve(), style: context.textStyles.body, textAlign: TextAlign.center),
             SizedBox(height: context.spacing.lg),
-            OutlinedButton(
-              onPressed: () => context.read<ApiaryListCubit>().loadApiaries(),
-              child: Text('apiary.list.retry'.tr()),
-            ),
+            _RetryButton(onPressed: () => context.read<ApiaryListCubit>().loadApiaries()),
           ],
         ),
       ),
     );
+  }
+}
+
+final class _RetryButton extends StatelessWidget {
+  const _RetryButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = 'apiary.list.retry'.tr();
+    return switch (Theme.of(context).platform) {
+      TargetPlatform.iOS => GlassButton.custom(onTap: onPressed, width: 140, height: 44, child: Text(label)),
+      _ => FilledButton.tonal(onPressed: onPressed, child: Text(label)),
+    };
   }
 }

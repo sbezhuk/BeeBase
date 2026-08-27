@@ -1,5 +1,8 @@
 part of '../apiary_list_page.dart';
 
+/// Dispatches to the platform-appropriate tile presentation — a Liquid Glass
+/// row on iOS, a Material 3 card on Android — while both read the same
+/// [Apiary] and share the same navigation behavior.
 final class _ApiaryListTile extends StatelessWidget {
   const _ApiaryListTile({required this.apiary});
 
@@ -7,38 +10,10 @@ final class _ApiaryListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Material(
-      color: colors.surface,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _openDetails(context),
-        child: Padding(
-          padding: EdgeInsets.all(context.spacing.md),
-          child: Row(
-            children: [
-              Icon(Icons.hive, color: colors.primary),
-              SizedBox(width: context.spacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(apiary.name, style: context.textStyles.body),
-                    if (apiary.location != null &&
-                        apiary.location!.isNotEmpty) ...[
-                      SizedBox(height: context.spacing.xs),
-                      Text(apiary.location!, style: context.textStyles.label),
-                    ],
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right, color: colors.textSecondary),
-            ],
-          ),
-        ),
-      ),
-    );
+    return switch (Theme.of(context).platform) {
+      TargetPlatform.iOS => _IosApiaryListTile(apiary: apiary, onTap: () => _openDetails(context)),
+      _ => _AndroidApiaryListTile(apiary: apiary, onTap: () => _openDetails(context)),
+    };
   }
 
   void _openDetails(BuildContext context) {

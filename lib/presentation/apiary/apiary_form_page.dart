@@ -1,6 +1,8 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_form_cubit/apiary_form_cubit.dart';
+import 'package:beebase/presentation/apiary/widget/apiary_scaffold.dart';
+import 'package:beebase/presentation/apiary/widget/apiary_section_card.dart';
 import 'package:beebase/presentation/component/buttons/primary_button.dart';
 import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar.dart';
 import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar_variant.dart';
@@ -37,12 +39,8 @@ final class ApiaryFormPage extends StatefulWidget implements AutoRouteWrapper {
 final class _ApiaryFormPageState extends State<ApiaryFormPage> {
   final _formKey = GlobalKey<FormState>();
   late final _nameController = TextEditingController(text: widget.apiary?.name);
-  late final _descriptionController = TextEditingController(
-    text: widget.apiary?.description,
-  );
-  late final _locationController = TextEditingController(
-    text: widget.apiary?.location,
-  );
+  late final _descriptionController = TextEditingController(text: widget.apiary?.description);
+  late final _locationController = TextEditingController(text: widget.apiary?.location);
 
   bool get _isEditing => widget.apiary != null;
 
@@ -70,39 +68,26 @@ final class _ApiaryFormPageState extends State<ApiaryFormPage> {
     if (state is ApiaryFormSuccess) {
       context.router.pop(state.apiary);
     } else if (state is ApiaryFormError) {
-      AppSnackBar.show(
-        context,
-        message: state.failure.message.resolve(),
-        variant: AppSnackBarVariant.error,
-      );
+      AppSnackBar.show(context, message: state.failure.message.resolve(), variant: AppSnackBarVariant.error);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.colors.background,
-      appBar: AppBar(
-        title: Text(
-          _isEditing
-              ? 'apiary.form.editTitle'.tr()
-              : 'apiary.form.createTitle'.tr(),
-        ),
-      ),
-      body: SafeArea(
-        child: BlocListener<ApiaryFormCubit, ApiaryFormState>(
-          listener: _handleStateChange,
-          child: Padding(
-            padding: EdgeInsets.all(context.spacing.lg),
-            child: Form(
-              key: _formKey,
-              child: _ApiaryFormContent(
-                nameController: _nameController,
-                descriptionController: _descriptionController,
-                locationController: _locationController,
-                isEditing: _isEditing,
-                onSubmit: _submit,
-              ),
+    return ApiaryScaffold(
+      title: _isEditing ? 'apiary.form.editTitle'.tr() : 'apiary.form.createTitle'.tr(),
+      body: BlocListener<ApiaryFormCubit, ApiaryFormState>(
+        listener: _handleStateChange,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(context.spacing.lg),
+          child: Form(
+            key: _formKey,
+            child: _ApiaryFormContent(
+              nameController: _nameController,
+              descriptionController: _descriptionController,
+              locationController: _locationController,
+              isEditing: _isEditing,
+              onSubmit: _submit,
             ),
           ),
         ),

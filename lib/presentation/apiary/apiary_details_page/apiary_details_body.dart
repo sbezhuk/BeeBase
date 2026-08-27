@@ -1,41 +1,40 @@
 part of '../apiary_details_page.dart';
 
 final class _ApiaryDetailsBody extends StatelessWidget {
-  const _ApiaryDetailsBody({
-    required this.apiary,
-    required this.isDeleting,
-    required this.onEdited,
-  });
+  const _ApiaryDetailsBody({required this.apiary, required this.isDeleting});
 
   final Apiary apiary;
   final bool isDeleting;
-  final ValueChanged<Apiary> onEdited;
 
   @override
   Widget build(BuildContext context) {
+    final hasLocation = apiary.location != null && apiary.location!.isNotEmpty;
+    final hasDescription = apiary.description != null && apiary.description!.isNotEmpty;
     return SingleChildScrollView(
-      padding: EdgeInsets.all(context.spacing.lg),
+      padding: EdgeInsets.fromLTRB(context.spacing.lg, context.spacing.md, context.spacing.lg, context.spacing.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(apiary.name, style: context.textStyles.title),
-          if (apiary.location != null && apiary.location!.isNotEmpty) ...[
-            SizedBox(height: context.spacing.sm),
-            _ApiaryDetailsDetailRow(
-              icon: Icons.place_outlined,
-              text: apiary.location!,
+          if (hasLocation) ...[
+            ApiarySectionCard(
+              label: 'apiary.form.locationLabel'.tr(),
+              child: Text(apiary.location!, style: context.textStyles.body),
             ),
-          ],
-          if (apiary.description != null && apiary.description!.isNotEmpty) ...[
             SizedBox(height: context.spacing.md),
-            Text(apiary.description!, style: context.textStyles.body),
           ],
-          SizedBox(height: context.spacing.xl),
-          _ApiaryDetailsActions(
-            apiary: apiary,
-            isDeleting: isDeleting,
-            onEdited: onEdited,
+          if (hasDescription) ...[
+            ApiarySectionCard(
+              label: 'apiary.form.descriptionLabel'.tr(),
+              child: Text(apiary.description!, style: context.textStyles.body),
+            ),
+            SizedBox(height: context.spacing.md),
+          ],
+          _ApiaryDetailsDetailRow(
+            icon: Icons.calendar_today_outlined,
+            text: 'apiary.details.addedOn'.tr(namedArgs: {'date': apiary.createdAt.toApiaryDisplayDate()}),
           ),
+          SizedBox(height: context.spacing.xl),
+          _ApiaryDeleteLink(isDeleting: isDeleting),
         ],
       ),
     );

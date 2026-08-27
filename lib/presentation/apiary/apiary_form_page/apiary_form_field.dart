@@ -17,6 +17,12 @@ final class _ApiaryFormField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final radius = BorderRadius.circular(12);
+    OutlineInputBorder borderWith(Color color, {double width = 1}) => OutlineInputBorder(
+      borderRadius: radius,
+      borderSide: BorderSide(color: color, width: width),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -25,7 +31,18 @@ final class _ApiaryFormField extends StatelessWidget {
         TextFormField(
           controller: controller,
           maxLines: maxLines,
-          decoration: InputDecoration(hintText: hintText),
+          style: context.textStyles.body,
+          decoration: InputDecoration(
+            hintText: hintText,
+            filled: true,
+            fillColor: colors.background,
+            contentPadding: EdgeInsets.symmetric(horizontal: context.spacing.md, vertical: context.spacing.sm),
+            border: borderWith(colors.honeyBorder),
+            enabledBorder: borderWith(colors.honeyBorder),
+            focusedBorder: borderWith(colors.primary, width: 1.5),
+            errorBorder: borderWith(colors.error),
+            focusedErrorBorder: borderWith(colors.error, width: 1.5),
+          ),
           validator: validator,
         ),
       ],

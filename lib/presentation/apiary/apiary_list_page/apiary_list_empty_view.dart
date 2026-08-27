@@ -5,6 +5,7 @@ final class _ApiaryListEmptyView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
@@ -17,21 +18,23 @@ final class _ApiaryListEmptyView extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.hive_outlined,
-                      size: 56,
-                      color: context.colors.textSecondary,
+                    SizedBox(
+                      width: 96,
+                      height: 96,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          const Positioned.fill(child: HoneycombPattern(opacity: 0.16)),
+                          const ApiaryHexagonBadge(size: 64),
+                        ],
+                      ),
                     ),
-                    SizedBox(height: context.spacing.md),
-                    Text(
-                      'apiary.list.emptyTitle'.tr(),
-                      style: context.textStyles.title,
-                      textAlign: TextAlign.center,
-                    ),
+                    SizedBox(height: context.spacing.lg),
+                    Text('apiary.list.emptyTitle'.tr(), style: context.textStyles.title, textAlign: TextAlign.center),
                     SizedBox(height: context.spacing.sm),
                     Text(
                       'apiary.list.emptySubtitle'.tr(),
-                      style: context.textStyles.body,
+                      style: context.textStyles.body.copyWith(color: colors.textSecondary),
                       textAlign: TextAlign.center,
                     ),
                   ],
