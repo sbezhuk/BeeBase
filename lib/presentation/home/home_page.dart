@@ -3,6 +3,7 @@ import 'package:beebase/presentation/authentication/cubit/authentication_cubit/a
 import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
 import 'package:beebase/utils/extensions/theme_text_styles.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -14,7 +15,7 @@ final class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.colors.background,
-      appBar: AppBar(title: const Text('BeeBase')),
+      appBar: AppBar(title: Text('main.home.title'.tr())),
       body: Center(
         child: Padding(
           padding: EdgeInsets.all(context.spacing.lg),
@@ -27,10 +28,9 @@ final class HomePage extends StatelessWidget {
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Welcome to BeeBase', style: context.textStyles.title),
+                  Text('main.home.welcome'.tr(), style: context.textStyles.title),
                   SizedBox(height: context.spacing.sm),
-                  if (email != null)
-                    Text(email, style: context.textStyles.body),
+                  if (email != null) Text(email, style: context.textStyles.body),
                 ],
               );
             },

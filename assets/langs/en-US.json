@@ -43,6 +43,10 @@
       "home": "Home",
       "apiaries": "Apiaries",
       "profile": "Profile"
+    },
+    "home": {
+      "title": "BeeBase",
+      "welcome": "Welcome to BeeBase"
     }
   },
   "apiary": {
