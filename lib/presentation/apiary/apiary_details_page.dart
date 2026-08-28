@@ -56,13 +56,15 @@ final class _ApiaryDetailsPageState extends State<ApiaryDetailsPage> {
         cupertinoIcon: CupertinoIcons.pencil,
         onPressed: _isDeleting ? () {} : () => _edit(context),
       ),
-      body: BlocConsumer<ApiaryDeleteCubit, ApiaryDeleteState>(
-        listener: _handleStateChange,
-        builder: (context, state) {
-          _isDeleting = state is ApiaryDeleteLoading;
-          return _ApiaryDetailsBody(apiary: _apiary, isDeleting: _isDeleting);
-        },
-      ),
+      slivers: [
+        BlocConsumer<ApiaryDeleteCubit, ApiaryDeleteState>(
+          listener: _handleStateChange,
+          builder: (context, state) {
+            _isDeleting = state is ApiaryDeleteLoading;
+            return _ApiaryDetailsBody(apiary: _apiary, isDeleting: _isDeleting);
+          },
+        ),
+      ],
     );
   }
 

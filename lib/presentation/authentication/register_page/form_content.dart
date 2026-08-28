@@ -27,6 +27,7 @@ final class _RegisterFormContent extends StatelessWidget {
         return SingleChildScrollView(
           padding: EdgeInsets.only(bottom: bottomInset),
           clipBehavior: Clip.none,
+          physics: const ClampingScrollPhysics(),
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: constraints.maxHeight),
             child: IntrinsicHeight(

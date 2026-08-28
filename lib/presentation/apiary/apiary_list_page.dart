@@ -51,6 +51,13 @@ final class ApiaryListPage extends StatefulWidget implements AutoRouteWrapper {
 final class _ApiaryListPageState extends State<ApiaryListPage> {
   @override
   Widget build(BuildContext context) {
-    return ApiaryScaffold(title: 'apiary.list.title'.tr(), showBackButton: false, body: const _ApiaryListBody());
+    final cubit = context.read<ApiaryListCubit>();
+    return ApiaryScaffold(
+      title: 'apiary.list.title'.tr(),
+      showBackButton: false,
+      onRefresh: cubit.refresh,
+      fadeEdges: true,
+      slivers: const [_ApiaryListBody()],
+    );
   }
 }

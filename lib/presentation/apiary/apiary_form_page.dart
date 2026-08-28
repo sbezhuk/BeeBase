@@ -112,26 +112,30 @@ final class _ApiaryFormPageState extends State<ApiaryFormPage> {
   Widget build(BuildContext context) {
     return ApiaryScaffold(
       title: _isEditing ? 'apiary.form.editTitle'.tr() : 'apiary.form.createTitle'.tr(),
-      body: BlocListener<ApiaryFormCubit, ApiaryFormState>(
-        listener: _handleStateChange,
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(context.spacing.md),
-          child: Form(
-            key: _formKey,
-            child: _ApiaryFormContent(
-              nameController: _nameController,
-              descriptionController: _descriptionController,
-              locationAddress: _locationAddress,
-              latitude: _latitude,
-              longitude: _longitude,
-              isEditing: _isEditing,
-              isFetchingLocation: _isFetchingLocation,
-              onSubmit: _submit,
-              onUseCurrentLocation: _useCurrentLocation,
+      slivers: [
+        BlocListener<ApiaryFormCubit, ApiaryFormState>(
+          listener: _handleStateChange,
+          child: SliverPadding(
+            padding: EdgeInsets.all(context.spacing.md),
+            sliver: SliverToBoxAdapter(
+              child: Form(
+                key: _formKey,
+                child: _ApiaryFormContent(
+                  nameController: _nameController,
+                  descriptionController: _descriptionController,
+                  locationAddress: _locationAddress,
+                  latitude: _latitude,
+                  longitude: _longitude,
+                  isEditing: _isEditing,
+                  isFetchingLocation: _isFetchingLocation,
+                  onSubmit: _submit,
+                  onUseCurrentLocation: _useCurrentLocation,
+                ),
+              ),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 }

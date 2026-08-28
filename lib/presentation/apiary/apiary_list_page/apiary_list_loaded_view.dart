@@ -7,17 +7,14 @@ final class _ApiaryListLoadedView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.read<ApiaryListCubit>();
     if (apiaries.isEmpty) {
-      return RefreshIndicator(onRefresh: cubit.refresh, child: const _ApiaryListEmptyView());
+      return const SliverFillRemaining(hasScrollBody: false, child: _ApiaryListEmptyView());
     }
-    return RefreshIndicator(
-      onRefresh: cubit.refresh,
-      child: ListView.separated(
-        padding: EdgeInsets.only(top: context.spacing.md, bottom: context.spacing.lg),
-        physics: const AlwaysScrollableScrollPhysics(),
+    return SliverPadding(
+      padding: EdgeInsets.only(top: context.spacing.md, bottom: context.spacing.lg),
+      sliver: SliverList.separated(
         itemCount: apiaries.length,
-        separatorBuilder: (context, index) => SizedBox(height: context.spacing.xs),
+        separatorBuilder: (context, index) => SizedBox(height: context.spacing.md),
         itemBuilder: (context, index) => _ApiaryListTile(apiary: apiaries[index]),
       ),
     );
