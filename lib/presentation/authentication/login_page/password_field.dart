@@ -16,7 +16,7 @@ final class _PasswordField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AuthTextField(
+    return AppTextField(
       controller: controller,
       label: 'authentication.login.passwordLabel'.tr(),
       hintText: 'authentication.login.passwordHint'.tr(),

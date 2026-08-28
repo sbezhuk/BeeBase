@@ -28,18 +28,20 @@ final class _ApiaryFormContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ApiaryFormField(
+        AppTextField(
           label: 'apiary.form.nameLabel'.tr(),
           controller: nameController,
           hintText: 'apiary.form.nameHint'.tr(),
-          validator: (value) =>
-              (value == null || value.trim().isEmpty) ? 'apiary.form.validations.nameRequired'.tr() : null,
+          validator: (value) => (value == null || value.trim().isEmpty)
+              ? 'apiary.form.validations.nameRequired'.tr()
+              : null,
         ),
         SizedBox(height: context.spacing.md),
-        _ApiaryFormTextArea(
+        AppTextField(
           label: 'apiary.form.descriptionLabel'.tr(),
           controller: descriptionController,
           hintText: 'apiary.form.descriptionHint'.tr(),
+          maxLines: 4,
         ),
         SizedBox(height: context.spacing.md),
         _ApiaryLocationSection(

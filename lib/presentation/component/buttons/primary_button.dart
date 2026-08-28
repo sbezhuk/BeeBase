@@ -3,7 +3,12 @@ import 'package:beebase/utils/extensions/theme_text_styles.dart';
 import 'package:flutter/material.dart';
 
 final class PrimaryButton extends StatelessWidget {
-  const PrimaryButton({required this.label, required this.onPressed, this.isLoading = false, super.key});
+  const PrimaryButton({
+    required this.label,
+    required this.onPressed,
+    this.isLoading = false,
+    super.key,
+  });
 
   final String label;
   final VoidCallback? onPressed;
@@ -40,7 +45,10 @@ final class PrimaryButton extends StatelessWidget {
                 ? SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: colors.surface.background),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: colors.brand.onPrimary,
+                    ),
                   )
                 : Text(label, style: context.textStyles.button),
           ),

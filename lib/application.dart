@@ -20,7 +20,8 @@ final class Application extends StatefulWidget {
 
 final class _ApplicationState extends State<Application> {
   late final AppRouter _appRouter;
-  late final StreamSubscription<AuthenticationState> _authenticationSubscription;
+  late final StreamSubscription<AuthenticationState>
+  _authenticationSubscription;
 
   @override
   void initState() {
@@ -28,7 +29,9 @@ final class _ApplicationState extends State<Application> {
     _appRouter = di<AppRouter>();
     // Any place in the app can lose the session (e.g. a 401 whose refresh
     // also failed) — react here so the redirect isn't tied to a screen.
-    _authenticationSubscription = di<AuthenticationCubit>().stream.listen((state) {
+    _authenticationSubscription = di<AuthenticationCubit>().stream.listen((
+      state,
+    ) {
       if (state is AuthenticationUnauthenticated) {
         _appRouter.replaceAll([const LoginRoute()]);
       }
@@ -46,12 +49,15 @@ final class _ApplicationState extends State<Application> {
     return BlocProvider.value(
       value: di<AuthenticationCubit>(),
       child: MaterialApp.router(
-        theme: _buildTheme(const AppColor.dark(), Brightness.dark),
-        themeMode: ThemeMode.dark,
+        theme: _buildTheme(const AppColor.light(), Brightness.light),
+        darkTheme: _buildTheme(const AppColor.dark(), Brightness.dark),
+        themeMode: ThemeMode.system,
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,
         locale: context.locale,
-        routerConfig: _appRouter.config(navigatorObservers: () => [AutoRouteObserver()]),
+        routerConfig: _appRouter.config(
+          navigatorObservers: () => [AutoRouteObserver()],
+        ),
       ),
     );
   }
@@ -69,7 +75,11 @@ ThemeData _buildTheme(AppColor colors, Brightness brightness) {
       error: colors.status.error,
       surface: colors.surface.card,
     ),
-    extensions: [const Spacing.standard(), colors, AppTextStyles.fromColors(colors)],
+    extensions: [
+      const Spacing.standard(),
+      colors,
+      AppTextStyles.fromColors(colors),
+    ],
     textSelectionTheme: TextSelectionThemeData(
       cursorColor: colors.brand.primary,
       selectionColor: colors.brand.primary.withValues(alpha: 0.3),

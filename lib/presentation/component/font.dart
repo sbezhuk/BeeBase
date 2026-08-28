@@ -26,7 +26,6 @@ final class AppTextStyles extends ThemeExtension<AppTextStyles> {
     required this.action,
     required this.authTitle,
     required this.authSubtitle,
-    required this.authFieldLabel,
     required this.authMuted,
     required this.authLink,
   });
@@ -42,7 +41,7 @@ final class AppTextStyles extends ThemeExtension<AppTextStyles> {
       ),
       body: TextStyle(fontFamily: AppFont.regular, fontSize: 16, height: 1.5, color: colors.text.primary),
       label: TextStyle(fontFamily: AppFont.bold, fontSize: 12, letterSpacing: 0.8, color: colors.text.secondary),
-      button: TextStyle(fontFamily: AppFont.bold, fontSize: 16, letterSpacing: 0.4, color: colors.surface.background),
+      button: TextStyle(fontFamily: AppFont.bold, fontSize: 16, letterSpacing: 0.4, color: colors.brand.onPrimary),
       error: TextStyle(fontFamily: AppFont.regular, fontSize: 13, color: colors.status.error),
       action: TextStyle(fontFamily: AppFont.bold, fontSize: 14, letterSpacing: 0.2, color: colors.brand.primaryDark),
       authTitle: TextStyle(
@@ -58,12 +57,6 @@ final class AppTextStyles extends ThemeExtension<AppTextStyles> {
         height: 1.5,
         letterSpacing: 0.1,
         color: colors.honey.muted,
-      ),
-      authFieldLabel: TextStyle(
-        fontFamily: AppFont.bold,
-        fontSize: 11.5,
-        letterSpacing: 0.8,
-        color: colors.honey.brown,
       ),
       authMuted: TextStyle(fontFamily: AppFont.regular, fontSize: 13.5, height: 1.4, color: colors.honey.muted),
       authLink: TextStyle(
@@ -85,7 +78,6 @@ final class AppTextStyles extends ThemeExtension<AppTextStyles> {
   // Beekeeping auth theme (login/register screens)
   final TextStyle authTitle;
   final TextStyle authSubtitle;
-  final TextStyle authFieldLabel;
   final TextStyle authMuted;
   final TextStyle authLink;
 
@@ -99,7 +91,6 @@ final class AppTextStyles extends ThemeExtension<AppTextStyles> {
     TextStyle? action,
     TextStyle? authTitle,
     TextStyle? authSubtitle,
-    TextStyle? authFieldLabel,
     TextStyle? authMuted,
     TextStyle? authLink,
   }) {
@@ -112,7 +103,6 @@ final class AppTextStyles extends ThemeExtension<AppTextStyles> {
       action: action ?? this.action,
       authTitle: authTitle ?? this.authTitle,
       authSubtitle: authSubtitle ?? this.authSubtitle,
-      authFieldLabel: authFieldLabel ?? this.authFieldLabel,
       authMuted: authMuted ?? this.authMuted,
       authLink: authLink ?? this.authLink,
     );
@@ -130,7 +120,6 @@ final class AppTextStyles extends ThemeExtension<AppTextStyles> {
       action: TextStyle.lerp(action, other.action, t)!,
       authTitle: TextStyle.lerp(authTitle, other.authTitle, t)!,
       authSubtitle: TextStyle.lerp(authSubtitle, other.authSubtitle, t)!,
-      authFieldLabel: TextStyle.lerp(authFieldLabel, other.authFieldLabel, t)!,
       authMuted: TextStyle.lerp(authMuted, other.authMuted, t)!,
       authLink: TextStyle.lerp(authLink, other.authLink, t)!,
     );

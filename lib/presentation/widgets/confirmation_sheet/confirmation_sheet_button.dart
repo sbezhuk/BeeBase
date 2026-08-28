@@ -36,7 +36,9 @@ final class _ConfirmationSheetButton extends StatelessWidget {
             child: Center(
               child: Text(
                 label,
-                style: context.textStyles.button.copyWith(color: filled ? colors.surface.background : color),
+                style: context.textStyles.button.copyWith(
+                  color: filled ? colors.brand.onPrimary : color,
+                ),
               ),
             ),
           ),

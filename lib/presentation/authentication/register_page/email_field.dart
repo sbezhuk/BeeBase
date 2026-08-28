@@ -16,7 +16,7 @@ final class _EmailField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AuthTextField(
+    return AppTextField(
       controller: controller,
       label: 'authentication.register.emailLabel'.tr(),
       hintText: 'authentication.register.emailHint'.tr(),
