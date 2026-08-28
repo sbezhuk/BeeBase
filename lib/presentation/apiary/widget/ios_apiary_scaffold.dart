@@ -1,6 +1,6 @@
-import 'package:beebase/presentation/apiary/widget/apiary_glass_settings.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_scaffold_action.dart';
 import 'package:beebase/presentation/component/font.dart';
+import 'package:beebase/presentation/component/honey_gradient_background.dart';
 import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -54,21 +54,26 @@ final class IosApiaryScaffold extends StatelessWidget {
     if (!showBackButton) {
       return Material(
         type: MaterialType.transparency,
-        child: Column(
+        child: Stack(
           children: [
-            SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(context.spacing.md, context.spacing.sm, context.spacing.md, context.spacing.sm),
-                child: Text(
-                  title,
-                  style: titleStyle.copyWith(fontSize: 30, height: 1.1),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+            const Positioned.fill(child: HoneyGradientBackground()),
+            Column(
+              children: [
+                SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(context.spacing.md, context.spacing.sm, context.spacing.md, context.spacing.sm),
+                    child: Text(
+                      title,
+                      style: titleStyle.copyWith(fontSize: 30, height: 1.1),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ),
-              ),
+                Expanded(child: body),
+              ],
             ),
-            Expanded(child: body),
           ],
         ),
       );
@@ -77,6 +82,9 @@ final class IosApiaryScaffold extends StatelessWidget {
     return Material(
       type: MaterialType.transparency,
       child: GlassScaffold(
+        background: const HoneyGradientBackground(),
+        // Kept alongside `background` — GlassScrollEdgeEffect's async-capture
+        // fallback fade reads this colour, not the `background` widget.
         backgroundColor: colors.background,
         // GlassScaffold's default extendBody:true places the body via
         // Positioned.fill behind the app bar and relies on callers to insert
@@ -91,7 +99,6 @@ final class IosApiaryScaffold extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: context.spacing.md),
             child: Text(title, style: titleStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
-          buttonSettings: apiaryGlassSettings(colors),
           // iconColor is set explicitly on both nav buttons rather than left
           // to GlassButton's brightness-based default (plain black/white) —
           // the brand's honey-gold accent on the glass surface is the

@@ -1,5 +1,5 @@
 import 'package:beebase/presentation/apiary/widget/apiary_scaffold_action.dart';
-import 'package:beebase/utils/extensions/theme_colors.dart';
+import 'package:beebase/presentation/component/honey_gradient_background.dart';
 import 'package:flutter/material.dart';
 
 /// Apiary page shell for Android: a standard Material 3 [Scaffold]/[AppBar],
@@ -23,7 +23,6 @@ final class AndroidApiaryScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final action = trailingAction;
     return Scaffold(
-      backgroundColor: context.colors.background,
       appBar: AppBar(
         title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
         automaticallyImplyLeading: showBackButton,
@@ -31,7 +30,12 @@ final class AndroidApiaryScaffold extends StatelessWidget {
             ? null
             : [IconButton(icon: Icon(action.materialIcon), tooltip: action.label, onPressed: action.onPressed)],
       ),
-      body: SafeArea(child: body),
+      body: Stack(
+        children: [
+          const Positioned.fill(child: HoneyGradientBackground()),
+          SafeArea(child: body),
+        ],
+      ),
     );
   }
 }
