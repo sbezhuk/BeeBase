@@ -30,11 +30,7 @@ final class AppColor extends ThemeExtension<AppColor> {
   const AppColor.dark()
     : this(
         brand: const AppBrandColors(primary: Color(0xFFE8AC3D), primaryDark: Color(0xFFC97A0F)),
-        surface: const AppSurfaceColors(
-          background: Color(0xFF1C130A),
-          card: Color(0xFF332212),
-          border: Color(0xFF4A3826),
-        ),
+        surface: const AppSurfaceColors(background: Color(0xFF1C130A), card: Color(0xFF332212), border: Color(0xFF4A3826)),
         text: const AppTextColors(primary: Color(0xFFFDECC7), secondary: Color(0xFFC7B299)),
         status: const AppStatusColors(error: Color(0xFFFF6B6B)),
         honey: const AppHoneyColors(
