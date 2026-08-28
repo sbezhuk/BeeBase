@@ -27,6 +27,8 @@ dependencies:
     path: plugins/liquid_glass_widgets
   geolocator: ^14.0.2
   geocoding: ^5.0.0
+  connectivity_plus: ^6.1.5
+  shared_preferences: ^2.5.3
 
 dev_dependencies:
   flutter_test:

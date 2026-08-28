@@ -3,13 +3,26 @@ import 'package:beebase/core/networking/http/token_refresher.dart';
 import 'package:beebase/core/networking/interceptors/authentication_interceptor.dart';
 import 'package:beebase/core/location/location_service.dart';
 import 'package:beebase/core/networking/interceptors/interceptor_resolver.dart';
+import 'package:beebase/core/offline/local_operation_queue.dart';
+import 'package:beebase/core/offline/offline_operation.dart';
+import 'package:beebase/core/offline/operation_queue.dart';
+import 'package:beebase/core/offline/operation_registry.dart';
+import 'package:beebase/core/offline/sync_engine.dart';
+import 'package:beebase/core/offline/sync_engine_impl.dart';
+import 'package:beebase/core/services/connectivity_service.dart';
+import 'package:beebase/core/services/connectivity_service_impl.dart';
 import 'package:beebase/core/services/session_service.dart';
 import 'package:beebase/core/storage/secure_storage.dart';
 import 'package:beebase/core/storage/token_storage.dart';
+import 'package:beebase/data/apiary/apiary_operation_handler.dart';
 import 'package:beebase/data/data_source/apiary_data_source.dart';
 import 'package:beebase/data/data_source/authentication_data_source.dart';
 import 'package:beebase/data/data_source/interface/apiary_data_source.dart';
 import 'package:beebase/data/data_source/interface/authentication_data_source.dart';
+import 'package:beebase/data/data_source/interface/local_data_source.dart';
+import 'package:beebase/data/data_source/shared_preferences_local_data_source.dart';
+import 'package:beebase/data/models/apiary_response.dart';
+import 'package:beebase/data/models/user_response.dart';
 import 'package:beebase/data/repositories/apiary_repository_impl.dart';
 import 'package:beebase/data/repositories/authentication_repository_impl.dart';
 import 'package:beebase/domain/entity/apiary.dart';
@@ -30,6 +43,7 @@ import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:get_it/get_it.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final di = GetIt.instance;
 
@@ -40,6 +54,8 @@ Future<void> initDi() async {
   di.registerLazySingleton<SessionService>(() => SessionService());
   di.registerLazySingleton<LocationService>(LocationService.new);
   di.registerLazySingleton<ApiaryListRefreshNotifier>(ApiaryListRefreshNotifier.new);
+  di.registerLazySingleton<ConnectivityService>(ConnectivityService.new);
+  di.registerLazySingleton<IConnectivityService>(() => di<ConnectivityService>());
   // #endregion
 
   // #region External
@@ -49,6 +65,33 @@ Future<void> initDi() async {
   final cookieJar = PersistCookieJar(storage: FileStorage('${cookieDirectory.path}/.cookies'));
   di.registerLazySingleton<CookieJar>(() => cookieJar);
   di.registerLazySingleton<CookieManager>(() => CookieManager(di()));
+
+  final preferences = await SharedPreferences.getInstance();
+  di.registerLazySingleton<SharedPreferences>(() => preferences);
+  di.registerLazySingleton<LocalDataSource<UserResponse>>(
+    () => SharedPreferencesLocalDataSource<UserResponse>(
+      preferences: di(),
+      key: 'cached_user',
+      toJson: (user) => user.toJson(),
+      fromJson: (json) => UserResponse.fromJson(json as Map<String, dynamic>),
+    ),
+  );
+  di.registerLazySingleton<LocalDataSource<List<ApiaryResponse>>>(
+    () => SharedPreferencesLocalDataSource<List<ApiaryResponse>>(
+      preferences: di(),
+      key: 'cached_apiaries',
+      toJson: (apiaries) => apiaries.map((apiary) => apiary.toJson()).toList(),
+      fromJson: (json) => (json as List<dynamic>).map((item) => ApiaryResponse.fromJson(item as Map<String, dynamic>)).toList(),
+    ),
+  );
+  di.registerLazySingleton<LocalDataSource<List<OfflineOperation>>>(
+    () => SharedPreferencesLocalDataSource<List<OfflineOperation>>(
+      preferences: di(),
+      key: 'offline_operations',
+      toJson: (operations) => operations.map((operation) => operation.toJson()).toList(),
+      fromJson: (json) => (json as List<dynamic>).map((item) => OfflineOperation.fromJson(item as Map<String, dynamic>)).toList(),
+    ),
+  );
   // #endregion
 
   // #region Interceptors
@@ -63,10 +106,7 @@ Future<void> initDi() async {
     () => AuthenticationInterceptor(tokenStorage: di(), tokenRefresher: di(), sessionService: di()),
   );
   di.registerLazySingleton<InterceptorResolver>(
-    () => InterceptorResolver({
-      CookieManager: di<CookieManager>(),
-      AuthenticationInterceptor: di<AuthenticationInterceptor>(),
-    }),
+    () => InterceptorResolver({CookieManager: di<CookieManager>(), AuthenticationInterceptor: di<AuthenticationInterceptor>()}),
   );
   // #endregion
 
@@ -77,11 +117,30 @@ Future<void> initDi() async {
   di.registerLazySingleton<IApiaryDataSource>(() => di<ApiaryDataSource>());
   // #endregion
 
+  // #region Offline
+  di.registerLazySingleton<LocalOperationQueue>(() => LocalOperationQueue(storage: di()));
+  di.registerLazySingleton<OperationQueue>(() => di<LocalOperationQueue>());
+  di.registerLazySingleton<ApiaryOperationHandler>(
+    () => ApiaryOperationHandler(dataSource: di(), localDataSource: di(), refreshNotifier: di()),
+  );
+  di.registerLazySingleton<OperationRegistry>(() => OperationRegistry({'apiary': di<ApiaryOperationHandler>()}));
+  di.registerLazySingleton<SyncEngineImpl>(() => SyncEngineImpl(queue: di(), registry: di(), connectivity: di()));
+  di.registerLazySingleton<SyncEngine>(() => di<SyncEngineImpl>());
+  // #endregion
+
   // #region Repositories
   di.registerLazySingleton<AuthenticationRepository>(
-    () => AuthenticationRepositoryImpl(dataSource: di(), tokenStorage: di()),
+    () => AuthenticationRepositoryImpl(dataSource: di(), tokenStorage: di(), userLocalDataSource: di()),
   );
-  di.registerLazySingleton<ApiaryRepositoryImpl>(() => ApiaryRepositoryImpl(dataSource: di()));
+  di.registerLazySingleton<ApiaryRepositoryImpl>(
+    () => ApiaryRepositoryImpl(
+      dataSource: di(),
+      localDataSource: di(),
+      connectivity: di(),
+      operationQueue: di(),
+      refreshNotifier: di(),
+    ),
+  );
   di.registerLazySingleton<IApiaryReader>(() => di<ApiaryRepositoryImpl>());
   di.registerLazySingleton<IApiaryWriter>(() => di<ApiaryRepositoryImpl>());
   // #endregion

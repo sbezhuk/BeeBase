@@ -33,8 +33,9 @@ class DioClient {
     return _run(() => _dio.get<T>(path, queryParameters: queryParameters));
   }
 
-  Future<Response<T>> post<T>(String path, {Object? data}) {
-    return _run(() => _dio.post<T>(path, data: data));
+  Future<Response<T>> post<T>(String path, {Object? data, Map<String, dynamic>? headers}) {
+    final options = headers == null ? null : Options(headers: headers);
+    return _run(() => _dio.post<T>(path, data: data, options: options));
   }
 
   Future<Response<T>> put<T>(String path, {Object? data}) {

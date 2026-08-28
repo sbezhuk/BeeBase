@@ -1,24 +1,67 @@
+import 'package:beebase/core/error/error_text.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
+import 'package:beebase/core/offline/local_id_generator.dart';
+import 'package:beebase/core/offline/offline_operation.dart';
+import 'package:beebase/core/offline/operation_queue.dart';
+import 'package:beebase/core/offline/operation_status.dart';
+import 'package:beebase/core/offline/operation_type.dart';
+import 'package:beebase/core/services/connectivity_service.dart';
 import 'package:beebase/data/data_source/interface/apiary_data_source.dart';
+import 'package:beebase/data/data_source/interface/local_data_source.dart';
 import 'package:beebase/data/models/apiary_request.dart';
+import 'package:beebase/data/models/apiary_response.dart';
 import 'package:beebase/data/models/extensions/apiary_extension.dart';
+import 'package:beebase/data/repositories/apiary_cache_merger.dart';
 import 'package:beebase/domain/entity/apiary.dart';
+import 'package:beebase/domain/enum/apiary_sync_status.dart';
 import 'package:beebase/domain/repositories/apiary_reader.dart';
 import 'package:beebase/domain/repositories/apiary_writer.dart';
 import 'package:beebase/domain/repositories/repository.dart';
+import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
 import 'package:beebase/utils/either.dart';
 
+const _apiaryEntityType = 'apiary';
+
 final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IApiaryWriter {
-  ApiaryRepositoryImpl({required this.dataSource});
+  ApiaryRepositoryImpl({
+    required this.dataSource,
+    required this.localDataSource,
+    required this.connectivity,
+    required this.operationQueue,
+    required this.refreshNotifier,
+    this.cacheMerger = const ApiaryCacheMerger(),
+  });
 
   final IApiaryDataSource dataSource;
+  final LocalDataSource<List<ApiaryResponse>> localDataSource;
+  final IConnectivityService connectivity;
+  final OperationQueue operationQueue;
+  final ApiaryListRefreshNotifier refreshNotifier;
+  final ApiaryCacheMerger cacheMerger;
 
+  /// Network-first with a cache fallback: the repository is the only place
+  /// that decides whether the list comes from the API or from the last
+  /// synchronized copy — feature code always just sees a [List<Apiary>].
   @override
-  Future<Either<Failure, List<Apiary>>> getApiaries() {
-    return on(() async {
+  Future<Either<Failure, List<Apiary>>> getApiaries() async {
+    final pendingOps = await _apiaryOperations();
+    if (!await connectivity.isOnline) {
+      return _cachedApiariesOrFailure(const InternalFailure(ErrorTextKey('core.errors.unexpectedNetworkError')), pendingOps);
+    }
+
+    final result = await on(() async {
       final responses = await dataSource.getApiaries();
-      return responses.map((response) => response.toEntity()).toList();
+      final merged = cacheMerger.mergeWithPending(responses, await localDataSource.read() ?? const [], pendingOps);
+      await localDataSource.write(merged);
+      return merged;
     });
+
+    return result.fold((failure) async {
+      if (failure is ServerFailure) {
+        return Left(failure);
+      }
+      return _cachedApiariesOrFailure(failure, pendingOps);
+    }, (merged) => Future.value(Right(cacheMerger.toEntities(merged, pendingOps))));
   }
 
   @override
@@ -33,11 +76,24 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
     String? location,
     double? lat,
     double? lon,
-  }) {
-    return on(() async {
-      final request = ApiaryRequest(name: name, description: description, location: location, lat: lat, lon: lon);
-      return (await dataSource.createApiary(request)).toEntity();
+  }) async {
+    if (!await connectivity.isOnline) {
+      return _createOffline(name: name, description: description, location: location, lat: lat, lon: lon);
+    }
+
+    final request = ApiaryRequest(name: name, description: description, location: location, lat: lat, lon: lon);
+    final result = await on(() async {
+      final response = await dataSource.createApiary(request);
+      await _appendToCache(response);
+      return response;
     });
+
+    return result.fold((failure) async {
+      if (failure is ServerFailure) {
+        return Left(failure);
+      }
+      return _createOffline(name: name, description: description, location: location, lat: lat, lon: lon);
+    }, (response) => Future.value(Right(response.toEntity())));
   }
 
   @override
@@ -49,6 +105,9 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
     double? lat,
     double? lon,
   }) {
+    if (LocalIdGenerator.isLocal(id)) {
+      return Future.value(const Left(InternalFailure(ErrorTextKey('core.errors.pendingSync'))));
+    }
     return on(() async {
       final request = ApiaryRequest(name: name, description: description, location: location, lat: lat, lon: lon);
       return (await dataSource.updateApiary(id, request)).toEntity();
@@ -57,6 +116,62 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
 
   @override
   Future<Either<Failure, void>> deleteApiary(String id) {
+    if (LocalIdGenerator.isLocal(id)) {
+      return Future.value(const Left(InternalFailure(ErrorTextKey('core.errors.pendingSync'))));
+    }
     return on(() => dataSource.deleteApiary(id));
+  }
+
+  Future<Either<Failure, Apiary>> _createOffline({
+    required String name,
+    String? description,
+    String? location,
+    double? lat,
+    double? lon,
+  }) async {
+    final now = DateTime.now();
+    final localId = LocalIdGenerator.generate();
+    final placeholder = ApiaryResponse(
+      id: localId,
+      name: name,
+      description: description,
+      location: location,
+      lat: lat,
+      lon: lon,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await _appendToCache(placeholder);
+    await operationQueue.enqueue(
+      OfflineOperation(
+        id: LocalIdGenerator.generate(),
+        entityType: _apiaryEntityType,
+        operationType: OperationType.create,
+        payload: ApiaryRequest(name: name, description: description, location: location, lat: lat, lon: lon).toJson(),
+        status: OperationStatus.pending,
+        createdAt: now,
+        updatedAt: now,
+        localEntityId: localId,
+      ),
+    );
+    refreshNotifier.notify();
+    return Right(placeholder.toEntity().copyWith(syncStatus: ApiarySyncStatus.pending));
+  }
+
+  Future<void> _appendToCache(ApiaryResponse response) async {
+    final cached = await localDataSource.read() ?? const [];
+    await localDataSource.write([...cached, response]);
+  }
+
+  Future<List<OfflineOperation>> _apiaryOperations() async {
+    return (await operationQueue.all()).where((operation) => operation.entityType == _apiaryEntityType).toList();
+  }
+
+  Future<Either<Failure, List<Apiary>>> _cachedApiariesOrFailure(Failure failure, List<OfflineOperation> pendingOps) async {
+    final cached = await localDataSource.read();
+    if (cached == null || cached.isEmpty) {
+      return Left(failure);
+    }
+    return Right(cacheMerger.toEntities(cached, pendingOps));
   }
 }

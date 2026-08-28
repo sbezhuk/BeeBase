@@ -1,4 +1,5 @@
 import 'package:beebase/application.dart';
+import 'package:beebase/core/offline/sync_engine.dart';
 import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';
 import 'package:beebase/utils/app_config.dart';
 import 'package:beebase/utils/di.dart';
@@ -14,6 +15,7 @@ Future<void> main() async {
   await AppConfig.instance.load(env);
   await initDi();
   await di<AuthenticationCubit>().restoreSession();
+  di<SyncEngine>().start();
 
   runApp(
     EasyLocalization(

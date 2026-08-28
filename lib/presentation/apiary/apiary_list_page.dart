@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/entity/apiary.dart';
+import 'package:beebase/domain/enum/apiary_sync_status.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_list_cubit/apiary_list_cubit.dart';
 import 'package:beebase/presentation/apiary/extension/apiary_date_x.dart';
 import 'package:beebase/presentation/apiary/extension/apiary_mock_stats_x.dart';
@@ -21,6 +22,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 part 'apiary_list_page/apiary_list_body.dart';
 part 'apiary_list_page/apiary_list_loaded_view.dart';
 part 'apiary_list_page/apiary_list_tile.dart';
+part 'apiary_list_page/apiary_sync_badge.dart';
 part 'apiary_list_page/apiary_list_stat.dart';
 part 'apiary_list_page/apiary_list_empty_view.dart';
 part 'apiary_list_page/apiary_list_error_view.dart';

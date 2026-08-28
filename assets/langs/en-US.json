@@ -61,7 +61,9 @@
       "emptySubtitle": "Create your first apiary to start tracking your hives.",
       "retry": "Retry",
       "hivesCount": "{count} hives",
-      "lastVisit": "Last visit {date}"
+      "lastVisit": "Last visit {date}",
+      "syncPending": "Pending sync",
+      "syncFailed": "Sync failed"
     },
     "details": {
       "title": "Apiary Details",
@@ -110,7 +112,8 @@
       "requestCancelled": "The request was cancelled. Please try again.",
       "unexpectedNetworkError": "Something went wrong. Please check your connection and try again.",
       "requestFailed": "Something went wrong. Please try again.",
-      "noActiveSession": "No active session. Please log in again."
+      "noActiveSession": "No active session. Please log in again.",
+      "pendingSync": "This apiary hasn't finished syncing yet. Try again once it's synced."
     },
     "snackbar": {
       "dismiss": "Dismiss"

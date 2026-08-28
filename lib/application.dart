@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:beebase/core/offline/sync_engine.dart';
 import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';
 import 'package:beebase/presentation/component/color.dart';
 import 'package:beebase/presentation/component/font.dart';
@@ -18,20 +19,18 @@ final class Application extends StatefulWidget {
   State<Application> createState() => _ApplicationState();
 }
 
-final class _ApplicationState extends State<Application> {
+final class _ApplicationState extends State<Application> with WidgetsBindingObserver {
   late final AppRouter _appRouter;
-  late final StreamSubscription<AuthenticationState>
-  _authenticationSubscription;
+  late final StreamSubscription<AuthenticationState> _authenticationSubscription;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _appRouter = di<AppRouter>();
     // Any place in the app can lose the session (e.g. a 401 whose refresh
     // also failed) — react here so the redirect isn't tied to a screen.
-    _authenticationSubscription = di<AuthenticationCubit>().stream.listen((
-      state,
-    ) {
+    _authenticationSubscription = di<AuthenticationCubit>().stream.listen((state) {
       if (state is AuthenticationUnauthenticated) {
         _appRouter.replaceAll([const LoginRoute()]);
       }
@@ -39,7 +38,20 @@ final class _ApplicationState extends State<Application> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Sync only depends on the foreground app being reachable at all —
+    // resuming (rather than a full cold start) is when a device most often
+    // regains connectivity after being backgrounded, so this is the cheap
+    // "at minimum" resumption point the offline architecture needs, without
+    // any platform-specific background execution.
+    if (state == AppLifecycleState.resumed) {
+      di<SyncEngine>().syncNow();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     unawaited(_authenticationSubscription.cancel());
     super.dispose();
   }
@@ -55,9 +67,7 @@ final class _ApplicationState extends State<Application> {
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,
         locale: context.locale,
-        routerConfig: _appRouter.config(
-          navigatorObservers: () => [AutoRouteObserver()],
-        ),
+        routerConfig: _appRouter.config(navigatorObservers: () => [AutoRouteObserver()]),
       ),
     );
   }
@@ -75,11 +85,7 @@ ThemeData _buildTheme(AppColor colors, Brightness brightness) {
       error: colors.status.error,
       surface: colors.surface.card,
     ),
-    extensions: [
-      const Spacing.standard(),
-      colors,
-      AppTextStyles.fromColors(colors),
-    ],
+    extensions: [const Spacing.standard(), colors, AppTextStyles.fromColors(colors)],
     textSelectionTheme: TextSelectionThemeData(
       cursorColor: colors.brand.primary,
       selectionColor: colors.brand.primary.withValues(alpha: 0.3),

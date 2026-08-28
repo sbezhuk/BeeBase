@@ -1,3 +1,5 @@
+import 'package:beebase/domain/enum/apiary_sync_status.dart';
+
 final class Apiary {
   const Apiary({
     required this.id,
@@ -8,6 +10,7 @@ final class Apiary {
     this.lon,
     required this.createdAt,
     required this.updatedAt,
+    this.syncStatus = ApiarySyncStatus.synced,
   });
 
   final String id;
@@ -18,6 +21,21 @@ final class Apiary {
   final double? lon;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final ApiarySyncStatus syncStatus;
+
+  Apiary copyWith({ApiarySyncStatus? syncStatus}) {
+    return Apiary(
+      id: id,
+      name: name,
+      description: description,
+      location: location,
+      lat: lat,
+      lon: lon,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      syncStatus: syncStatus ?? this.syncStatus,
+    );
+  }
 
   @override
   bool operator ==(Object other) =>
@@ -30,8 +48,9 @@ final class Apiary {
           other.lat == lat &&
           other.lon == lon &&
           other.createdAt == createdAt &&
-          other.updatedAt == updatedAt);
+          other.updatedAt == updatedAt &&
+          other.syncStatus == syncStatus);
 
   @override
-  int get hashCode => Object.hash(id, name, description, location, lat, lon, createdAt, updatedAt);
+  int get hashCode => Object.hash(id, name, description, location, lat, lon, createdAt, updatedAt, syncStatus);
 }
