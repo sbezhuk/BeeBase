@@ -11,10 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  List<BottomNavDestination> destinations({
-    int? badgeCount,
-    bool thirdEnabled = true,
-  }) {
+  List<BottomNavDestination> destinations({int? badgeCount, bool thirdEnabled = true}) {
     return [
       BottomNavDestination(
         label: 'Home',
@@ -48,7 +45,7 @@ void main() {
     required List<BottomNavDestination> destinations,
     required int selectedIndex,
     required ValueChanged<int> onDestinationSelected,
-    Brightness brightness = Brightness.light,
+    Brightness brightness = Brightness.dark,
     BottomNavPrimaryAction? primaryAction,
     // A phone-width viewport by default — the framework's default test
     // surface (800x600) is already past the tablet breakpoint, which would
@@ -62,15 +59,7 @@ void main() {
 
     return tester.pumpWidget(
       MaterialApp(
-        theme: ThemeData(
-          platform: platform,
-          brightness: brightness,
-          extensions: [
-            brightness == Brightness.dark
-                ? const AppColor.dark()
-                : const AppColor.light(),
-          ],
-        ),
+        theme: ThemeData(platform: platform, brightness: brightness, extensions: [const AppColor.dark()]),
         home: PlatformBottomNavigationBar(
           destinations: destinations,
           selectedIndex: selectedIndex,
@@ -83,31 +72,26 @@ void main() {
   }
 
   group('iOS platform', () {
-    testWidgets(
-      'renders the Liquid-Glass tab bar with one item per destination',
-      (tester) async {
-        await pumpNavBar(
-          tester,
-          platform: TargetPlatform.iOS,
-          destinations: destinations(),
-          selectedIndex: 0,
-          onDestinationSelected: (_) {},
-        );
+    testWidgets('renders the Liquid-Glass tab bar with one item per destination', (tester) async {
+      await pumpNavBar(
+        tester,
+        platform: TargetPlatform.iOS,
+        destinations: destinations(),
+        selectedIndex: 0,
+        onDestinationSelected: (_) {},
+      );
 
-        expect(find.byType(IosBottomNavigationBar), findsOneWidget);
-        expect(find.byType(AndroidBottomNavigationBar), findsNothing);
-        // GlassTabBar mounts both the resting and selected weight/icon
-        // variants at once to cross-fade between them, so each label/icon
-        // renders twice — assert presence, not a single instance.
-        expect(find.text('Home'), findsWidgets);
-        expect(find.text('Alerts'), findsWidgets);
-        expect(find.text('More'), findsWidgets);
-      },
-    );
+      expect(find.byType(IosBottomNavigationBar), findsOneWidget);
+      expect(find.byType(AndroidBottomNavigationBar), findsNothing);
+      // GlassTabBar mounts both the resting and selected weight/icon
+      // variants at once to cross-fade between them, so each label/icon
+      // renders twice — assert presence, not a single instance.
+      expect(find.text('Home'), findsWidgets);
+      expect(find.text('Alerts'), findsWidgets);
+      expect(find.text('More'), findsWidgets);
+    });
 
-    testWidgets('shows the selected destination as selected in semantics', (
-      tester,
-    ) async {
+    testWidgets('shows the selected destination as selected in semantics', (tester) async {
       await pumpNavBar(
         tester,
         platform: TargetPlatform.iOS,
@@ -117,16 +101,12 @@ void main() {
       );
 
       final homeSemantics = tester.getSemantics(find.bySemanticsLabel('Home'));
-      final alertsSemantics = tester.getSemantics(
-        find.bySemanticsLabel(RegExp('Alerts')),
-      );
+      final alertsSemantics = tester.getSemantics(find.bySemanticsLabel(RegExp('Alerts')));
       expect(homeSemantics.flagsCollection.isSelected, Tristate.isFalse);
       expect(alertsSemantics.flagsCollection.isSelected, Tristate.isTrue);
     });
 
-    testWidgets('invokes the callback when an enabled destination is tapped', (
-      tester,
-    ) async {
+    testWidgets('invokes the callback when an enabled destination is tapped', (tester) async {
       var selected = -1;
       await pumpNavBar(
         tester,
@@ -142,9 +122,7 @@ void main() {
       expect(selected, 1);
     });
 
-    testWidgets('does not invoke the callback for a disabled destination', (
-      tester,
-    ) async {
+    testWidgets('does not invoke the callback for a disabled destination', (tester) async {
       var callCount = 0;
       await pumpNavBar(
         tester,
@@ -160,9 +138,7 @@ void main() {
       expect(callCount, 0);
     });
 
-    testWidgets('surfaces the badge count and folds it into semantics', (
-      tester,
-    ) async {
+    testWidgets('surfaces the badge count and folds it into semantics', (tester) async {
       await pumpNavBar(
         tester,
         platform: TargetPlatform.iOS,
@@ -175,9 +151,7 @@ void main() {
       // GlassTabBar excludes the icon/badge subtree from semantics and
       // speaks GlassTab.semanticLabel as the tab's one accessibility node,
       // so the badge count is folded into that label (see ios_bottom_nav_bar.dart).
-      final tabSemantics = tester.getSemantics(
-        find.bySemanticsLabel(RegExp('Alerts, 5 new')).first,
-      );
+      final tabSemantics = tester.getSemantics(find.bySemanticsLabel(RegExp('Alerts, 5 new')).first);
       expect(tabSemantics.label, contains('5'));
     });
 
@@ -195,9 +169,7 @@ void main() {
       expect(find.byType(IosBottomNavigationBar), findsOneWidget);
     });
 
-    testWidgets('renders and invokes the primary action as an extra button', (
-      tester,
-    ) async {
+    testWidgets('renders and invokes the primary action as an extra button', (tester) async {
       var tapped = false;
       await pumpNavBar(
         tester,
@@ -222,23 +194,20 @@ void main() {
   });
 
   group('Android platform', () {
-    testWidgets(
-      'renders a Material 3 NavigationBar with one destination per entry',
-      (tester) async {
-        await pumpNavBar(
-          tester,
-          platform: TargetPlatform.android,
-          destinations: destinations(),
-          selectedIndex: 0,
-          onDestinationSelected: (_) {},
-        );
+    testWidgets('renders a Material 3 NavigationBar with one destination per entry', (tester) async {
+      await pumpNavBar(
+        tester,
+        platform: TargetPlatform.android,
+        destinations: destinations(),
+        selectedIndex: 0,
+        onDestinationSelected: (_) {},
+      );
 
-        expect(find.byType(AndroidBottomNavigationBar), findsOneWidget);
-        expect(find.byType(IosBottomNavigationBar), findsNothing);
-        final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-        expect(navBar.destinations.length, 3);
-      },
-    );
+      expect(find.byType(AndroidBottomNavigationBar), findsOneWidget);
+      expect(find.byType(IosBottomNavigationBar), findsNothing);
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+      expect(navBar.destinations.length, 3);
+    });
 
     testWidgets('reflects selectedIndex on the NavigationBar', (tester) async {
       await pumpNavBar(
@@ -253,9 +222,7 @@ void main() {
       expect(navBar.selectedIndex, 2);
     });
 
-    testWidgets('invokes the callback when a destination is tapped', (
-      tester,
-    ) async {
+    testWidgets('invokes the callback when a destination is tapped', (tester) async {
       var selected = -1;
       await pumpNavBar(
         tester,
@@ -271,9 +238,7 @@ void main() {
       expect(selected, 1);
     });
 
-    testWidgets('does not invoke the callback for a disabled destination', (
-      tester,
-    ) async {
+    testWidgets('does not invoke the callback for a disabled destination', (tester) async {
       var callCount = 0;
       await pumpNavBar(
         tester,
@@ -304,9 +269,7 @@ void main() {
       expect(find.text('7'), findsOneWidget);
     });
 
-    testWidgets('switches to a NavigationRail on expanded (tablet) widths', (
-      tester,
-    ) async {
+    testWidgets('switches to a NavigationRail on expanded (tablet) widths', (tester) async {
       await pumpNavBar(
         tester,
         platform: TargetPlatform.android,
@@ -334,9 +297,7 @@ void main() {
       expect(find.byType(AndroidBottomNavigationBar), findsOneWidget);
     });
 
-    testWidgets('omits the FAB when no primary action is given', (
-      tester,
-    ) async {
+    testWidgets('omits the FAB when no primary action is given', (tester) async {
       await pumpNavBar(
         tester,
         platform: TargetPlatform.android,
@@ -348,32 +309,29 @@ void main() {
       expect(find.byType(FloatingActionButton), findsNothing);
     });
 
-    testWidgets(
-      'renders and invokes the primary action as a floating action button',
-      (tester) async {
-        var tapped = false;
-        await pumpNavBar(
-          tester,
-          platform: TargetPlatform.android,
-          destinations: destinations(),
-          selectedIndex: 0,
-          onDestinationSelected: (_) {},
-          primaryAction: BottomNavPrimaryAction(
-            label: 'Add',
-            materialIcon: Icons.add,
-            cupertinoIcon: CupertinoIcons.add,
-            onPressed: () => tapped = true,
-          ),
-        );
+    testWidgets('renders and invokes the primary action as a floating action button', (tester) async {
+      var tapped = false;
+      await pumpNavBar(
+        tester,
+        platform: TargetPlatform.android,
+        destinations: destinations(),
+        selectedIndex: 0,
+        onDestinationSelected: (_) {},
+        primaryAction: BottomNavPrimaryAction(
+          label: 'Add',
+          materialIcon: Icons.add,
+          cupertinoIcon: CupertinoIcons.add,
+          onPressed: () => tapped = true,
+        ),
+      );
 
-        expect(find.byType(FloatingActionButton), findsOneWidget);
-        expect(find.text('Add'), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(find.text('Add'), findsOneWidget);
 
-        await tester.tap(find.byType(FloatingActionButton));
-        await tester.pump();
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pump();
 
-        expect(tapped, isTrue);
-      },
-    );
+      expect(tapped, isTrue);
+    });
   });
 }

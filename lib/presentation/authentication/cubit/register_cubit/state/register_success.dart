@@ -6,9 +6,7 @@ final class RegisterSuccess extends RegisterState {
   final User user;
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is RegisterSuccess && other.user == user);
+  bool operator ==(Object other) => identical(this, other) || (other is RegisterSuccess && other.user == user);
 
   @override
   int get hashCode => user.hashCode;

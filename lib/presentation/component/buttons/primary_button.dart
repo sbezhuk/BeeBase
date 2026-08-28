@@ -20,9 +20,15 @@ final class PrimaryButton extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [colors.primary, colors.primaryDark],
+          colors: [colors.brand.primary, colors.brand.primaryDark],
         ),
-        boxShadow: [BoxShadow(color: colors.primaryDark.withValues(alpha: 0.35), blurRadius: 24, offset: const Offset(0, 14))],
+        boxShadow: [
+          BoxShadow(
+            color: colors.brand.primaryDark.withValues(alpha: 0.35),
+            blurRadius: 24,
+            offset: const Offset(0, 14),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -31,7 +37,11 @@ final class PrimaryButton extends StatelessWidget {
           onTap: isLoading ? null : onPressed,
           child: Center(
             child: isLoading
-                ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: colors.background))
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: colors.surface.background),
+                  )
                 : Text(label, style: context.textStyles.button),
           ),
         ),

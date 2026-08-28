@@ -33,29 +33,45 @@ final class AppTextStyles extends ThemeExtension<AppTextStyles> {
 
   factory AppTextStyles.fromColors(AppColor colors) {
     return AppTextStyles(
-      title: TextStyle(fontFamily: AppFont.titleBold, fontSize: 26, height: 1.15, letterSpacing: -0.4, color: colors.textPrimary),
-      body: TextStyle(fontFamily: AppFont.regular, fontSize: 16, height: 1.5, color: colors.textPrimary),
-      label: TextStyle(fontFamily: AppFont.bold, fontSize: 12, letterSpacing: 0.8, color: colors.textSecondary),
-      button: TextStyle(fontFamily: AppFont.bold, fontSize: 16, letterSpacing: 0.4, color: colors.background),
-      error: TextStyle(fontFamily: AppFont.regular, fontSize: 13, color: colors.error),
-      action: TextStyle(fontFamily: AppFont.bold, fontSize: 14, letterSpacing: 0.2, color: colors.primaryDark),
+      title: TextStyle(
+        fontFamily: AppFont.titleBold,
+        fontSize: 26,
+        height: 1.15,
+        letterSpacing: -0.4,
+        color: colors.text.primary,
+      ),
+      body: TextStyle(fontFamily: AppFont.regular, fontSize: 16, height: 1.5, color: colors.text.primary),
+      label: TextStyle(fontFamily: AppFont.bold, fontSize: 12, letterSpacing: 0.8, color: colors.text.secondary),
+      button: TextStyle(fontFamily: AppFont.bold, fontSize: 16, letterSpacing: 0.4, color: colors.surface.background),
+      error: TextStyle(fontFamily: AppFont.regular, fontSize: 13, color: colors.status.error),
+      action: TextStyle(fontFamily: AppFont.bold, fontSize: 14, letterSpacing: 0.2, color: colors.brand.primaryDark),
       authTitle: TextStyle(
         fontFamily: AppFont.titleBold,
         fontSize: 30,
         height: 1.1,
         letterSpacing: -0.6,
-        color: colors.hiveBrown,
+        color: colors.honey.brown,
       ),
       authSubtitle: TextStyle(
         fontFamily: AppFont.titleRegular,
         fontSize: 14,
         height: 1.5,
         letterSpacing: 0.1,
-        color: colors.honeyMuted,
+        color: colors.honey.muted,
       ),
-      authFieldLabel: TextStyle(fontFamily: AppFont.bold, fontSize: 11.5, letterSpacing: 0.8, color: colors.hiveBrown),
-      authMuted: TextStyle(fontFamily: AppFont.regular, fontSize: 13.5, height: 1.4, color: colors.honeyMuted),
-      authLink: TextStyle(fontFamily: AppFont.bold, fontSize: 13.5, letterSpacing: 0.1, color: colors.primaryDark),
+      authFieldLabel: TextStyle(
+        fontFamily: AppFont.bold,
+        fontSize: 11.5,
+        letterSpacing: 0.8,
+        color: colors.honey.brown,
+      ),
+      authMuted: TextStyle(fontFamily: AppFont.regular, fontSize: 13.5, height: 1.4, color: colors.honey.muted),
+      authLink: TextStyle(
+        fontFamily: AppFont.bold,
+        fontSize: 13.5,
+        letterSpacing: 0.1,
+        color: colors.brand.primaryDark,
+      ),
     );
   }
 

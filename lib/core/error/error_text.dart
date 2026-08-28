@@ -27,9 +27,7 @@ sealed class ErrorText {
   /// [message] is shown verbatim.
   factory ErrorText.server({required String code, required String message}) {
     final key = '$_kServerErrorPrefix.$code';
-    return code.isNotEmpty && trExists(key)
-        ? ErrorTextKey(key)
-        : ErrorTextRaw(message);
+    return code.isNotEmpty && trExists(key) ? ErrorTextKey(key) : ErrorTextRaw(message);
   }
 
   /// The final, user-facing string.

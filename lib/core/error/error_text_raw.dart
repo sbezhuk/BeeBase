@@ -11,8 +11,7 @@ final class ErrorTextRaw extends ErrorText {
   String resolve() => text;
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) || (other is ErrorTextRaw && other.text == text);
+  bool operator ==(Object other) => identical(this, other) || (other is ErrorTextRaw && other.text == text);
 
   @override
   int get hashCode => text.hashCode;

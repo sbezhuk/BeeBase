@@ -50,7 +50,7 @@ final class _AuthTextFieldState extends State<AuthTextField> {
               controller: widget.controller,
               obscureText: _obscureText,
               keyboardType: widget.keyboardType,
-              style: TextStyle(fontFamily: AppFont.regular, fontSize: 15, color: context.colors.hiveBrown),
+              style: TextStyle(fontFamily: AppFont.regular, fontSize: 15, color: context.colors.honey.brown),
               decoration: _decoration(context, hasError: field.hasError),
               onChanged: (value) {
                 field.didChange(value);
@@ -77,25 +77,25 @@ final class _AuthTextFieldState extends State<AuthTextField> {
     final colors = context.colors;
     final normalBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide(color: colors.honeyBorder),
+      borderSide: BorderSide(color: colors.honey.border),
     );
-    final errorBorder = normalBorder.copyWith(borderSide: BorderSide(color: colors.error));
+    final errorBorder = normalBorder.copyWith(borderSide: BorderSide(color: colors.status.error));
     return InputDecoration(
       hintText: widget.hintText,
-      hintStyle: TextStyle(fontFamily: AppFont.regular, fontSize: 15, color: colors.honeyPlaceholder),
+      hintStyle: TextStyle(fontFamily: AppFont.regular, fontSize: 15, color: colors.honey.placeholder),
       filled: true,
-      fillColor: colors.background,
+      fillColor: colors.surface.background,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: hasError ? errorBorder : normalBorder,
       enabledBorder: hasError ? errorBorder : normalBorder,
       focusedBorder: hasError
-          ? errorBorder.copyWith(borderSide: BorderSide(color: colors.error, width: 1.5))
-          : normalBorder.copyWith(borderSide: BorderSide(color: colors.primary, width: 1.5)),
+          ? errorBorder.copyWith(borderSide: BorderSide(color: colors.status.error, width: 1.5))
+          : normalBorder.copyWith(borderSide: BorderSide(color: colors.brand.primary, width: 1.5)),
       suffixIcon: widget.obscureText
           ? IconButton(
               icon: Icon(
                 _obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                color: colors.honeyPlaceholder,
+                color: colors.honey.placeholder,
                 size: 20,
               ),
               onPressed: () => setState(() => _obscureText = !_obscureText),

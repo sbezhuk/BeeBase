@@ -5,7 +5,11 @@ part of '../android_bottom_nav_bar.dart';
 /// already ships the current pill indicator, tonal elevation, and motion, so
 /// hand-rolling any of that here would just fight the current Material spec.
 final class _AndroidNavigationBar extends StatelessWidget {
-  const _AndroidNavigationBar({required this.destinations, required this.selectedIndex, required this.onDestinationSelected});
+  const _AndroidNavigationBar({
+    required this.destinations,
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+  });
 
   final List<BottomNavDestination> destinations;
   final int selectedIndex;

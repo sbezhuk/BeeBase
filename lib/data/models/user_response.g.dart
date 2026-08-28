@@ -12,9 +12,8 @@ UserResponse _$UserResponseFromJson(Map<String, dynamic> json) => UserResponse(
   createdAt: DateTime.parse(json['created_at'] as String),
 );
 
-Map<String, dynamic> _$UserResponseToJson(UserResponse instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'email': instance.email,
-      'created_at': instance.createdAt.toIso8601String(),
-    };
+Map<String, dynamic> _$UserResponseToJson(UserResponse instance) => <String, dynamic>{
+  'id': instance.id,
+  'email': instance.email,
+  'created_at': instance.createdAt.toIso8601String(),
+};

@@ -12,9 +12,15 @@ final class _TermsAndConditionsNotice extends StatelessWidget {
           style: context.textStyles.authMuted,
           children: [
             TextSpan(text: 'authentication.register.termsNotice.prefix'.tr()),
-            TextSpan(text: 'authentication.register.termsNotice.termsAndConditions'.tr(), style: context.textStyles.authLink),
+            TextSpan(
+              text: 'authentication.register.termsNotice.termsAndConditions'.tr(),
+              style: context.textStyles.authLink,
+            ),
             TextSpan(text: 'authentication.register.termsNotice.and'.tr()),
-            TextSpan(text: 'authentication.register.termsNotice.privacyPolicy'.tr(), style: context.textStyles.authLink),
+            TextSpan(
+              text: 'authentication.register.termsNotice.privacyPolicy'.tr(),
+              style: context.textStyles.authLink,
+            ),
             TextSpan(text: 'authentication.register.termsNotice.suffix'.tr()),
           ],
         ),

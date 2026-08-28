@@ -34,15 +34,7 @@ final class AppRouter extends RootStackRouter {
         AutoRoute(page: ProfileRoute.page, path: 'profile'),
       ],
     ),
-    AutoRoute(
-      page: ApiaryDetailsRoute.page,
-      path: '/apiaries/details',
-      guards: [authenticationGuard],
-    ),
-    AutoRoute(
-      page: ApiaryFormRoute.page,
-      path: '/apiaries/form',
-      guards: [authenticationGuard],
-    ),
+    AutoRoute(page: ApiaryDetailsRoute.page, path: '/apiaries/details', guards: [authenticationGuard]),
+    AutoRoute(page: ApiaryFormRoute.page, path: '/apiaries/form', guards: [authenticationGuard]),
   ];
 }

@@ -12,11 +12,7 @@ import 'package:beebase/core/storage/token_storage.dart';
 /// source so [AuthenticationInterceptor] can depend on it without creating a
 /// dependency cycle back through the data source that needs the interceptor.
 class TokenRefresher {
-  const TokenRefresher({
-    required this.dioClient,
-    required this.tokenStorage,
-    required this.sessionService,
-  });
+  const TokenRefresher({required this.dioClient, required this.tokenStorage, required this.sessionService});
 
   final DioClient dioClient;
   final TokenStorage tokenStorage;
@@ -27,9 +23,7 @@ class TokenRefresher {
   /// and listeners are notified so the app can navigate back to login.
   Future<String?> refresh() async {
     try {
-      final response = await dioClient.post<Map<String, dynamic>>(
-        ApiEndpoints.auth.refresh,
-      );
+      final response = await dioClient.post<Map<String, dynamic>>(ApiEndpoints.auth.refresh);
       final accessToken = response.data?['access_token'] as String?;
       if (accessToken == null) {
         return null;

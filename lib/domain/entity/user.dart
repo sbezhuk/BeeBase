@@ -8,10 +8,7 @@ final class User {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is User &&
-          other.id == id &&
-          other.email == email &&
-          other.createdAt == createdAt);
+      (other is User && other.id == id && other.email == email && other.createdAt == createdAt);
 
   @override
   int get hashCode => Object.hash(id, email, createdAt);

@@ -27,19 +27,12 @@ final class AuthenticationInterceptor extends QueuedInterceptorsWrapper {
   final Dio retryDio;
 
   @override
-  Future<void> onRequest(
-    RequestOptions options,
-    RequestInterceptorHandler handler,
-  ) async {
+  Future<void> onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
     final token = await tokenStorage.accessToken();
     if (token == null) {
       sessionService.notifySessionExpired();
       handler.reject(
-        DioException(
-          requestOptions: options,
-          error: 'core.errors.noActiveSession'.tr(),
-          type: DioExceptionType.cancel,
-        ),
+        DioException(requestOptions: options, error: 'core.errors.noActiveSession'.tr(), type: DioExceptionType.cancel),
       );
       return;
     }
@@ -48,10 +41,7 @@ final class AuthenticationInterceptor extends QueuedInterceptorsWrapper {
   }
 
   @override
-  Future<void> onError(
-    DioException err,
-    ErrorInterceptorHandler handler,
-  ) async {
+  Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
     if (err.response?.statusCode != 401) {
       handler.next(err);
       return;
@@ -63,8 +53,7 @@ final class AuthenticationInterceptor extends QueuedInterceptorsWrapper {
       return;
     }
 
-    final retryOptions = err.requestOptions
-      ..headers['Authorization'] = 'Bearer $newAccessToken';
+    final retryOptions = err.requestOptions..headers['Authorization'] = 'Bearer $newAccessToken';
     try {
       final response = await retryDio.fetch<dynamic>(retryOptions);
       handler.resolve(response);

@@ -22,7 +22,7 @@ final class ApiaryPhotoPlaceholder extends StatelessWidget {
     return Container(
       width: double.infinity,
       height: height,
-      color: colors.honeyCreamLight,
+      color: colors.honey.creamLight,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -32,7 +32,7 @@ final class ApiaryPhotoPlaceholder extends StatelessWidget {
             children: [
               const ApiaryHexagonBadge(size: 64),
               SizedBox(height: context.spacing.sm),
-              Text('apiary.photoPlaceholder'.tr(), style: context.textStyles.label.copyWith(color: colors.honeyMuted)),
+              Text('apiary.photoPlaceholder'.tr(), style: context.textStyles.label.copyWith(color: colors.honey.muted)),
             ],
           ),
         ],

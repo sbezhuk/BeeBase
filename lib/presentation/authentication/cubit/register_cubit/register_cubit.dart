@@ -12,18 +12,12 @@ part 'state/register_error.dart';
 part 'mixin/register_emitter.dart';
 
 final class RegisterCubit extends Cubit<RegisterState> with RegisterEmitter {
-  RegisterCubit({required this.repository, required this.authenticationCubit})
-    : super(const RegisterInitial());
+  RegisterCubit({required this.repository, required this.authenticationCubit}) : super(const RegisterInitial());
 
   final AuthenticationRepository repository;
   final AuthenticationCubit authenticationCubit;
 
   Future<void> register({required String email, required String password}) {
-    return emitRegister(
-      repository,
-      authenticationCubit,
-      email: email,
-      password: password,
-    );
+    return emitRegister(repository, authenticationCubit, email: email, password: password);
   }
 }

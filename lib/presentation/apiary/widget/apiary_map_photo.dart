@@ -43,9 +43,13 @@ final class ApiaryMapPhoto extends StatelessWidget {
         return Container(
           height: height,
           width: double.infinity,
-          color: colors.honeyCreamLight,
+          color: colors.honey.creamLight,
           alignment: Alignment.center,
-          child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: colors.primary)),
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2, color: colors.brand.primary),
+          ),
         );
       },
       errorBuilder: (context, error, stackTrace) => fallback,

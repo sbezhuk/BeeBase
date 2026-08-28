@@ -14,10 +14,7 @@ final class AuthenticationGuard extends AutoRouteGuard {
   final TokenStorage tokenStorage;
 
   @override
-  Future<void> onNavigation(
-    NavigationResolver resolver,
-    StackRouter router,
-  ) async {
+  Future<void> onNavigation(NavigationResolver resolver, StackRouter router) async {
     final hasSession = await tokenStorage.hasAccessToken();
     if (hasSession) {
       resolver.next(true);

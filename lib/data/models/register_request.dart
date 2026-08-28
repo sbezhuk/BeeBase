@@ -6,8 +6,7 @@ part 'register_request.g.dart';
 final class RegisterRequest {
   const RegisterRequest({required this.email, required this.password});
 
-  factory RegisterRequest.fromJson(Map<String, dynamic> json) =>
-      _$RegisterRequestFromJson(json);
+  factory RegisterRequest.fromJson(Map<String, dynamic> json) => _$RegisterRequestFromJson(json);
 
   final String email;
   final String password;

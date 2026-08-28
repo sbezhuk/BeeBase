@@ -10,9 +10,6 @@ mixin ApiaryListEmitter on Cubit<ApiaryListState> {
 
   Future<void> _fetch(IApiaryReader reader) async {
     final result = await reader.getApiaries();
-    result.fold(
-      (failure) => emit(ApiaryListError(failure)),
-      (apiaries) => emit(ApiaryListLoaded(apiaries)),
-    );
+    result.fold((failure) => emit(ApiaryListError(failure)), (apiaries) => emit(ApiaryListLoaded(apiaries)));
   }
 }

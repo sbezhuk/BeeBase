@@ -4,14 +4,9 @@ part 'user_response.g.dart';
 
 @JsonSerializable()
 final class UserResponse {
-  const UserResponse({
-    required this.id,
-    required this.email,
-    required this.createdAt,
-  });
+  const UserResponse({required this.id, required this.email, required this.createdAt});
 
-  factory UserResponse.fromJson(Map<String, dynamic> json) =>
-      _$UserResponseFromJson(json);
+  factory UserResponse.fromJson(Map<String, dynamic> json) => _$UserResponseFromJson(json);
 
   final String id;
   final String email;

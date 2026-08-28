@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 final class HoneycombPattern extends StatelessWidget {
   const HoneycombPattern({this.color, this.opacity = 0.08, super.key});
 
-  /// Defaults to `context.colors.hiveBrown` when unset, so the pattern tracks
+  /// Defaults to `context.colors.honey.brown` when unset, so the pattern tracks
   /// the active light/dark palette.
   final Color? color;
   final double opacity;
@@ -17,7 +17,7 @@ final class HoneycombPattern extends StatelessWidget {
     return IgnorePointer(
       child: CustomPaint(
         size: Size.infinite,
-        painter: HoneycombPainter(color: (color ?? context.colors.hiveBrown).withValues(alpha: opacity)),
+        painter: HoneycombPainter(color: (color ?? context.colors.honey.brown).withValues(alpha: opacity)),
       ),
     );
   }

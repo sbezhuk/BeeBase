@@ -90,13 +90,14 @@ final class _ApiaryFormPageState extends State<ApiaryFormPage> {
     final result = await cubit.resolveCurrentLocation();
     if (!mounted) return;
 
-    result.fold((failure) => AppSnackBar.show(context, message: failure.messageKey.tr(), variant: AppSnackBarVariant.error), (
-      location,
-    ) {
-      _locationAddress = location.address;
-      _latitude = location.latitude;
-      _longitude = location.longitude;
-    });
+    result.fold(
+      (failure) => AppSnackBar.show(context, message: failure.messageKey.tr(), variant: AppSnackBarVariant.error),
+      (location) {
+        _locationAddress = location.address;
+        _latitude = location.latitude;
+        _longitude = location.longitude;
+      },
+    );
     setState(() => _isFetchingLocation = false);
   }
 

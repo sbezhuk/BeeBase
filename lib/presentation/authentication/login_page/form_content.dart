@@ -34,13 +34,25 @@ final class _LoginFormContent extends StatelessWidget {
               child: Column(
                 children: [
                   SizedBox(height: context.spacing.xl * 2),
-                  Text('authentication.login.title'.tr(), textAlign: TextAlign.center, style: context.textStyles.authTitle),
+                  Text(
+                    'authentication.login.title'.tr(),
+                    textAlign: TextAlign.center,
+                    style: context.textStyles.authTitle,
+                  ),
                   SizedBox(height: context.spacing.sm),
-                  Text('authentication.login.subtitle'.tr(), textAlign: TextAlign.center, style: context.textStyles.authSubtitle),
+                  Text(
+                    'authentication.login.subtitle'.tr(),
+                    textAlign: TextAlign.center,
+                    style: context.textStyles.authSubtitle,
+                  ),
                   SizedBox(height: context.spacing.xl),
                   _EmailField(controller: emailController, serverError: emailServerError, onChanged: onEmailChanged),
                   SizedBox(height: context.spacing.md),
-                  _PasswordField(controller: passwordController, serverError: passwordServerError, onChanged: onPasswordChanged),
+                  _PasswordField(
+                    controller: passwordController,
+                    serverError: passwordServerError,
+                    onChanged: onPasswordChanged,
+                  ),
                   SizedBox(height: context.spacing.lg),
                   _SubmitButton(onPressed: onSubmit),
                   const Spacer(),

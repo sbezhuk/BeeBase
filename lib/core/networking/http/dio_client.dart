@@ -9,14 +9,12 @@ import 'package:dio/dio.dart';
 /// sources compose only the interceptors they need via [copyWith], rather
 /// than relying on a globally configured client.
 class DioClient {
-  DioClient({
-    required String baseUrl,
-    List<Interceptor> interceptors = const [],
-  }) : _options = BaseOptions(
-         baseUrl: baseUrl,
-         connectTimeout: const Duration(seconds: 15),
-         receiveTimeout: const Duration(seconds: 15),
-       ) {
+  DioClient({required String baseUrl, List<Interceptor> interceptors = const []})
+    : _options = BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 15),
+      ) {
     _dio = Dio(_options)..interceptors.addAll(interceptors);
   }
 
@@ -31,10 +29,7 @@ class DioClient {
     return DioClient._fromOptions(_options, interceptors);
   }
 
-  Future<Response<T>> get<T>(
-    String path, {
-    Map<String, dynamic>? queryParameters,
-  }) {
+  Future<Response<T>> get<T>(String path, {Map<String, dynamic>? queryParameters}) {
     return _run(() => _dio.get<T>(path, queryParameters: queryParameters));
   }
 
@@ -70,16 +65,12 @@ class DioClient {
       case DioExceptionType.transformTimeout:
       case DioExceptionType.cancel:
       case DioExceptionType.badCertificate:
-        return const CancellationException(
-          ErrorTextKey('core.errors.requestCancelled'),
-        );
+        return const CancellationException(ErrorTextKey('core.errors.requestCancelled'));
       case DioExceptionType.badResponse:
         return _handleBadResponse(e);
       case DioExceptionType.connectionError:
       case DioExceptionType.unknown:
-        return const InternalException(
-          ErrorTextKey('core.errors.unexpectedNetworkError'),
-        );
+        return const InternalException(ErrorTextKey('core.errors.unexpectedNetworkError'));
     }
   }
 
@@ -87,18 +78,10 @@ class DioClient {
     final response = e.response;
     final data = response?.data;
     final statusCode = response?.statusCode;
-    if (statusCode != null &&
-        statusCode >= 400 &&
-        statusCode < 500 &&
-        data is Map<String, dynamic>) {
+    if (statusCode != null && statusCode >= 400 && statusCode < 500 && data is Map<String, dynamic>) {
       try {
         final error = ApiErrorResponse.fromJson(data).error;
-        return ServerException(
-          statusCode: statusCode,
-          code: error.code,
-          message: error.message,
-          fields: error.fields,
-        );
+        return ServerException(statusCode: statusCode, code: error.code, message: error.message, fields: error.fields);
       } catch (_) {
         // Falls through: the body didn't match the API's error contract.
       }

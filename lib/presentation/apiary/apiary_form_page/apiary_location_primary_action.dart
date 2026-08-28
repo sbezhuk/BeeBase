@@ -17,7 +17,7 @@ final class _ApiaryLocationPrimaryAction extends StatelessWidget {
     final colors = context.colors;
     final radius = BorderRadius.circular(14);
     return Material(
-      color: colors.primary.withValues(alpha: 0.14),
+      color: colors.brand.primary.withValues(alpha: 0.14),
       borderRadius: radius,
       child: InkWell(
         borderRadius: radius,
@@ -34,19 +34,19 @@ final class _ApiaryLocationPrimaryAction extends StatelessWidget {
                         child: SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: colors.primary),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: colors.brand.primary),
                         ),
                       )
-                    : Icon(Icons.my_location, color: colors.primary),
+                    : Icon(Icons.my_location, color: colors.brand.primary),
               ),
               SizedBox(width: context.spacing.sm),
               Expanded(
                 child: Text(
                   label,
-                  style: context.textStyles.body.copyWith(fontFamily: AppFont.bold, color: colors.primaryDark),
+                  style: context.textStyles.body.copyWith(fontFamily: AppFont.bold, color: colors.brand.primaryDark),
                 ),
               ),
-              Icon(Icons.chevron_right, color: colors.primaryDark),
+              Icon(Icons.chevron_right, color: colors.brand.primaryDark),
             ],
           ),
         ),

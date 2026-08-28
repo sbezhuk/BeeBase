@@ -9,8 +9,7 @@ part 'api_error_response.g.dart';
 final class ApiErrorResponse {
   const ApiErrorResponse({required this.error});
 
-  factory ApiErrorResponse.fromJson(Map<String, dynamic> json) =>
-      _$ApiErrorResponseFromJson(json);
+  factory ApiErrorResponse.fromJson(Map<String, dynamic> json) => _$ApiErrorResponseFromJson(json);
 
   final ApiError error;
 

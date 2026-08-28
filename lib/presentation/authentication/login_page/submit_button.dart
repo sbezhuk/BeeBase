@@ -9,7 +9,11 @@ final class _SubmitButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<LoginCubit, LoginState>(
       builder: (context, state) {
-        return PrimaryButton(label: 'authentication.login.submit'.tr(), isLoading: state is LoginLoading, onPressed: onPressed);
+        return PrimaryButton(
+          label: 'authentication.login.submit'.tr(),
+          isLoading: state is LoginLoading,
+          onPressed: onPressed,
+        );
       },
     );
   }

@@ -14,9 +14,7 @@ abstract class Repository {
     try {
       return Right(await action());
     } on ServerException catch (e) {
-      return Left(
-        ServerFailure(code: e.code, message: e.message, fields: e.fields),
-      );
+      return Left(ServerFailure(code: e.code, message: e.message, fields: e.fields));
     } on CancellationException catch (e) {
       return Left(CancellationFailure(e.message));
     } on InternalException catch (e) {

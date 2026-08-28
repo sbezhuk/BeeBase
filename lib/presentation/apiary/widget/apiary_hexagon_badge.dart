@@ -18,9 +18,9 @@ final class ApiaryHexagonBadge extends StatelessWidget {
       width: size,
       height: size,
       child: CustomPaint(
-        painter: ApiaryHexagonPainter(color: colors.honeyCream, borderColor: colors.honeyBorder),
+        painter: ApiaryHexagonPainter(color: colors.honey.cream, borderColor: colors.honey.border),
         child: Center(
-          child: Icon(icon, color: colors.primaryDark, size: size * 0.5),
+          child: Icon(icon, color: colors.brand.primaryDark, size: size * 0.5),
         ),
       ),
     );

@@ -30,7 +30,11 @@ class LocationService {
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       );
       return Right(
-        ResolvedLocation(address: await _resolveAddress(position), latitude: position.latitude, longitude: position.longitude),
+        ResolvedLocation(
+          address: await _resolveAddress(position),
+          latitude: position.latitude,
+          longitude: position.longitude,
+        ),
       );
     } catch (_) {
       return const Left(LocationUnavailableFailure());

@@ -12,8 +12,7 @@ final class SessionResponse {
     required this.user,
   });
 
-  factory SessionResponse.fromJson(Map<String, dynamic> json) =>
-      _$SessionResponseFromJson(json);
+  factory SessionResponse.fromJson(Map<String, dynamic> json) => _$SessionResponseFromJson(json);
 
   @JsonKey(name: 'access_token')
   final String accessToken;

@@ -8,36 +8,23 @@ import 'package:beebase/domain/repositories/authentication_repository.dart';
 import 'package:beebase/domain/repositories/repository.dart';
 import 'package:beebase/utils/either.dart';
 
-final class AuthenticationRepositoryImpl extends Repository
-    implements AuthenticationRepository {
-  AuthenticationRepositoryImpl({
-    required this.dataSource,
-    required this.tokenStorage,
-  });
+final class AuthenticationRepositoryImpl extends Repository implements AuthenticationRepository {
+  AuthenticationRepositoryImpl({required this.dataSource, required this.tokenStorage});
 
   final IAuthenticationDataSource dataSource;
   final TokenStorage tokenStorage;
 
   @override
-  Future<Either<Failure, User>> register({
-    required String email,
-    required String password,
-  }) {
+  Future<Either<Failure, User>> register({required String email, required String password}) {
     return on(() async {
-      final session = await dataSource.register(
-        email: email,
-        password: password,
-      );
+      final session = await dataSource.register(email: email, password: password);
       await tokenStorage.saveAccessToken(session.accessToken);
       return session.user.toEntity();
     });
   }
 
   @override
-  Future<Either<Failure, User>> login({
-    required String email,
-    required String password,
-  }) {
+  Future<Either<Failure, User>> login({required String email, required String password}) {
     return on(() async {
       final session = await dataSource.login(email: email, password: password);
       await tokenStorage.saveAccessToken(session.accessToken);
@@ -54,9 +41,7 @@ final class AuthenticationRepositoryImpl extends Repository
   Future<Either<Failure, User>> restoreSession() async {
     final hasSession = await tokenStorage.hasAccessToken();
     if (!hasSession) {
-      return const Left(
-        InternalFailure(ErrorTextKey('core.errors.noActiveSession')),
-      );
+      return const Left(InternalFailure(ErrorTextKey('core.errors.noActiveSession')));
     }
     return getCurrentUser();
   }

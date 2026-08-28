@@ -6,8 +6,7 @@ part 'login_request.g.dart';
 final class LoginRequest {
   const LoginRequest({required this.email, required this.password});
 
-  factory LoginRequest.fromJson(Map<String, dynamic> json) =>
-      _$LoginRequestFromJson(json);
+  factory LoginRequest.fromJson(Map<String, dynamic> json) => _$LoginRequestFromJson(json);
 
   final String email;
   final String password;

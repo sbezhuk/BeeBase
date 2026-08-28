@@ -63,7 +63,10 @@ Future<void> initDi() async {
     () => AuthenticationInterceptor(tokenStorage: di(), tokenRefresher: di(), sessionService: di()),
   );
   di.registerLazySingleton<InterceptorResolver>(
-    () => InterceptorResolver({CookieManager: di<CookieManager>(), AuthenticationInterceptor: di<AuthenticationInterceptor>()}),
+    () => InterceptorResolver({
+      CookieManager: di<CookieManager>(),
+      AuthenticationInterceptor: di<AuthenticationInterceptor>(),
+    }),
   );
   // #endregion
 
@@ -75,7 +78,9 @@ Future<void> initDi() async {
   // #endregion
 
   // #region Repositories
-  di.registerLazySingleton<AuthenticationRepository>(() => AuthenticationRepositoryImpl(dataSource: di(), tokenStorage: di()));
+  di.registerLazySingleton<AuthenticationRepository>(
+    () => AuthenticationRepositoryImpl(dataSource: di(), tokenStorage: di()),
+  );
   di.registerLazySingleton<ApiaryRepositoryImpl>(() => ApiaryRepositoryImpl(dataSource: di()));
   di.registerLazySingleton<IApiaryReader>(() => di<ApiaryRepositoryImpl>());
   di.registerLazySingleton<IApiaryWriter>(() => di<ApiaryRepositoryImpl>());

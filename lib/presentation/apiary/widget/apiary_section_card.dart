@@ -21,7 +21,7 @@ final class ApiarySectionCard extends StatelessWidget {
         : Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label!.toUpperCase(), style: context.textStyles.label.copyWith(color: colors.honeyMuted)),
+              Text(label!.toUpperCase(), style: context.textStyles.label.copyWith(color: colors.honey.muted)),
               SizedBox(height: context.spacing.sm),
               child,
             ],
@@ -29,7 +29,7 @@ final class ApiarySectionCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(context.spacing.md),
-      decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: colors.surface.card, borderRadius: BorderRadius.circular(16)),
       child: content,
     );
   }

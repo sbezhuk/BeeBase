@@ -14,13 +14,9 @@ part 'mixin/apiary_delete_emitter.dart';
 /// Owns [ApiaryDetailsPage]'s delete action. The apiary itself is handed in
 /// at construction (the caller already has it, e.g. from the list) so this
 /// cubit only needs to model the delete request's lifecycle.
-final class ApiaryDeleteCubit extends Cubit<ApiaryDeleteState>
-    with ApiaryDeleteEmitter {
-  ApiaryDeleteCubit({
-    required this.writer,
-    required this.apiary,
-    required this.refreshNotifier,
-  }) : super(const ApiaryDeleteInitial());
+final class ApiaryDeleteCubit extends Cubit<ApiaryDeleteState> with ApiaryDeleteEmitter {
+  ApiaryDeleteCubit({required this.writer, required this.apiary, required this.refreshNotifier})
+    : super(const ApiaryDeleteInitial());
 
   final IApiaryWriter writer;
   final Apiary apiary;

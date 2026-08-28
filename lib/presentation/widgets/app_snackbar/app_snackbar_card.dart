@@ -39,10 +39,16 @@ final class AppSnackBarCard extends StatelessWidget {
       child: Container(
         constraints: const BoxConstraints(minHeight: 56),
         decoration: BoxDecoration(
-          color: colors.background,
+          color: colors.surface.background,
           borderRadius: BorderRadius.circular(cardRadius),
-          border: Border.all(color: colors.honeyBorder),
-          boxShadow: [BoxShadow(color: colors.primaryDark.withValues(alpha: 0.25), blurRadius: 20, offset: const Offset(0, 10))],
+          border: Border.all(color: colors.honey.border),
+          boxShadow: [
+            BoxShadow(
+              color: colors.brand.primaryDark.withValues(alpha: 0.25),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
         clipBehavior: Clip.antiAlias,
         child: IntrinsicHeight(
@@ -66,7 +72,7 @@ final class AppSnackBarCard extends StatelessWidget {
                 ),
               IconButton(
                 onPressed: onDismiss,
-                icon: Icon(Icons.close, color: colors.honeyMuted, size: 20),
+                icon: Icon(Icons.close, color: colors.honey.muted, size: 20),
                 tooltip: 'core.snackbar.dismiss'.tr(),
               ),
             ],

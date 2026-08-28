@@ -10,7 +10,10 @@ import 'package:dio/dio.dart' as dio;
 final class ApiaryDataSource implements IApiaryDataSource {
   ApiaryDataSource({required DioClient dioClient, required InterceptorResolver resolver})
     : _dioClient = dioClient.copyWith(
-        interceptors: [resolver.resolve<AuthenticationInterceptor>(), dio.LogInterceptor(requestBody: true, responseBody: true)],
+        interceptors: [
+          resolver.resolve<AuthenticationInterceptor>(),
+          dio.LogInterceptor(requestBody: true, responseBody: true),
+        ],
       );
 
   final DioClient _dioClient;

@@ -28,7 +28,7 @@ final class _ApiaryListEmptyView extends StatelessWidget {
             SizedBox(height: context.spacing.sm),
             Text(
               'apiary.list.emptySubtitle'.tr(),
-              style: context.textStyles.body.copyWith(color: colors.textSecondary),
+              style: context.textStyles.body.copyWith(color: colors.text.secondary),
               textAlign: TextAlign.center,
             ),
           ],

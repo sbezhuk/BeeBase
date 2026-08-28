@@ -31,7 +31,11 @@ final class MapboxStaticHelper {
 
     final path = '/styles/v1/$_username/$_styleId/static/$overlay/$viewport/${width}x$height$retinaSuffix';
 
-    final uri = Uri.https(_baseUrl, path, {'access_token': AppConfig.mapboxPublicKey, 'attribution': 'false', 'logo': 'false'});
+    final uri = Uri.https(_baseUrl, path, {
+      'access_token': AppConfig.mapboxPublicKey,
+      'attribution': 'false',
+      'logo': 'false',
+    });
 
     return uri.toString();
   }

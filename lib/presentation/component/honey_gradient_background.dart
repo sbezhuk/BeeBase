@@ -16,7 +16,7 @@ final class HoneyGradientBackground extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [colors.honeyCream, colors.honeyCreamLight, colors.background],
+          colors: [colors.honey.cream, colors.honey.creamLight, colors.surface.background],
           stops: const [0, 0.42, 1],
         ),
       ),

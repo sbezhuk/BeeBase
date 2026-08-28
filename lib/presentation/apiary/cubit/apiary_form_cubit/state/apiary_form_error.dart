@@ -6,9 +6,7 @@ final class ApiaryFormError extends ApiaryFormState {
   final Failure failure;
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is ApiaryFormError && other.failure == failure);
+  bool operator ==(Object other) => identical(this, other) || (other is ApiaryFormError && other.failure == failure);
 
   @override
   int get hashCode => failure.hashCode;

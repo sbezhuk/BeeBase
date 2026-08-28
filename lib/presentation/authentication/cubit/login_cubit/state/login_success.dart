@@ -6,8 +6,7 @@ final class LoginSuccess extends LoginState {
   final User user;
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) || (other is LoginSuccess && other.user == user);
+  bool operator ==(Object other) => identical(this, other) || (other is LoginSuccess && other.user == user);
 
   @override
   int get hashCode => user.hashCode;

@@ -33,7 +33,7 @@ final class _ApiaryListTile extends StatelessWidget {
                   SizedBox(height: context.spacing.xs),
                   Row(
                     children: [
-                      Icon(Icons.place_outlined, size: 14, color: colors.textSecondary),
+                      Icon(Icons.place_outlined, size: 14, color: colors.text.secondary),
                       SizedBox(width: context.spacing.xs),
                       Expanded(
                         child: Text(
@@ -53,7 +53,7 @@ final class _ApiaryListTile extends StatelessWidget {
                       child: _ApiaryListStat(
                         icon: Icons.hive_outlined,
                         text: 'apiary.list.hivesCount'.tr(namedArgs: {'count': '${apiary.mockHiveCount}'}),
-                        color: colors.textSecondary,
+                        color: colors.text.secondary,
                       ),
                     ),
                     SizedBox(width: context.spacing.md),
@@ -63,7 +63,7 @@ final class _ApiaryListTile extends StatelessWidget {
                         child: _ApiaryListStat(
                           icon: Icons.calendar_today_outlined,
                           text: 'apiary.list.lastVisit'.tr(namedArgs: {'date': apiary.updatedAt.toApiaryDisplayDate()}),
-                          color: colors.textSecondary,
+                          color: colors.text.secondary,
                         ),
                       ),
                     ),

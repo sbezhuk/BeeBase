@@ -50,9 +50,9 @@ final class _ApiaryFormFieldState extends State<_ApiaryFormField> {
       builder: (field) {
         final normalBorder = OutlineInputBorder(
           borderRadius: radius,
-          borderSide: BorderSide(color: colors.honeyBorder),
+          borderSide: BorderSide(color: colors.honey.border),
         );
-        final errorBorder = normalBorder.copyWith(borderSide: BorderSide(color: colors.error));
+        final errorBorder = normalBorder.copyWith(borderSide: BorderSide(color: colors.status.error));
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -64,18 +64,24 @@ final class _ApiaryFormFieldState extends State<_ApiaryFormField> {
               decoration: BoxDecoration(
                 borderRadius: radius,
                 boxShadow: _isFocused
-                    ? [BoxShadow(color: colors.primary.withValues(alpha: 0.2), blurRadius: 18, offset: const Offset(0, 8))]
+                    ? [
+                        BoxShadow(
+                          color: colors.brand.primary.withValues(alpha: 0.2),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
+                        ),
+                      ]
                     : const [],
               ),
               child: TextField(
                 controller: widget.controller,
                 focusNode: _focusNode,
                 style: context.textStyles.body,
-                cursorColor: colors.primary,
+                cursorColor: colors.brand.primary,
                 decoration: InputDecoration(
                   hintText: widget.hintText,
                   filled: true,
-                  fillColor: colors.surface,
+                  fillColor: colors.surface.card,
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: context.spacing.md,
                     vertical: context.spacing.sm + context.spacing.xs,
@@ -83,8 +89,8 @@ final class _ApiaryFormFieldState extends State<_ApiaryFormField> {
                   border: field.hasError ? errorBorder : normalBorder,
                   enabledBorder: field.hasError ? errorBorder : normalBorder,
                   focusedBorder: field.hasError
-                      ? errorBorder.copyWith(borderSide: BorderSide(color: colors.error, width: 1.5))
-                      : normalBorder.copyWith(borderSide: BorderSide(color: colors.primary, width: 1.5)),
+                      ? errorBorder.copyWith(borderSide: BorderSide(color: colors.status.error, width: 1.5))
+                      : normalBorder.copyWith(borderSide: BorderSide(color: colors.brand.primary, width: 1.5)),
                 ),
                 onChanged: field.didChange,
               ),

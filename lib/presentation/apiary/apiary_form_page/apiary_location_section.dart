@@ -38,13 +38,19 @@ final class _ApiaryLocationSection extends StatelessWidget {
               SizedBox(height: context.spacing.xs),
               Text(
                 '${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)}',
-                style: context.textStyles.label.copyWith(color: colors.honeyMuted),
+                style: context.textStyles.label.copyWith(color: colors.honey.muted),
               ),
             ],
           ] else ...[
-            Text('apiary.form.location.notSet'.tr(), style: context.textStyles.body.copyWith(color: colors.textSecondary)),
+            Text(
+              'apiary.form.location.notSet'.tr(),
+              style: context.textStyles.body.copyWith(color: colors.text.secondary),
+            ),
             SizedBox(height: context.spacing.xs),
-            Text('apiary.form.location.optionalHint'.tr(), style: context.textStyles.label.copyWith(color: colors.honeyMuted)),
+            Text(
+              'apiary.form.location.optionalHint'.tr(),
+              style: context.textStyles.label.copyWith(color: colors.honey.muted),
+            ),
           ],
           SizedBox(height: context.spacing.md),
           _ApiaryLocationPrimaryAction(

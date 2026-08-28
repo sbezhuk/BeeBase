@@ -3,15 +3,9 @@ import 'package:beebase/domain/entity/user.dart';
 import 'package:beebase/utils/either.dart';
 
 abstract interface class AuthenticationRepository {
-  Future<Either<Failure, User>> register({
-    required String email,
-    required String password,
-  });
+  Future<Either<Failure, User>> register({required String email, required String password});
 
-  Future<Either<Failure, User>> login({
-    required String email,
-    required String password,
-  });
+  Future<Either<Failure, User>> login({required String email, required String password});
 
   Future<Either<Failure, User>> getCurrentUser();
 

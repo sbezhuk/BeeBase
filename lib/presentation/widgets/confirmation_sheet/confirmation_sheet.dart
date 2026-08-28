@@ -60,7 +60,7 @@ final class ConfirmationSheet extends StatelessWidget {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final spacing = context.spacing;
-    final accent = isDestructive ? colors.error : colors.primary;
+    final accent = isDestructive ? colors.status.error : colors.brand.primary;
 
     return SafeArea(
       top: false,
@@ -68,10 +68,12 @@ final class ConfirmationSheet extends StatelessWidget {
         margin: EdgeInsets.all(spacing.sm),
         padding: EdgeInsets.fromLTRB(spacing.lg, spacing.sm, spacing.lg, spacing.lg),
         decoration: BoxDecoration(
-          color: colors.background,
+          color: colors.surface.background,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: colors.honeyBorder),
-          boxShadow: [BoxShadow(color: colors.hiveBrown.withValues(alpha: 0.18), blurRadius: 24, offset: const Offset(0, 12))],
+          border: Border.all(color: colors.honey.border),
+          boxShadow: [
+            BoxShadow(color: colors.honey.brown.withValues(alpha: 0.18), blurRadius: 24, offset: const Offset(0, 12)),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -80,7 +82,7 @@ final class ConfirmationSheet extends StatelessWidget {
               width: 36,
               height: 4,
               margin: EdgeInsets.only(bottom: spacing.md),
-              decoration: BoxDecoration(color: colors.honeyBorder, borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(color: colors.honey.border, borderRadius: BorderRadius.circular(2)),
             ),
             Container(
               width: 48,
@@ -94,7 +96,7 @@ final class ConfirmationSheet extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: textStyles.body.copyWith(color: colors.textSecondary),
+              style: textStyles.body.copyWith(color: colors.text.secondary),
             ),
             SizedBox(height: spacing.lg),
             _ConfirmationSheetButton(
@@ -110,7 +112,7 @@ final class ConfirmationSheet extends StatelessWidget {
             _ConfirmationSheetButton(
               label: cancelLabel,
               filled: false,
-              color: colors.textPrimary,
+              color: colors.text.primary,
               onPressed: () => Navigator.of(context).pop(),
             ),
           ],

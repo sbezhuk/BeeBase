@@ -15,7 +15,7 @@ final class _ApiaryDetailsInfoSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label.toUpperCase(), style: context.textStyles.label.copyWith(color: context.colors.honeyMuted)),
+        Text(label.toUpperCase(), style: context.textStyles.label.copyWith(color: context.colors.honey.muted)),
         SizedBox(height: context.spacing.sm),
         child,
       ],

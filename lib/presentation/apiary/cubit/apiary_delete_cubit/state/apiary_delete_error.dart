@@ -6,9 +6,7 @@ final class ApiaryDeleteError extends ApiaryDeleteState {
   final Failure failure;
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is ApiaryDeleteError && other.failure == failure);
+  bool operator ==(Object other) => identical(this, other) || (other is ApiaryDeleteError && other.failure == failure);
 
   @override
   int get hashCode => failure.hashCode;

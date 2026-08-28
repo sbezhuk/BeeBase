@@ -9,8 +9,8 @@ enum AppSnackBarVariant { neutral, success, error }
 
 extension AppSnackBarVariantX on AppSnackBarVariant {
   Color accentColor(AppColor colors) => switch (this) {
-    AppSnackBarVariant.neutral => colors.honeyMuted,
-    AppSnackBarVariant.success => colors.primary,
-    AppSnackBarVariant.error => colors.error,
+    AppSnackBarVariant.neutral => colors.honey.muted,
+    AppSnackBarVariant.success => colors.brand.primary,
+    AppSnackBarVariant.error => colors.status.error,
   };
 }

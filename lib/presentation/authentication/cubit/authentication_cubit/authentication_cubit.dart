@@ -16,8 +16,11 @@ part 'mixin/authentication_emitter.dart';
 /// widget, and any authenticated screen all need to observe and react to the
 /// same session.
 class AuthenticationCubit extends Cubit<AuthenticationState> with AuthenticationEmitter {
-  AuthenticationCubit({required this.repository, required SessionService sessionService}) : super(const AuthenticationUnknown()) {
-    _sessionExpiredSubscription = sessionService.onSessionExpired.listen((_) => emit(const AuthenticationUnauthenticated()));
+  AuthenticationCubit({required this.repository, required SessionService sessionService})
+    : super(const AuthenticationUnknown()) {
+    _sessionExpiredSubscription = sessionService.onSessionExpired.listen(
+      (_) => emit(const AuthenticationUnauthenticated()),
+    );
   }
 
   final AuthenticationRepository repository;

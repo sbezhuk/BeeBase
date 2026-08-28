@@ -18,9 +18,12 @@ final class _ApiaryDeleteLink extends StatelessWidget {
             ? SizedBox(
                 width: 18,
                 height: 18,
-                child: CircularProgressIndicator.adaptive(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(colors.error)),
+                child: CircularProgressIndicator.adaptive(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation(colors.status.error),
+                ),
               )
-            : Text('apiary.details.delete'.tr(), style: context.textStyles.action.copyWith(color: colors.error)),
+            : Text('apiary.details.delete'.tr(), style: context.textStyles.action.copyWith(color: colors.status.error)),
       ),
     );
   }

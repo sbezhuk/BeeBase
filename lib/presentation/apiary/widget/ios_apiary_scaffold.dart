@@ -72,7 +72,7 @@ final class IosApiaryScaffold extends StatelessWidget {
     // The slab-serif used for every other title in the app (see AppFont) —
     // GlassAppBar/CupertinoNavigationBar otherwise default to the system
     // font, which reads as generic rather than branded.
-    final titleStyle = TextStyle(fontFamily: AppFont.titleBold, fontSize: 19, color: colors.textPrimary);
+    final titleStyle = TextStyle(fontFamily: AppFont.titleBold, fontSize: 19, color: colors.text.primary);
 
     final Widget appBarSliver;
     if (!showBackButton) {
@@ -80,7 +80,12 @@ final class IosApiaryScaffold extends StatelessWidget {
         child: SafeArea(
           bottom: false,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(context.spacing.md, context.spacing.sm, context.spacing.md, context.spacing.sm),
+            padding: EdgeInsets.fromLTRB(
+              context.spacing.md,
+              context.spacing.sm,
+              context.spacing.md,
+              context.spacing.sm,
+            ),
             child: Text(
               title,
               style: titleStyle.copyWith(fontSize: 30, height: 1.1),
@@ -108,7 +113,7 @@ final class IosApiaryScaffold extends StatelessWidget {
             label: 'apiary.common.back'.tr(),
             child: GlassButton(
               icon: const Icon(CupertinoIcons.back),
-              iconColor: colors.primary,
+              iconColor: colors.brand.primary,
               onTap: onBack,
               width: 36,
               height: 36,
@@ -123,7 +128,7 @@ final class IosApiaryScaffold extends StatelessWidget {
                     label: action.label,
                     child: GlassButton(
                       icon: Icon(action.cupertinoIcon),
-                      iconColor: colors.primary,
+                      iconColor: colors.brand.primary,
                       onTap: action.onPressed,
                       width: 36,
                       height: 36,

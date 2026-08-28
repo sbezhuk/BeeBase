@@ -13,7 +13,7 @@ final class _ApiaryDetailsBody extends StatelessWidget {
     final hasDescription = apiary.description != null && apiary.description!.isNotEmpty;
     final lat = apiary.lat;
     final lon = apiary.lon;
-    Widget sectionDivider() => Divider(color: colors.border, height: context.spacing.xl);
+    Widget sectionDivider() => Divider(color: colors.surface.border, height: context.spacing.xl);
     return SliverPadding(
       padding: EdgeInsets.only(bottom: context.spacing.lg),
       sliver: SliverToBoxAdapter(
@@ -32,7 +32,10 @@ final class _ApiaryDetailsBody extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('apiary.details.sectionLabel'.tr(), style: context.textStyles.label.copyWith(color: colors.honeyMuted)),
+                  Text(
+                    'apiary.details.sectionLabel'.tr(),
+                    style: context.textStyles.label.copyWith(color: colors.honey.muted),
+                  ),
                   SizedBox(height: context.spacing.xs),
                   Text(apiary.name, style: context.textStyles.title),
                   SizedBox(height: context.spacing.sm),
@@ -52,7 +55,7 @@ final class _ApiaryDetailsBody extends StatelessWidget {
                             SizedBox(height: context.spacing.xs),
                             Text(
                               '${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)}',
-                              style: context.textStyles.label.copyWith(color: colors.honeyMuted),
+                              style: context.textStyles.label.copyWith(color: colors.honey.muted),
                             ),
                           ],
                         ],

@@ -7,8 +7,7 @@ final class AuthenticationAuthenticated extends AuthenticationState {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is AuthenticationAuthenticated && other.user == user);
+      identical(this, other) || (other is AuthenticationAuthenticated && other.user == user);
 
   @override
   int get hashCode => user.hashCode;

@@ -12,18 +12,12 @@ part 'state/login_error.dart';
 part 'mixin/login_emitter.dart';
 
 final class LoginCubit extends Cubit<LoginState> with LoginEmitter {
-  LoginCubit({required this.repository, required this.authenticationCubit})
-    : super(const LoginInitial());
+  LoginCubit({required this.repository, required this.authenticationCubit}) : super(const LoginInitial());
 
   final AuthenticationRepository repository;
   final AuthenticationCubit authenticationCubit;
 
   Future<void> login({required String email, required String password}) {
-    return emitLogin(
-      repository,
-      authenticationCubit,
-      email: email,
-      password: password,
-    );
+    return emitLogin(repository, authenticationCubit, email: email, password: password);
   }
 }

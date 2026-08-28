@@ -6,9 +6,7 @@ final class ApiaryFormSuccess extends ApiaryFormState {
   final Apiary apiary;
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is ApiaryFormSuccess && other.apiary == apiary);
+  bool operator ==(Object other) => identical(this, other) || (other is ApiaryFormSuccess && other.apiary == apiary);
 
   @override
   int get hashCode => apiary.hashCode;

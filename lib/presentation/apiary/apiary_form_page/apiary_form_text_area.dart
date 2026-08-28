@@ -54,7 +54,13 @@ final class _ApiaryFormTextAreaState extends State<_ApiaryFormTextArea> {
           decoration: BoxDecoration(
             borderRadius: radius,
             boxShadow: _isFocused
-                ? [BoxShadow(color: colors.primary.withValues(alpha: 0.2), blurRadius: 18, offset: const Offset(0, 8))]
+                ? [
+                    BoxShadow(
+                      color: colors.brand.primary.withValues(alpha: 0.2),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
+                  ]
                 : const [],
           ),
           child: TextFormField(
@@ -62,23 +68,23 @@ final class _ApiaryFormTextAreaState extends State<_ApiaryFormTextArea> {
             focusNode: _focusNode,
             maxLines: 4,
             style: context.textStyles.body,
-            cursorColor: colors.primary,
+            cursorColor: colors.brand.primary,
             decoration: InputDecoration(
               hintText: widget.hintText,
               filled: true,
-              fillColor: colors.surface,
+              fillColor: colors.surface.card,
               contentPadding: EdgeInsets.all(context.spacing.md),
               border: OutlineInputBorder(
                 borderRadius: radius,
-                borderSide: BorderSide(color: colors.honeyBorder),
+                borderSide: BorderSide(color: colors.honey.border),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: radius,
-                borderSide: BorderSide(color: colors.honeyBorder),
+                borderSide: BorderSide(color: colors.honey.border),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: radius,
-                borderSide: BorderSide(color: colors.primary, width: 1.5),
+                borderSide: BorderSide(color: colors.brand.primary, width: 1.5),
               ),
             ),
           ),

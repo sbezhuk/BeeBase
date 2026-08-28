@@ -2,13 +2,7 @@ import 'package:flutter/material.dart';
 
 @immutable
 final class Spacing extends ThemeExtension<Spacing> {
-  const Spacing({
-    required this.xs,
-    required this.sm,
-    required this.md,
-    required this.lg,
-    required this.xl,
-  });
+  const Spacing({required this.xs, required this.sm, required this.md, required this.lg, required this.xl});
 
   const Spacing.standard() : this(xs: 4, sm: 8, md: 16, lg: 24, xl: 32);
 
@@ -19,20 +13,8 @@ final class Spacing extends ThemeExtension<Spacing> {
   final double xl;
 
   @override
-  Spacing copyWith({
-    double? xs,
-    double? sm,
-    double? md,
-    double? lg,
-    double? xl,
-  }) {
-    return Spacing(
-      xs: xs ?? this.xs,
-      sm: sm ?? this.sm,
-      md: md ?? this.md,
-      lg: lg ?? this.lg,
-      xl: xl ?? this.xl,
-    );
+  Spacing copyWith({double? xs, double? sm, double? md, double? lg, double? xl}) {
+    return Spacing(xs: xs ?? this.xs, sm: sm ?? this.sm, md: md ?? this.md, lg: lg ?? this.lg, xl: xl ?? this.xl);
   }
 
   @override

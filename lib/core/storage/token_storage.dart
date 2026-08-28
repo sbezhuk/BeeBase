@@ -10,8 +10,7 @@ class TokenStorage {
 
   final SecureStorage secureStorage;
 
-  Future<void> saveAccessToken(String accessToken) =>
-      secureStorage.write(_accessTokenKey, accessToken);
+  Future<void> saveAccessToken(String accessToken) => secureStorage.write(_accessTokenKey, accessToken);
 
   Future<String?> accessToken() => secureStorage.read(_accessTokenKey);
 

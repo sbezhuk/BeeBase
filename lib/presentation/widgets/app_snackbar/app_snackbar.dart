@@ -21,7 +21,13 @@ abstract final class AppSnackBar {
   }) {
     AppSnackBarController.enqueue(
       context,
-      AppSnackBarEntry(message: message, variant: variant, actionLabel: actionLabel, onAction: onAction, duration: duration),
+      AppSnackBarEntry(
+        message: message,
+        variant: variant,
+        actionLabel: actionLabel,
+        onAction: onAction,
+        duration: duration,
+      ),
     );
   }
 }

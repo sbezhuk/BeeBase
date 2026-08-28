@@ -16,7 +16,9 @@ final class ProfilePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('profile.page.title'.tr()),
-        actions: [IconButton(icon: const Icon(Icons.logout), onPressed: () => context.read<AuthenticationCubit>().logout())],
+        actions: [
+          IconButton(icon: const Icon(Icons.logout), onPressed: () => context.read<AuthenticationCubit>().logout()),
+        ],
       ),
       body: Stack(
         children: [

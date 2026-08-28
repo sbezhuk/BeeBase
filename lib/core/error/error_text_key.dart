@@ -10,8 +10,7 @@ final class ErrorTextKey extends ErrorText {
   String resolve() => key.tr();
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) || (other is ErrorTextKey && other.key == key);
+  bool operator ==(Object other) => identical(this, other) || (other is ErrorTextKey && other.key == key);
 
   @override
   int get hashCode => key.hashCode;

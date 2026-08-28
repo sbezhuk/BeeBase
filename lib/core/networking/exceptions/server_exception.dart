@@ -4,12 +4,7 @@
 /// `ErrorText.server` decides whether [code] resolves it to a localised key
 /// once this becomes a `ServerFailure`.
 final class ServerException implements Exception {
-  const ServerException({
-    required this.statusCode,
-    required this.code,
-    required this.message,
-    this.fields,
-  });
+  const ServerException({required this.statusCode, required this.code, required this.message, this.fields});
 
   final int statusCode;
   final String code;

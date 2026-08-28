@@ -46,9 +46,8 @@ final class _ApplicationState extends State<Application> {
     return BlocProvider.value(
       value: di<AuthenticationCubit>(),
       child: MaterialApp.router(
-        theme: _buildTheme(const AppColor.light(), Brightness.light),
-        darkTheme: _buildTheme(const AppColor.dark(), Brightness.dark),
-        themeMode: ThemeMode.system,
+        theme: _buildTheme(const AppColor.dark(), Brightness.dark),
+        themeMode: ThemeMode.dark,
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,
         locale: context.locale,
@@ -62,19 +61,19 @@ ThemeData _buildTheme(AppColor colors, Brightness brightness) {
   return ThemeData(
     brightness: brightness,
     fontFamily: AppFont.regular,
-    scaffoldBackgroundColor: colors.background,
+    scaffoldBackgroundColor: colors.surface.background,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: colors.primary,
+      seedColor: colors.brand.primary,
       brightness: brightness,
-      primary: colors.primary,
-      error: colors.error,
-      surface: colors.surface,
+      primary: colors.brand.primary,
+      error: colors.status.error,
+      surface: colors.surface.card,
     ),
     extensions: [const Spacing.standard(), colors, AppTextStyles.fromColors(colors)],
     textSelectionTheme: TextSelectionThemeData(
-      cursorColor: colors.primary,
-      selectionColor: colors.primary.withValues(alpha: 0.3),
-      selectionHandleColor: colors.primary,
+      cursorColor: colors.brand.primary,
+      selectionColor: colors.brand.primary.withValues(alpha: 0.3),
+      selectionHandleColor: colors.brand.primary,
     ),
   );
 }

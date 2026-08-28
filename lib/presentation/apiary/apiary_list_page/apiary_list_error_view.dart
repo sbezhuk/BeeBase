@@ -13,7 +13,7 @@ final class _ApiaryListErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, size: 48, color: context.colors.error),
+            Icon(Icons.error_outline, size: 48, color: context.colors.status.error),
             SizedBox(height: context.spacing.md),
             Text(failure.message.resolve(), style: context.textStyles.body, textAlign: TextAlign.center),
             SizedBox(height: context.spacing.lg),

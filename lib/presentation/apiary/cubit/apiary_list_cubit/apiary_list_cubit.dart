@@ -12,10 +12,8 @@ part 'state/apiary_list_loaded.dart';
 part 'state/apiary_list_error.dart';
 part 'mixin/apiary_list_emitter.dart';
 
-final class ApiaryListCubit extends Cubit<ApiaryListState>
-    with ApiaryListEmitter {
-  ApiaryListCubit({required this.reader, required this.refreshNotifier})
-    : super(const ApiaryListLoading()) {
+final class ApiaryListCubit extends Cubit<ApiaryListState> with ApiaryListEmitter {
+  ApiaryListCubit({required this.reader, required this.refreshNotifier}) : super(const ApiaryListLoading()) {
     _refreshSubscription = refreshNotifier.onChanged.listen((_) => refresh());
   }
 
