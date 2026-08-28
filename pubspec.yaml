@@ -25,6 +25,8 @@ dependencies:
   intl: ^0.20.2
   liquid_glass_widgets:
     path: plugins/liquid_glass_widgets
+  geolocator: ^14.0.2
+  geocoding: ^5.0.0
 
 dev_dependencies:
   flutter_test:

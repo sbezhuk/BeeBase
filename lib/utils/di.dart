@@ -1,6 +1,7 @@
 import 'package:beebase/core/networking/http/dio_client.dart';
 import 'package:beebase/core/networking/http/token_refresher.dart';
 import 'package:beebase/core/networking/interceptors/authentication_interceptor.dart';
+import 'package:beebase/core/location/location_service.dart';
 import 'package:beebase/core/networking/interceptors/interceptor_resolver.dart';
 import 'package:beebase/core/services/session_service.dart';
 import 'package:beebase/core/storage/secure_storage.dart';
@@ -35,24 +36,17 @@ final di = GetIt.instance;
 Future<void> initDi() async {
   // #region Core
   di.registerLazySingleton<SecureStorage>(() => const SecureStorage());
-  di.registerLazySingleton<TokenStorage>(
-    () => TokenStorage(secureStorage: di()),
-  );
+  di.registerLazySingleton<TokenStorage>(() => TokenStorage(secureStorage: di()));
   di.registerLazySingleton<SessionService>(() => SessionService());
-  di.registerLazySingleton<ApiaryListRefreshNotifier>(
-    ApiaryListRefreshNotifier.new,
-  );
+  di.registerLazySingleton<LocationService>(LocationService.new);
+  di.registerLazySingleton<ApiaryListRefreshNotifier>(ApiaryListRefreshNotifier.new);
   // #endregion
 
   // #region External
-  di.registerFactory<DioClient>(
-    () => DioClient(baseUrl: AppConfig.apiEndPoint),
-  );
+  di.registerFactory<DioClient>(() => DioClient(baseUrl: AppConfig.apiEndPoint));
 
   final cookieDirectory = await getApplicationSupportDirectory();
-  final cookieJar = PersistCookieJar(
-    storage: FileStorage('${cookieDirectory.path}/.cookies'),
-  );
+  final cookieJar = PersistCookieJar(storage: FileStorage('${cookieDirectory.path}/.cookies'));
   di.registerLazySingleton<CookieJar>(() => cookieJar);
   di.registerLazySingleton<CookieManager>(() => CookieManager(di()));
   // #endregion
@@ -66,73 +60,42 @@ Future<void> initDi() async {
     ),
   );
   di.registerLazySingleton<AuthenticationInterceptor>(
-    () => AuthenticationInterceptor(
-      tokenStorage: di(),
-      tokenRefresher: di(),
-      sessionService: di(),
-    ),
+    () => AuthenticationInterceptor(tokenStorage: di(), tokenRefresher: di(), sessionService: di()),
   );
   di.registerLazySingleton<InterceptorResolver>(
-    () => InterceptorResolver({
-      CookieManager: di<CookieManager>(),
-      AuthenticationInterceptor: di<AuthenticationInterceptor>(),
-    }),
+    () => InterceptorResolver({CookieManager: di<CookieManager>(), AuthenticationInterceptor: di<AuthenticationInterceptor>()}),
   );
   // #endregion
 
   // #region Data Source
-  di.registerLazySingleton<AuthenticationDataSource>(
-    () => AuthenticationDataSource(dioClient: di(), resolver: di()),
-  );
-  di.registerLazySingleton<IAuthenticationDataSource>(
-    () => di<AuthenticationDataSource>(),
-  );
-  di.registerLazySingleton<ApiaryDataSource>(
-    () => ApiaryDataSource(dioClient: di(), resolver: di()),
-  );
+  di.registerLazySingleton<AuthenticationDataSource>(() => AuthenticationDataSource(dioClient: di(), resolver: di()));
+  di.registerLazySingleton<IAuthenticationDataSource>(() => di<AuthenticationDataSource>());
+  di.registerLazySingleton<ApiaryDataSource>(() => ApiaryDataSource(dioClient: di(), resolver: di()));
   di.registerLazySingleton<IApiaryDataSource>(() => di<ApiaryDataSource>());
   // #endregion
 
   // #region Repositories
-  di.registerLazySingleton<AuthenticationRepository>(
-    () => AuthenticationRepositoryImpl(dataSource: di(), tokenStorage: di()),
-  );
-  di.registerLazySingleton<ApiaryRepositoryImpl>(
-    () => ApiaryRepositoryImpl(dataSource: di()),
-  );
+  di.registerLazySingleton<AuthenticationRepository>(() => AuthenticationRepositoryImpl(dataSource: di(), tokenStorage: di()));
+  di.registerLazySingleton<ApiaryRepositoryImpl>(() => ApiaryRepositoryImpl(dataSource: di()));
   di.registerLazySingleton<IApiaryReader>(() => di<ApiaryRepositoryImpl>());
   di.registerLazySingleton<IApiaryWriter>(() => di<ApiaryRepositoryImpl>());
   // #endregion
 
   // #region Router
-  di.registerLazySingleton<AuthenticationGuard>(
-    () => AuthenticationGuard(tokenStorage: di()),
-  );
-  di.registerLazySingleton<AppRouter>(
-    () => AppRouter(authenticationGuard: di()),
-  );
+  di.registerLazySingleton<AuthenticationGuard>(() => AuthenticationGuard(tokenStorage: di()));
+  di.registerLazySingleton<AppRouter>(() => AppRouter(authenticationGuard: di()));
   // #endregion
 
   // #region Blocs
-  di.registerLazySingleton<AuthenticationCubit>(
-    () => AuthenticationCubit(repository: di(), sessionService: di()),
-  );
-  di.registerFactory<LoginCubit>(
-    () => LoginCubit(repository: di(), authenticationCubit: di()),
-  );
-  di.registerFactory<RegisterCubit>(
-    () => RegisterCubit(repository: di(), authenticationCubit: di()),
-  );
-  di.registerFactory<ApiaryListCubit>(
-    () => ApiaryListCubit(reader: di(), refreshNotifier: di()),
-  );
+  di.registerLazySingleton<AuthenticationCubit>(() => AuthenticationCubit(repository: di(), sessionService: di()));
+  di.registerFactory<LoginCubit>(() => LoginCubit(repository: di(), authenticationCubit: di()));
+  di.registerFactory<RegisterCubit>(() => RegisterCubit(repository: di(), authenticationCubit: di()));
+  di.registerFactory<ApiaryListCubit>(() => ApiaryListCubit(reader: di(), refreshNotifier: di()));
   di.registerFactoryParam<ApiaryFormCubit, Apiary?, void>(
-    (initial, _) =>
-        ApiaryFormCubit(writer: di(), refreshNotifier: di(), initial: initial),
+    (initial, _) => ApiaryFormCubit(writer: di(), refreshNotifier: di(), locationService: di(), initial: initial),
   );
   di.registerFactoryParam<ApiaryDeleteCubit, Apiary, void>(
-    (apiary, _) =>
-        ApiaryDeleteCubit(writer: di(), apiary: apiary, refreshNotifier: di()),
+    (apiary, _) => ApiaryDeleteCubit(writer: di(), apiary: apiary, refreshNotifier: di()),
   );
   // #endregion
 }

@@ -8,20 +8,13 @@ mixin ApiaryFormEmitter on Cubit<ApiaryFormState> {
     required String name,
     String? description,
     String? location,
+    double? lat,
+    double? lon,
   }) async {
     emit(const ApiaryFormLoading());
     final result = initial == null
-        ? await writer.createApiary(
-            name: name,
-            description: description,
-            location: location,
-          )
-        : await writer.updateApiary(
-            id: initial.id,
-            name: name,
-            description: description,
-            location: location,
-          );
+        ? await writer.createApiary(name: name, description: description, location: location, lat: lat, lon: lon)
+        : await writer.updateApiary(id: initial.id, name: name, description: description, location: location, lat: lat, lon: lon);
     result.fold((failure) => emit(ApiaryFormError(failure)), (apiary) {
       refreshNotifier.notify();
       emit(ApiaryFormSuccess(apiary));

@@ -1,8 +1,8 @@
 part of '../apiary_list_page.dart';
 
-/// Dispatches to the platform-appropriate tile presentation — a Liquid Glass
-/// row on iOS, a Material 3 card on Android — while both read the same
-/// [Apiary] and share the same navigation behavior.
+/// Full-bleed, edge-to-edge tile — no card chrome, no side margins, so the
+/// photo placeholder (and eventually a real photo) spans the whole width.
+/// Caption info sits below the photo, not overlaid on it.
 final class _ApiaryListTile extends StatelessWidget {
   const _ApiaryListTile({required this.apiary});
 
@@ -10,10 +10,71 @@ final class _ApiaryListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return switch (Theme.of(context).platform) {
-      TargetPlatform.iOS => _IosApiaryListTile(apiary: apiary, onTap: () => _openDetails(context)),
-      _ => _AndroidApiaryListTile(apiary: apiary, onTap: () => _openDetails(context)),
-    };
+    final colors = context.colors;
+    final hasLocation = apiary.location != null && apiary.location!.isNotEmpty;
+    return InkWell(
+      onTap: () => _openDetails(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ApiaryMapPhoto(
+            latitude: apiary.lat,
+            longitude: apiary.lon,
+            height: 200,
+            fallback: Container(height: 200, width: double.infinity, color: colors.photoPlaceholder),
+          ),
+          Padding(
+            padding: EdgeInsets.all(context.spacing.sm),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(apiary.name, style: context.textStyles.body, maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (hasLocation) ...[
+                  SizedBox(height: context.spacing.xs),
+                  Row(
+                    children: [
+                      Icon(Icons.place_outlined, size: 14, color: colors.textSecondary),
+                      SizedBox(width: context.spacing.xs),
+                      Expanded(
+                        child: Text(
+                          apiary.location!,
+                          style: context.textStyles.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                SizedBox(height: context.spacing.sm),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ApiaryListStat(
+                        icon: Icons.hive_outlined,
+                        text: 'apiary.list.hivesCount'.tr(namedArgs: {'count': '${apiary.mockHiveCount}'}),
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    SizedBox(width: context.spacing.md),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: _ApiaryListStat(
+                          icon: Icons.calendar_today_outlined,
+                          text: 'apiary.list.lastVisit'.tr(namedArgs: {'date': apiary.updatedAt.toApiaryDisplayDate()}),
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _openDetails(BuildContext context) {

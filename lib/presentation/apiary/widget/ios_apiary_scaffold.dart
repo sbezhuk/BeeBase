@@ -60,7 +60,12 @@ final class IosApiaryScaffold extends StatelessWidget {
               bottom: false,
               child: Padding(
                 padding: EdgeInsets.fromLTRB(context.spacing.md, context.spacing.sm, context.spacing.md, context.spacing.sm),
-                child: Text(title, style: titleStyle.copyWith(fontSize: 30, height: 1.1)),
+                child: Text(
+                  title,
+                  style: titleStyle.copyWith(fontSize: 30, height: 1.1),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
             Expanded(child: body),
@@ -82,7 +87,10 @@ final class IosApiaryScaffold extends StatelessWidget {
         // bar and the bottom safe area itself, which is simpler and correct.
         extendBody: false,
         appBar: GlassAppBar(
-          title: Text(title, style: titleStyle),
+          title: Padding(
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.md),
+            child: Text(title, style: titleStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
           buttonSettings: apiaryGlassSettings(colors),
           // iconColor is set explicitly on both nav buttons rather than left
           // to GlassButton's brightness-based default (plain black/white) —

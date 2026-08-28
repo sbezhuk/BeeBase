@@ -4,6 +4,7 @@ import 'package:beebase/presentation/apiary/cubit/apiary_form_cubit/apiary_form_
 import 'package:beebase/presentation/apiary/widget/apiary_scaffold.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_section_card.dart';
 import 'package:beebase/presentation/component/buttons/primary_button.dart';
+import 'package:beebase/presentation/component/font.dart';
 import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar.dart';
 import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar_variant.dart';
 import 'package:beebase/utils/di.dart';
@@ -17,6 +18,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 part 'apiary_form_page/apiary_form_content.dart';
 part 'apiary_form_page/apiary_form_field.dart';
 part 'apiary_form_page/apiary_form_submit_button.dart';
+part 'apiary_form_page/apiary_form_text_area.dart';
+part 'apiary_form_page/apiary_location_primary_action.dart';
+part 'apiary_form_page/apiary_location_section.dart';
 
 @RoutePage()
 final class ApiaryFormPage extends StatefulWidget implements AutoRouteWrapper {
@@ -40,28 +44,60 @@ final class _ApiaryFormPageState extends State<ApiaryFormPage> {
   final _formKey = GlobalKey<FormState>();
   late final _nameController = TextEditingController(text: widget.apiary?.name);
   late final _descriptionController = TextEditingController(text: widget.apiary?.description);
-  late final _locationController = TextEditingController(text: widget.apiary?.location);
+  bool _isFetchingLocation = false;
+
+  /// The resolved address and coordinates, geolocation-only — there's no
+  /// manual location input, so these are only ever set by
+  /// [_useCurrentLocation]. Seeded from the apiary being edited, if any.
+  String? _locationAddress;
+  double? _latitude;
+  double? _longitude;
 
   bool get _isEditing => widget.apiary != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _locationAddress = widget.apiary?.location;
+    _latitude = widget.apiary?.lat;
+    _longitude = widget.apiary?.lon;
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
-    _locationController.dispose();
     super.dispose();
   }
 
   void _submit() {
     if (_formKey.currentState?.validate() ?? false) {
       final description = _descriptionController.text.trim();
-      final location = _locationController.text.trim();
       context.read<ApiaryFormCubit>().submit(
         name: _nameController.text.trim(),
         description: description.isEmpty ? null : description,
-        location: location.isEmpty ? null : location,
+        location: _locationAddress,
+        lat: _latitude,
+        lon: _longitude,
       );
     }
+  }
+
+  Future<void> _useCurrentLocation() async {
+    final cubit = context.read<ApiaryFormCubit>();
+    setState(() => _isFetchingLocation = true);
+
+    final result = await cubit.resolveCurrentLocation();
+    if (!mounted) return;
+
+    result.fold((failure) => AppSnackBar.show(context, message: failure.messageKey.tr(), variant: AppSnackBarVariant.error), (
+      location,
+    ) {
+      _locationAddress = location.address;
+      _latitude = location.latitude;
+      _longitude = location.longitude;
+    });
+    setState(() => _isFetchingLocation = false);
   }
 
   void _handleStateChange(BuildContext context, ApiaryFormState state) {
@@ -79,15 +115,19 @@ final class _ApiaryFormPageState extends State<ApiaryFormPage> {
       body: BlocListener<ApiaryFormCubit, ApiaryFormState>(
         listener: _handleStateChange,
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(context.spacing.lg),
+          padding: EdgeInsets.all(context.spacing.md),
           child: Form(
             key: _formKey,
             child: _ApiaryFormContent(
               nameController: _nameController,
               descriptionController: _descriptionController,
-              locationController: _locationController,
+              locationAddress: _locationAddress,
+              latitude: _latitude,
+              longitude: _longitude,
               isEditing: _isEditing,
+              isFetchingLocation: _isFetchingLocation,
               onSubmit: _submit,
+              onUseCurrentLocation: _useCurrentLocation,
             ),
           ),
         ),

@@ -14,10 +14,10 @@ final class _ApiaryListLoadedView extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: cubit.refresh,
       child: ListView.separated(
-        padding: EdgeInsets.fromLTRB(context.spacing.md, context.spacing.md, context.spacing.md, context.spacing.xl),
+        padding: EdgeInsets.only(top: context.spacing.md, bottom: context.spacing.lg),
         physics: const AlwaysScrollableScrollPhysics(),
         itemCount: apiaries.length,
-        separatorBuilder: (context, index) => SizedBox(height: context.spacing.sm),
+        separatorBuilder: (context, index) => SizedBox(height: context.spacing.xs),
         itemBuilder: (context, index) => _ApiaryListTile(apiary: apiaries[index]),
       ),
     );

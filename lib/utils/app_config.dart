@@ -41,4 +41,6 @@ final class AppConfig {
   static String get environment => FlutterConfig.get('ENVIRONMENT');
 
   static String get apiEndPoint => FlutterConfig.get('API_END_POINT');
+
+  static String get mapboxPublicKey => FlutterConfig.get('MAPBOX_PUBLIC_KEY');
 }

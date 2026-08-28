@@ -7,8 +7,10 @@ final class ApiaryResponse {
   const ApiaryResponse({
     required this.id,
     required this.name,
-    this.notes,
+    this.description,
     this.location,
+    this.lat,
+    this.lon,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -18,8 +20,10 @@ final class ApiaryResponse {
   final String id;
   final String name;
 
-  final String? notes;
+  final String? description;
   final String? location;
+  final double? lat;
+  final double? lon;
 
   @JsonKey(name: 'created_at')
   final DateTime createdAt;

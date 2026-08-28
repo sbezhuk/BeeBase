@@ -27,45 +27,14 @@ final class _ApiaryDeleteLink extends StatelessWidget {
 
   void _confirmDelete(BuildContext context) {
     final cubit = context.read<ApiaryDeleteCubit>();
-    switch (Theme.of(context).platform) {
-      case TargetPlatform.iOS:
-        showGlassActionSheet<void>(
-          context: context,
-          title: 'apiary.details.deleteConfirmTitle'.tr(),
-          message: 'apiary.details.deleteConfirmMessage'.tr(),
-          cancelLabel: 'apiary.details.cancel'.tr(),
-          actions: [
-            GlassActionSheetAction(
-              label: 'apiary.details.delete'.tr(),
-              icon: const Icon(CupertinoIcons.delete),
-              style: GlassActionSheetStyle.destructive,
-              onPressed: cubit.delete,
-            ),
-          ],
-        );
-      default:
-        _confirmDeleteAndroid(context, cubit);
-    }
-  }
-
-  Future<void> _confirmDeleteAndroid(BuildContext context, ApiaryDeleteCubit cubit) async {
-    final colors = context.colors;
-    final confirmed = await showDialog<bool>(
+    showConfirmationSheet(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        icon: Icon(Icons.warning_amber_rounded, color: colors.error),
-        title: Text('apiary.details.deleteConfirmTitle'.tr()),
-        content: Text('apiary.details.deleteConfirmMessage'.tr()),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text('apiary.details.cancel'.tr())),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: colors.error),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text('apiary.details.delete'.tr()),
-          ),
-        ],
-      ),
+      title: 'apiary.details.deleteConfirmTitle'.tr(),
+      message: 'apiary.details.deleteConfirmMessage'.tr(),
+      confirmLabel: 'apiary.details.delete'.tr(),
+      cancelLabel: 'apiary.details.cancel'.tr(),
+      icon: Icons.delete_outline,
+      onConfirm: cubit.delete,
     );
-    if (confirmed == true) cubit.delete();
   }
 }

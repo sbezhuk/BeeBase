@@ -76,11 +76,7 @@ GlassTabBarTrailingButton? _toTrailingButton(BottomNavPrimaryAction? action) {
     // GlassTabBarTrailingButton has no accessibility-label field of its
     // own (unlike GlassTabBarExtraButton) — wrap the glyph so screen
     // readers still get a real label instead of a bare icon.
-    icon: Semantics(
-      button: true,
-      label: action.accessibilityLabel,
-      child: Icon(action.cupertinoIcon),
-    ),
+    icon: Semantics(button: true, label: action.accessibilityLabel, child: Icon(action.cupertinoIcon)),
     onTap: action.onPressed,
   );
 }

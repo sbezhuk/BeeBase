@@ -20,6 +20,7 @@ final class AppColor extends ThemeExtension<AppColor> {
     required this.honeyBorder,
     required this.honeyCream,
     required this.honeyCreamLight,
+    required this.photoPlaceholder,
   });
 
   const AppColor.light()
@@ -38,6 +39,7 @@ final class AppColor extends ThemeExtension<AppColor> {
         honeyBorder: const Color(0xFFEBDCC0),
         honeyCream: const Color(0xFFFDECC7),
         honeyCreamLight: const Color(0xFFFFF7E4),
+        photoPlaceholder: const Color(0xFF2196F3),
       );
 
   // Same beekeeping/hive-and-honey palette as [AppColor.light], inverted for
@@ -60,6 +62,7 @@ final class AppColor extends ThemeExtension<AppColor> {
         honeyBorder: const Color(0xFF4A3826),
         honeyCream: const Color(0xFF2A1D10),
         honeyCreamLight: const Color(0xFF1C130A),
+        photoPlaceholder: const Color(0xFF2196F3),
       );
 
   final Color primary;
@@ -79,6 +82,11 @@ final class AppColor extends ThemeExtension<AppColor> {
   final Color honeyCream;
   final Color honeyCreamLight;
 
+  // Stands in for real photo/map imagery that doesn't exist yet (e.g. the
+  // apiary list tile) — fixed regardless of light/dark theme since it's a
+  // placeholder block, not themed app chrome.
+  final Color photoPlaceholder;
+
   @override
   AppColor copyWith({
     Color? primary,
@@ -95,6 +103,7 @@ final class AppColor extends ThemeExtension<AppColor> {
     Color? honeyBorder,
     Color? honeyCream,
     Color? honeyCreamLight,
+    Color? photoPlaceholder,
   }) {
     return AppColor(
       primary: primary ?? this.primary,
@@ -111,6 +120,7 @@ final class AppColor extends ThemeExtension<AppColor> {
       honeyBorder: honeyBorder ?? this.honeyBorder,
       honeyCream: honeyCream ?? this.honeyCream,
       honeyCreamLight: honeyCreamLight ?? this.honeyCreamLight,
+      photoPlaceholder: photoPlaceholder ?? this.photoPlaceholder,
     );
   }
 
@@ -132,6 +142,7 @@ final class AppColor extends ThemeExtension<AppColor> {
       honeyBorder: Color.lerp(honeyBorder, other.honeyBorder, t)!,
       honeyCream: Color.lerp(honeyCream, other.honeyCream, t)!,
       honeyCreamLight: Color.lerp(honeyCreamLight, other.honeyCreamLight, t)!,
+      photoPlaceholder: Color.lerp(photoPlaceholder, other.photoPlaceholder, t)!,
     );
   }
 }

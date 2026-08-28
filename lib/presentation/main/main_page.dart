@@ -39,8 +39,7 @@ final class MainPage extends StatelessWidget {
                   // this tab, so it's pushed via the root router. A
                   // successful create reaches the list via
                   // ApiaryListRefreshNotifier, so nothing to await here.
-                  onPressed: () =>
-                      context.router.root.push(ApiaryFormRoute()),
+                  onPressed: () => context.router.root.push(ApiaryFormRoute()),
                 )
               : null,
           body: child,

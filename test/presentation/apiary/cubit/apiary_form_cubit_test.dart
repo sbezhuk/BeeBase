@@ -1,3 +1,4 @@
+import 'package:beebase/core/location/location_service.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/repositories/apiary_writer.dart';
@@ -10,20 +11,19 @@ import 'package:mocktail/mocktail.dart';
 
 class MockApiaryWriter extends Mock implements IApiaryWriter {}
 
+class MockLocationService extends Mock implements LocationService {}
+
 void main() {
   late MockApiaryWriter writer;
+  late MockLocationService locationService;
   late ApiaryListRefreshNotifier refreshNotifier;
   late bool notified;
 
-  final apiary = Apiary(
-    id: 'apiary-1',
-    name: 'Back Garden',
-    createdAt: DateTime(2026),
-    updatedAt: DateTime(2026),
-  );
+  final apiary = Apiary(id: 'apiary-1', name: 'Back Garden', createdAt: DateTime(2026), updatedAt: DateTime(2026));
 
   setUp(() {
     writer = MockApiaryWriter();
+    locationService = MockLocationService();
     refreshNotifier = ApiaryListRefreshNotifier();
     notified = false;
     refreshNotifier.onChanged.listen((_) => notified = true);
@@ -40,21 +40,12 @@ void main() {
             location: any(named: 'location'),
           ),
         ).thenAnswer((_) async => Right(apiary));
-        return ApiaryFormCubit(
-          writer: writer,
-          refreshNotifier: refreshNotifier,
-        );
+        return ApiaryFormCubit(writer: writer, refreshNotifier: refreshNotifier, locationService: locationService);
       },
       act: (cubit) => cubit.submit(name: 'Back Garden'),
       expect: () => [const ApiaryFormLoading(), ApiaryFormSuccess(apiary)],
       verify: (_) {
-        verify(
-          () => writer.createApiary(
-            name: 'Back Garden',
-            description: null,
-            location: null,
-          ),
-        ).called(1);
+        verify(() => writer.createApiary(name: 'Back Garden', description: null, location: null)).called(1);
         verifyNever(
           () => writer.updateApiary(
             id: any(named: 'id'),
@@ -74,23 +65,11 @@ void main() {
             description: any(named: 'description'),
             location: any(named: 'location'),
           ),
-        ).thenAnswer(
-          (_) async => Left(
-            ServerFailure(code: 'name_required', message: 'name required'),
-          ),
-        );
-        return ApiaryFormCubit(
-          writer: writer,
-          refreshNotifier: refreshNotifier,
-        );
+        ).thenAnswer((_) async => Left(ServerFailure(code: 'name_required', message: 'name required')));
+        return ApiaryFormCubit(writer: writer, refreshNotifier: refreshNotifier, locationService: locationService);
       },
       act: (cubit) => cubit.submit(name: ''),
-      expect: () => [
-        const ApiaryFormLoading(),
-        ApiaryFormError(
-          ServerFailure(code: 'name_required', message: 'name required'),
-        ),
-      ],
+      expect: () => [const ApiaryFormLoading(), ApiaryFormError(ServerFailure(code: 'name_required', message: 'name required'))],
       verify: (_) => expect(notified, isFalse),
     );
   });
@@ -110,20 +89,14 @@ void main() {
         return ApiaryFormCubit(
           writer: writer,
           refreshNotifier: refreshNotifier,
+          locationService: locationService,
           initial: apiary,
         );
       },
       act: (cubit) => cubit.submit(name: 'Updated Name'),
       expect: () => [const ApiaryFormLoading(), ApiaryFormSuccess(apiary)],
       verify: (_) {
-        verify(
-          () => writer.updateApiary(
-            id: 'apiary-1',
-            name: 'Updated Name',
-            description: null,
-            location: null,
-          ),
-        ).called(1);
+        verify(() => writer.updateApiary(id: 'apiary-1', name: 'Updated Name', description: null, location: null)).called(1);
         expect(notified, isTrue);
       },
     );

@@ -2,12 +2,14 @@ import 'package:auto_route/auto_route.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_delete_cubit/apiary_delete_cubit.dart';
 import 'package:beebase/presentation/apiary/extension/apiary_date_x.dart';
+import 'package:beebase/presentation/apiary/widget/apiary_map_photo.dart';
+import 'package:beebase/presentation/apiary/widget/apiary_photo_placeholder.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_scaffold.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_scaffold_action.dart';
-import 'package:beebase/presentation/apiary/widget/apiary_section_card.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar.dart';
 import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar_variant.dart';
+import 'package:beebase/presentation/widgets/confirmation_sheet/confirmation_sheet.dart';
 import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
@@ -16,11 +18,11 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 part 'apiary_details_page/apiary_details_body.dart';
 part 'apiary_details_page/apiary_details_detail_row.dart';
 part 'apiary_details_page/apiary_details_delete_link.dart';
+part 'apiary_details_page/apiary_details_info_section.dart';
 
 @RoutePage()
 final class ApiaryDetailsPage extends StatefulWidget implements AutoRouteWrapper {

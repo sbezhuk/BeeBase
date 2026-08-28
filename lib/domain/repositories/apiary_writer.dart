@@ -7,6 +7,8 @@ abstract interface class IApiaryWriter {
     required String name,
     String? description,
     String? location,
+    double? lat,
+    double? lon,
   });
 
   Future<Either<Failure, Apiary>> updateApiary({
@@ -14,6 +16,8 @@ abstract interface class IApiaryWriter {
     required String name,
     String? description,
     String? location,
+    double? lat,
+    double? lon,
   });
 
   Future<Either<Failure, void>> deleteApiary(String id);

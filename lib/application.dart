@@ -52,9 +52,7 @@ final class _ApplicationState extends State<Application> {
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,
         locale: context.locale,
-        routerConfig: _appRouter.config(
-          navigatorObservers: () => [AutoRouteObserver()],
-        ),
+        routerConfig: _appRouter.config(navigatorObservers: () => [AutoRouteObserver()]),
       ),
     );
   }

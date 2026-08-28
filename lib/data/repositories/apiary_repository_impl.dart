@@ -27,9 +27,15 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
   }
 
   @override
-  Future<Either<Failure, Apiary>> createApiary({required String name, String? description, String? location}) {
+  Future<Either<Failure, Apiary>> createApiary({
+    required String name,
+    String? description,
+    String? location,
+    double? lat,
+    double? lon,
+  }) {
     return on(() async {
-      final request = ApiaryRequest(name: name, notes: description, location: location);
+      final request = ApiaryRequest(name: name, description: description, location: location, lat: lat, lon: lon);
       return (await dataSource.createApiary(request)).toEntity();
     });
   }
@@ -40,9 +46,11 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
     required String name,
     String? description,
     String? location,
+    double? lat,
+    double? lon,
   }) {
     return on(() async {
-      final request = ApiaryRequest(name: name, notes: description, location: location);
+      final request = ApiaryRequest(name: name, description: description, location: location, lat: lat, lon: lon);
       return (await dataSource.updateApiary(id, request)).toEntity();
     });
   }

@@ -19,7 +19,7 @@ void main() {
   final apiaryResponse = ApiaryResponse(
     id: 'apiary-1',
     name: 'Back Garden',
-    notes: 'A small apiary',
+    description: 'A small apiary',
     location: 'Springfield',
     createdAt: DateTime(2026),
     updatedAt: DateTime(2026),

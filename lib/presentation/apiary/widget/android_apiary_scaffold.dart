@@ -25,7 +25,7 @@ final class AndroidApiaryScaffold extends StatelessWidget {
     return Scaffold(
       backgroundColor: context.colors.background,
       appBar: AppBar(
-        title: Text(title),
+        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
         automaticallyImplyLeading: showBackButton,
         actions: action == null
             ? null
