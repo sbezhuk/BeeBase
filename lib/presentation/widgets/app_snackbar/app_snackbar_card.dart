@@ -42,13 +42,6 @@ final class AppSnackBarCard extends StatelessWidget {
           color: colors.surface.background,
           borderRadius: BorderRadius.circular(cardRadius),
           border: Border.all(color: colors.honey.border),
-          boxShadow: [
-            BoxShadow(
-              color: colors.brand.primaryDark.withValues(alpha: 0.25),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
         ),
         clipBehavior: Clip.antiAlias,
         child: IntrinsicHeight(
@@ -58,7 +51,10 @@ final class AppSnackBarCard extends StatelessWidget {
               Container(width: 4, color: variant.accentColor(colors)),
               Expanded(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: spacing.md, vertical: spacing.sm),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: spacing.md,
+                    vertical: spacing.sm,
+                  ),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(message, style: textStyles.body),

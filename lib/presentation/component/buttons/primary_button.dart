@@ -27,13 +27,6 @@ final class PrimaryButton extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [colors.brand.primary, colors.brand.primaryDark],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: colors.brand.primaryDark.withValues(alpha: 0.35),
-            blurRadius: 24,
-            offset: const Offset(0, 14),
-          ),
-        ],
       ),
       child: Material(
         color: Colors.transparent,

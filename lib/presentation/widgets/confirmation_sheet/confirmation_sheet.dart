@@ -66,14 +66,16 @@ final class ConfirmationSheet extends StatelessWidget {
       top: false,
       child: Container(
         margin: EdgeInsets.all(spacing.sm),
-        padding: EdgeInsets.fromLTRB(spacing.lg, spacing.sm, spacing.lg, spacing.lg),
+        padding: EdgeInsets.fromLTRB(
+          spacing.lg,
+          spacing.sm,
+          spacing.lg,
+          spacing.lg,
+        ),
         decoration: BoxDecoration(
           color: colors.surface.background,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: colors.honey.border),
-          boxShadow: [
-            BoxShadow(color: colors.honey.brown.withValues(alpha: 0.18), blurRadius: 24, offset: const Offset(0, 12)),
-          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -82,16 +84,26 @@ final class ConfirmationSheet extends StatelessWidget {
               width: 36,
               height: 4,
               margin: EdgeInsets.only(bottom: spacing.md),
-              decoration: BoxDecoration(color: colors.honey.border, borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(
+                color: colors.honey.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
             Container(
               width: 48,
               height: 48,
-              decoration: BoxDecoration(color: accent.withValues(alpha: 0.12), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, color: accent, size: 26),
             ),
             SizedBox(height: spacing.md),
-            Text(title, textAlign: TextAlign.center, style: textStyles.title.copyWith(fontSize: 20)),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: textStyles.title.copyWith(fontSize: 20),
+            ),
             SizedBox(height: spacing.xs),
             Text(
               message,
