@@ -43,10 +43,15 @@ void main() {
 
   tearDown(() => cubit.close());
 
-  Future<void> pumpBanner(WidgetTester tester, {double topInset = 0}) {
-    return tester.pumpWidget(
+  // The banner renders through the shared AppSnackBar overlay (see
+  // OfflineSyncBanner), which presents itself from a post-frame callback on
+  // first mount and again whenever the cubit's state changes, then animates
+  // in — so every helper here flushes the triggering frame and settles the
+  // entrance transition before handing control back to the test body.
+  Future<void> pumpBanner(WidgetTester tester, {double bottomInset = 0}) async {
+    await tester.pumpWidget(
       MediaQuery(
-        data: MediaQueryData(padding: EdgeInsets.only(top: topInset)),
+        data: MediaQueryData(padding: EdgeInsets.only(bottom: bottomInset)),
         child: MaterialApp(
           home: Scaffold(
             body: BlocProvider<SyncBannerCubit>.value(value: cubit, child: const OfflineSyncBanner()),
@@ -54,6 +59,7 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
   }
 
   // easy_localization has no EasyLocalization ancestor in this test, so
@@ -61,20 +67,25 @@ void main() {
   // is unaffected either way, only the matched string differs from prod.
   const actionKey = 'sync.banner.action';
 
-  testWidgets('clears the top system inset instead of rendering under it', (tester) async {
-    const topInset = 44.0;
+  testWidgets('clears the bottom system inset instead of rendering under it', (tester) async {
+    const bottomInset = 34.0;
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     engine.setAvailable(true);
-    await pumpBanner(tester, topInset: topInset);
+    await pumpBanner(tester, bottomInset: bottomInset);
 
-    final cardTop = tester.getTopLeft(find.byType(AppSnackBarCard)).dy;
+    final cardBottom = tester.getBottomLeft(find.byType(AppSnackBarCard)).dy;
 
-    expect(cardTop, greaterThanOrEqualTo(topInset));
+    expect(cardBottom, lessThanOrEqualTo(tester.view.physicalSize.height / tester.view.devicePixelRatio - bottomInset));
   });
 
   testWidgets('renders nothing when there is nothing to sync', (tester) async {
     await pumpBanner(tester);
 
-    expect(find.text(actionKey), findsNothing);
+    expect(find.byType(AppSnackBarCard), findsNothing);
   });
 
   testWidgets('tapping the sync action invokes the sync engine', (tester) async {

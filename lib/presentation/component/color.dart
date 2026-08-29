@@ -38,7 +38,7 @@ final class AppColor extends ThemeExtension<AppColor> {
         brand: const AppBrandColors(primary: Color(0xFFE8AC3D), primaryDark: Color(0xFFC97A0F), onPrimary: Color(0xFF1C130A)),
         surface: const AppSurfaceColors(background: Color(0xFF1C130A), card: Color(0xFF332212), border: Color(0xFF4A3826)),
         text: const AppTextColors(primary: Color(0xFFFDECC7), secondary: Color(0xFFC7B299)),
-        status: const AppStatusColors(error: Color(0xFFFF6B6B)),
+        status: const AppStatusColors(error: Color(0xFFFF6B6B), warning: Color(0xFFFFA344)),
         honey: const AppHoneyColors(
           brown: Color(0xFFF5E6C8),
           muted: Color(0xFFB89B72),
@@ -58,7 +58,7 @@ final class AppColor extends ThemeExtension<AppColor> {
         brand: const AppBrandColors(primary: Color(0xFFE8AC3D), primaryDark: Color(0xFF9A5D14), onPrimary: Color(0xFF1C130A)),
         surface: const AppSurfaceColors(background: Color(0xFFFBF6EA), card: Color(0xFFF2E9D6), border: Color(0xFFE1D3B7)),
         text: const AppTextColors(primary: Color(0xFF2B1B0E), secondary: Color(0xFF6E5D45)),
-        status: const AppStatusColors(error: Color(0xFFC7402D)),
+        status: const AppStatusColors(error: Color(0xFFC7402D), warning: Color(0xFFB5651D)),
         honey: const AppHoneyColors(
           brown: Color(0xFF2B1B0E),
           muted: Color(0xFF7D6A4C),

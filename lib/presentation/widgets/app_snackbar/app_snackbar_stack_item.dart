@@ -43,7 +43,21 @@ final class _AppSnackBarStackItemState extends State<AppSnackBarStackItem> with 
   void initState() {
     super.initState();
     _controller.forward();
-    _expiryTimer = Timer(widget.entry.duration, _dismiss);
+    _scheduleExpiry(widget.entry.duration);
+  }
+
+  @override
+  void didUpdateWidget(covariant AppSnackBarStackItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.entry.duration != widget.entry.duration) {
+      _expiryTimer?.cancel();
+      _scheduleExpiry(widget.entry.duration);
+    }
+  }
+
+  void _scheduleExpiry(Duration? duration) {
+    if (duration == null) return;
+    _expiryTimer = Timer(duration, _dismiss);
   }
 
   @override
@@ -56,6 +70,7 @@ final class _AppSnackBarStackItemState extends State<AppSnackBarStackItem> with 
   Future<void> _dismiss() async {
     _expiryTimer?.cancel();
     if (!mounted) return;
+    widget.entry.onDismiss?.call();
     await _controller.reverse();
     widget.onRemoved(widget.entry.id);
   }
@@ -85,7 +100,11 @@ final class _AppSnackBarStackItemState extends State<AppSnackBarStackItem> with 
             child: Dismissible(
               key: widget.entry.id,
               direction: DismissDirection.horizontal,
-              onDismissed: (_) => widget.onRemoved(widget.entry.id),
+              onDismissed: (_) {
+                _expiryTimer?.cancel();
+                widget.entry.onDismiss?.call();
+                widget.onRemoved(widget.entry.id);
+              },
               child: FadeTransition(
                 opacity: _curved,
                 child: ScaleTransition(
@@ -94,13 +113,18 @@ final class _AppSnackBarStackItemState extends State<AppSnackBarStackItem> with 
                     position: Tween(begin: const Offset(0, 0.2), end: Offset.zero).animate(_curved),
                     child: AppSnackBarCard(
                       message: widget.entry.message,
+                      description: widget.entry.description,
                       variant: widget.entry.variant,
                       actionLabel: widget.entry.actionLabel,
+                      isLoading: widget.entry.isLoading,
                       onAction: widget.entry.onAction == null
                           ? null
                           : () {
                               widget.entry.onAction!();
-                              _dismiss();
+                              // Tagged entries are updated in place by their
+                              // owner (e.g. a cubit reacting to the tap), not
+                              // auto-dismissed here.
+                              if (widget.entry.tag == null) _dismiss();
                             },
                       onDismiss: _dismiss,
                     ),
