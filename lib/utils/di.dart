@@ -39,6 +39,7 @@ import 'package:beebase/presentation/apiary/cubit/apiary_list_cubit/apiary_list_
 import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';
 import 'package:beebase/presentation/authentication/cubit/login_cubit/login_cubit.dart';
 import 'package:beebase/presentation/authentication/cubit/register_cubit/register_cubit.dart';
+import 'package:beebase/presentation/connectivity/cubit/connectivity_cubit/connectivity_cubit.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/router/guardes/authentication_guard.dart';
 import 'package:beebase/presentation/sync/cubit/sync_banner_cubit/sync_banner_cubit.dart';
@@ -121,7 +122,7 @@ Future<void> initDi() async {
   di.registerLazySingleton<SqliteOfflineMutationStore>(() => SqliteOfflineMutationStore(database: di(), changeNotifier: di()));
   di.registerLazySingleton<OfflineMutationStore>(() => di<SqliteOfflineMutationStore>());
   di.registerLazySingleton<ApiaryOperationHandler>(
-    () => ApiaryOperationHandler(dataSource: di(), localDataSource: di(), refreshNotifier: di()),
+    () => ApiaryOperationHandler(dataSource: di(), localDataSource: di(), refreshNotifier: di(), operationQueue: di()),
   );
   di.registerLazySingleton<OperationRegistry>(() => OperationRegistry({'apiary': di<ApiaryOperationHandler>()}));
   di.registerLazySingleton<SyncEngineImpl>(() => SyncEngineImpl(queue: di(), registry: di(), connectivity: di()));
@@ -153,6 +154,7 @@ Future<void> initDi() async {
   // #region Blocs
   di.registerLazySingleton<AuthenticationCubit>(() => AuthenticationCubit(repository: di(), sessionService: di()));
   di.registerLazySingleton<SyncBannerCubit>(() => SyncBannerCubit(engine: di()));
+  di.registerLazySingleton<ConnectivityCubit>(() => ConnectivityCubit(connectivity: di()));
   di.registerFactory<LoginCubit>(() => LoginCubit(repository: di(), authenticationCubit: di()));
   di.registerFactory<RegisterCubit>(() => RegisterCubit(repository: di(), authenticationCubit: di()));
   di.registerFactory<ApiaryListCubit>(() => ApiaryListCubit(reader: di(), refreshNotifier: di()));

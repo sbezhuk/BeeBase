@@ -13,11 +13,13 @@ final class ApiaryCacheMerger {
   const ApiaryCacheMerger();
 
   /// Page 1 (initial load or refresh): the fresh server page becomes the new
-  /// front of the cache, and any cache entry still awaiting sync survives
-  /// alongside it, so a not-yet-synced offline-created apiary doesn't
-  /// disappear the moment the next online fetch runs. Safe from duplicating
-  /// a since-synced entry: `ApiaryOperationHandler` removes the local
-  /// placeholder from the cache before the operation is ever marked synced.
+  /// front of the cache, except for any id with a not-yet-synced pending
+  /// operation — those come from [oldCache] instead, so a locally-edited (or
+  /// still offline-created) apiary's latest state isn't shadowed or
+  /// duplicated by a stale server copy of the same id. Safe from
+  /// duplicating a since-synced entry: `ApiaryOperationHandler` removes the
+  /// local placeholder from the cache before the operation is ever marked
+  /// synced.
   List<ApiaryResponse> mergeFirstPage(
     List<ApiaryResponse> serverPage,
     List<ApiaryResponse> oldCache,
@@ -27,8 +29,10 @@ final class ApiaryCacheMerger {
         .where((operation) => operation.status != OperationStatus.synced && operation.localEntityId != null)
         .map((operation) => operation.localEntityId)
         .toSet();
-    final stillPending = oldCache.where((response) => unsyncedLocalIds.contains(response.id));
-    return [...serverPage, ...stillPending];
+    final oldById = {for (final response in oldCache) response.id: response};
+    final serverFiltered = serverPage.where((response) => !unsyncedLocalIds.contains(response.id));
+    final stillPending = unsyncedLocalIds.map((id) => oldById[id]).whereType<ApiaryResponse>();
+    return [...serverFiltered, ...stillPending];
   }
 
   /// Page 2+: appends a fresh page onto whatever's already accumulated.

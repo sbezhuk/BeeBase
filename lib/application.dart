@@ -4,6 +4,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:beebase/core/offline/sync_engine.dart';
 import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';
 import 'package:beebase/presentation/component/color.dart';
+import 'package:beebase/presentation/connectivity/cubit/connectivity_cubit/connectivity_cubit.dart';
 import 'package:beebase/presentation/component/font.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/sync/cubit/sync_banner_cubit/sync_banner_cubit.dart';
@@ -62,6 +63,7 @@ final class _ApplicationState extends State<Application> with WidgetsBindingObse
       providers: [
         BlocProvider.value(value: di<AuthenticationCubit>()),
         BlocProvider.value(value: di<SyncBannerCubit>()),
+        BlocProvider.value(value: di<ConnectivityCubit>()),
       ],
       child: MaterialApp.router(
         theme: _buildTheme(const AppColor.light(), Brightness.light),

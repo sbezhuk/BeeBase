@@ -71,14 +71,23 @@ final class SyncEngineImpl implements SyncEngine {
     await queue.update(operation.copyWith(status: OperationStatus.inProgress, updatedAt: DateTime.now()));
     final result = await handler.handle(operation);
 
+    // Re-read the row rather than trusting the pre-call `operation`: a
+    // handler may have consolidated a newer local edit into it (or, on
+    // supersession, rewritten it entirely) while the request was in flight.
+    // Basing the final write on the current row means that edit's payload
+    // is never clobbered back to what was actually sent.
+    final current = await queue.find(operation.id) ?? operation;
+
     switch (result) {
       case OperationSuccess():
-        await queue.update(operation.copyWith(status: OperationStatus.synced, updatedAt: DateTime.now()));
+        await queue.update(current.copyWith(status: OperationStatus.synced, updatedAt: DateTime.now()));
+      case OperationSuperseded():
+        break;
       case OperationRetryableFailure(:final message) || OperationPermanentFailure(:final message):
         await queue.update(
-          operation.copyWith(
+          current.copyWith(
             status: OperationStatus.failed,
-            retryCount: operation.retryCount + 1,
+            retryCount: current.retryCount + 1,
             lastError: message,
             updatedAt: DateTime.now(),
           ),

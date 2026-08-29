@@ -1,3 +1,4 @@
+import 'package:beebase/core/offline/local_id_generator.dart';
 import 'package:beebase/domain/enum/apiary_sync_status.dart';
 
 final class Apiary {
@@ -22,6 +23,11 @@ final class Apiary {
   final DateTime createdAt;
   final DateTime updatedAt;
   final ApiarySyncStatus syncStatus;
+
+  /// Whether this apiary was created while offline and has never reached
+  /// the server yet — the only data that stays freely deletable while
+  /// offline (see `ApiaryRepositoryImpl.deleteApiary`).
+  bool get isLocalOnly => LocalIdGenerator.isLocal(id);
 
   Apiary copyWith({ApiarySyncStatus? syncStatus}) {
     return Apiary(

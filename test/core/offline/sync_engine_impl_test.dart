@@ -55,6 +55,7 @@ void main() {
     when(() => queue.changes).thenAnswer((_) => const Stream.empty());
     when(() => queue.all()).thenAnswer((_) async => []);
     when(() => queue.update(any())).thenAnswer((_) async {});
+    when(() => queue.find(any())).thenAnswer((_) async => null);
   });
 
   group('syncNow', () {
@@ -135,6 +136,34 @@ void main() {
       await engine.syncNow();
 
       verifyNever(() => handler.handle(any()));
+    });
+
+    test('a plain success result is a no-op on the queue for OperationSuperseded', () async {
+      when(() => queue.all()).thenAnswer((_) async => [_pendingOp()]);
+      when(() => handler.handle(any())).thenAnswer((_) async => const OperationSuperseded());
+
+      await engine.syncNow();
+
+      final updates = verify(() => queue.update(captureAny())).captured.cast<OfflineOperation>();
+      // Only the initial inProgress mark — the handler already left the row
+      // in the state it wants (re-targeted and pending), so the engine must
+      // not additionally mark it synced.
+      expect(updates.map((op) => op.status), [OperationStatus.inProgress]);
+    });
+
+    test('a failure does not clobber a payload that changed while the request was in flight', () async {
+      final sent = _pendingOp(id: 'op-1');
+      when(() => queue.all()).thenAnswer((_) async => [sent]);
+      final mutatedMidFlight = sent.copyWith(payload: const {'name': 'Edited While In Flight'}, version: 1);
+      when(() => queue.find('op-1')).thenAnswer((_) async => mutatedMidFlight);
+      when(() => handler.handle(any())).thenAnswer((_) async => const OperationRetryableFailure('timeout'));
+
+      await engine.syncNow();
+
+      final finalUpdate = verify(() => queue.update(captureAny())).captured.cast<OfflineOperation>().last;
+      expect(finalUpdate.status, OperationStatus.failed);
+      expect(finalUpdate.payload, {'name': 'Edited While In Flight'});
+      expect(finalUpdate.version, 1);
     });
   });
 

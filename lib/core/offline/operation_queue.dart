@@ -6,6 +6,11 @@ import 'package:beebase/core/offline/offline_operation.dart';
 abstract interface class OperationQueue {
   Future<List<OfflineOperation>> all();
 
+  /// The current row for [id], or `null` if it no longer exists. Used to
+  /// read back the latest state of an operation after some other write may
+  /// have touched it concurrently — see `SyncEngineImpl._process`.
+  Future<OfflineOperation?> find(String id);
+
   Future<void> enqueue(OfflineOperation operation);
 
   Future<void> update(OfflineOperation operation);

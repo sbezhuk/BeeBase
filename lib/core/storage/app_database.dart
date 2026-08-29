@@ -16,7 +16,7 @@ final class AppDatabase {
   AppDatabase({DatabaseFactory? factory, this._pathOverride}) : _factory = factory ?? databaseFactory;
 
   static const _fileName = 'beebase.db';
-  static const _version = 1;
+  static const _version = 2;
 
   final DatabaseFactory _factory;
   final String? _pathOverride;
@@ -30,7 +30,7 @@ final class AppDatabase {
     final path = _pathOverride ?? p.join((await getApplicationSupportDirectory()).path, _fileName);
     final database = await _factory.openDatabase(
       path,
-      options: OpenDatabaseOptions(version: _version, onCreate: _onCreate),
+      options: OpenDatabaseOptions(version: _version, onCreate: _onCreate, onUpgrade: _onUpgrade),
     );
     _database = database;
     return database;
@@ -55,8 +55,15 @@ final class AppDatabase {
         retry_count INTEGER NOT NULL,
         last_error TEXT,
         local_entity_id TEXT,
-        depends_on_operation_id TEXT
+        depends_on_operation_id TEXT,
+        version INTEGER NOT NULL DEFAULT 0
       )
     ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE offline_operations ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
+    }
   }
 }

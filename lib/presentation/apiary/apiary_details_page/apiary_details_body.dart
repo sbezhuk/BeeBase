@@ -41,6 +41,10 @@ final class _ApiaryDetailsBody extends StatelessWidget {
                   Text('apiary.details.sectionLabel'.tr(), style: context.textStyles.label.copyWith(color: colors.honey.muted)),
                   SizedBox(height: context.spacing.xs),
                   Text(apiary.name, style: context.textStyles.title),
+                  if (apiary.syncStatus != ApiarySyncStatus.synced) ...[
+                    SizedBox(height: context.spacing.xs),
+                    ApiarySyncBadge(status: apiary.syncStatus),
+                  ],
                   SizedBox(height: context.spacing.sm),
                   _ApiaryDetailsDetailRow(
                     icon: Icons.calendar_today_outlined,
@@ -73,7 +77,7 @@ final class _ApiaryDetailsBody extends StatelessWidget {
                     ),
                   ],
                   SizedBox(height: context.spacing.xl),
-                  _ApiaryDeleteLink(isDeleting: isDeleting),
+                  _ApiaryDeleteLink(apiary: apiary, isDeleting: isDeleting),
                 ],
               ),
             ),

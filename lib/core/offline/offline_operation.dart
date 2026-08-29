@@ -20,6 +20,7 @@ final class OfflineOperation {
     this.lastError,
     this.localEntityId,
     this.dependsOnOperationId,
+    this.version = 0,
   });
 
   final String id;
@@ -38,19 +39,37 @@ final class OfflineOperation {
   /// [SyncEngine] today — there is only one entity type in the queue so far.
   final String? dependsOnOperationId;
 
-  OfflineOperation copyWith({OperationStatus? status, DateTime? updatedAt, int? retryCount, String? lastError}) {
+  /// Bumped every time a newer local edit is consolidated into this same
+  /// operation (see `OfflineMutationStore.saveWithConsolidatedOperation`).
+  /// `SyncEngineImpl` snapshots this before sending the request and compares
+  /// it against the current row afterward, so a payload that changed while
+  /// the request was in flight is never mistaken for the one that was
+  /// actually sent — see `OperationSuperseded`.
+  final int version;
+
+  OfflineOperation copyWith({
+    OperationType? operationType,
+    Map<String, dynamic>? payload,
+    OperationStatus? status,
+    DateTime? updatedAt,
+    int? retryCount,
+    String? lastError,
+    String? localEntityId,
+    int? version,
+  }) {
     return OfflineOperation(
       id: id,
       entityType: entityType,
-      operationType: operationType,
-      payload: payload,
+      operationType: operationType ?? this.operationType,
+      payload: payload ?? this.payload,
       status: status ?? this.status,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       retryCount: retryCount ?? this.retryCount,
       lastError: lastError ?? this.lastError,
-      localEntityId: localEntityId,
+      localEntityId: localEntityId ?? this.localEntityId,
       dependsOnOperationId: dependsOnOperationId,
+      version: version ?? this.version,
     );
   }
 
@@ -66,6 +85,7 @@ final class OfflineOperation {
     'lastError': lastError,
     'localEntityId': localEntityId,
     'dependsOnOperationId': dependsOnOperationId,
+    'version': version,
   };
 
   factory OfflineOperation.fromJson(Map<String, dynamic> json) => OfflineOperation(
@@ -80,5 +100,6 @@ final class OfflineOperation {
     lastError: json['lastError'] as String?,
     localEntityId: json['localEntityId'] as String?,
     dependsOnOperationId: json['dependsOnOperationId'] as String?,
+    version: json['version'] as int? ?? 0,
   );
 }

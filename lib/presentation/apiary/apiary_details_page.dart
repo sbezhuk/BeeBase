@@ -7,6 +7,8 @@ import 'package:beebase/presentation/apiary/widget/apiary_map_photo.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_photo_placeholder.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_scaffold.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_scaffold_action.dart';
+import 'package:beebase/presentation/apiary/widget/apiary_sync_badge.dart';
+import 'package:beebase/presentation/connectivity/cubit/connectivity_cubit/connectivity_cubit.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar.dart';
 import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar_variant.dart';

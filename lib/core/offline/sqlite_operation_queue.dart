@@ -29,6 +29,13 @@ final class SqliteOperationQueue implements OperationQueue {
   }
 
   @override
+  Future<OfflineOperation?> find(String id) async {
+    final db = await _database.open();
+    final rows = await db.query(_table, where: 'id = ?', whereArgs: [id], limit: 1);
+    return rows.isEmpty ? null : OfflineOperationRowMapper.fromRow(rows.single);
+  }
+
+  @override
   Future<void> enqueue(OfflineOperation operation) async {
     final db = await _database.open();
     await db.insert(_table, OfflineOperationRowMapper.toRow(operation), conflictAlgorithm: ConflictAlgorithm.replace);

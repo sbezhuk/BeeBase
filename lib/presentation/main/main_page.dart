@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:beebase/presentation/connectivity/connectivity_banner.dart';
 import 'package:beebase/presentation/main/main_destinations.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/sync/offline_sync_banner.dart';
@@ -45,6 +46,7 @@ final class MainPage extends StatelessWidget {
               : null,
           body: Column(
             children: [
+              const ConnectivityBanner(),
               const OfflineSyncBanner(),
               Expanded(child: child),
             ],

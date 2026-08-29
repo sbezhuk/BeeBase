@@ -1,4 +1,7 @@
 import 'package:beebase/core/error/error_text.dart';
+import 'package:beebase/core/networking/exceptions/cancellation_exception.dart';
+import 'package:beebase/core/networking/exceptions/internal_exception.dart';
+import 'package:beebase/core/networking/exceptions/server_exception.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/core/offline/local_id_generator.dart';
 import 'package:beebase/core/offline/offline_mutation_store.dart';
@@ -118,6 +121,14 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
     }, (response) => Future.value(Right(response.toEntity())));
   }
 
+  /// An entity with a not-yet-synced local edit always stays on the local
+  /// path — even while online — so a further edit never races ahead of that
+  /// pending operation by hitting the API directly (see item #10: coming
+  /// back online only makes sync *available*, it never bypasses the
+  /// explicit "Sync now" policy). A still-local (never-created-server-side)
+  /// id always has such a pending operation by construction; the
+  /// [LocalIdGenerator.isLocal] branch below is only a defensive fallback
+  /// for that invariant being violated.
   @override
   Future<Either<Failure, Apiary>> updateApiary({
     required String id,
@@ -126,22 +137,85 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
     String? location,
     double? lat,
     double? lon,
-  }) {
-    if (LocalIdGenerator.isLocal(id)) {
-      return Future.value(const Left(InternalFailure(ErrorTextKey('core.errors.pendingSync'))));
+  }) async {
+    final pending = await _pendingOperationFor(id);
+    if (pending != null) {
+      return _updateOffline(id: id, name: name, description: description, location: location, lat: lat, lon: lon);
     }
-    return on(() async {
-      final request = ApiaryRequest(name: name, description: description, location: location, lat: lat, lon: lon);
-      return (await dataSource.updateApiary(id, request)).toEntity();
-    });
+    if (LocalIdGenerator.isLocal(id)) {
+      return const Left(InternalFailure(ErrorTextKey('core.errors.pendingSync')));
+    }
+    if (!await connectivity.isOnline) {
+      return _updateOffline(id: id, name: name, description: description, location: location, lat: lat, lon: lon);
+    }
+
+    final request = ApiaryRequest(name: name, description: description, location: location, lat: lat, lon: lon);
+    final result = await on(() async => (await dataSource.updateApiary(id, request)).toEntity());
+
+    return result.fold((failure) async {
+      if (failure is ServerFailure) {
+        return Left(failure);
+      }
+      return _updateOffline(id: id, name: name, description: description, location: location, lat: lat, lon: lon);
+    }, (apiary) => Future.value(Right(apiary)));
   }
 
+  /// A never-synced local entity is always deletable, online or off — there's
+  /// nothing server-side to reconcile, so this just drops its placeholder and
+  /// cancels its pending `CREATE` operation. A synced entity requires live
+  /// connectivity to delete (surfaced in the UI as a hidden delete button
+  /// with an explanatory note — see `_ApiaryDeleteLink`), since deleting it
+  /// is a real server call with no offline-queued equivalent.
   @override
-  Future<Either<Failure, void>> deleteApiary(String id) {
+  Future<Either<Failure, void>> deleteApiary(String id) async {
     if (LocalIdGenerator.isLocal(id)) {
-      return Future.value(const Left(InternalFailure(ErrorTextKey('core.errors.pendingSync'))));
+      return _deleteLocalOnly(id);
     }
-    return on(() => dataSource.deleteApiary(id));
+    if (!await connectivity.isOnline) {
+      return const Left(InternalFailure(ErrorTextKey('core.errors.deleteRequiresConnection')));
+    }
+    return _deleteOnline(id);
+  }
+
+  Future<Either<Failure, void>> _deleteLocalOnly(String id) async {
+    await _purgeLocal(id);
+    return const Right(null);
+  }
+
+  /// A 404 here means the server has already forgotten this entity — a
+  /// stale local record left behind by, e.g., a previous sync that
+  /// succeeded server-side but never reconciled locally, or a delete from
+  /// another device/session. The desired end state (no such apiary) is
+  /// already true, so this is treated as a successful delete rather than a
+  /// failure — otherwise a row in this state could never be removed, since
+  /// every retry would 404 the same way. Any other server error still
+  /// surfaces normally via [on]'s standard translation.
+  Future<Either<Failure, void>> _deleteOnline(String id) async {
+    try {
+      await dataSource.deleteApiary(id);
+    } on ServerException catch (e) {
+      if (e.statusCode != 404) {
+        return Left(ServerFailure(code: e.code, message: e.message, fields: e.fields));
+      }
+    } on CancellationException catch (e) {
+      return Left(CancellationFailure(e.message));
+    } on InternalException catch (e) {
+      return Left(InternalFailure(e.message));
+    }
+    await _purgeLocal(id);
+    return const Right(null);
+  }
+
+  /// Drops [id]'s cache entry and any lingering pending operation for it —
+  /// used both for a never-synced entity's local-only delete and to clean up
+  /// after a synced entity is deleted server-side, so neither can reappear
+  /// from the cache the next time the list is read offline.
+  Future<void> _purgeLocal(String id) async {
+    await localDataSource.modify((current) => (current ?? const []).where((response) => response.id != id).toList());
+    final pending = await _pendingOperationFor(id);
+    if (pending != null) {
+      await operationQueue.remove(pending.id);
+    }
   }
 
   /// Saves the local placeholder and enqueues its sync operation atomically
@@ -185,8 +259,85 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
     return Right(placeholder.toEntity().copyWith(syncStatus: ApiarySyncStatus.pending));
   }
 
+  /// Updates the cached entity and folds the change into the single
+  /// outstanding pending operation for [id] (see
+  /// [OfflineMutationStore.saveWithConsolidatedOperation]) — a still-pending
+  /// `CREATE` stays a `CREATE` with the newer payload; an already-synced
+  /// entity gets a fresh `UPDATE` the first time, then that same `UPDATE` is
+  /// reused (payload replaced, `version` bumped) on every further edit
+  /// before it syncs. Returns immediately with the locally-held state, no
+  /// network round trip needed.
+  Future<Either<Failure, Apiary>> _updateOffline({
+    required String id,
+    required String name,
+    String? description,
+    String? location,
+    double? lat,
+    double? lon,
+  }) async {
+    final now = DateTime.now();
+    final request = ApiaryRequest(name: name, description: description, location: location, lat: lat, lon: lon);
+    ApiaryResponse? updatedResponse;
+
+    await offlineMutationStore.saveWithConsolidatedOperation<List<ApiaryResponse>>(
+      cacheKey: apiaryCacheKey,
+      mutate: (current) {
+        final list = current ?? const <ApiaryResponse>[];
+        ApiaryResponse? match;
+        for (final response in list) {
+          if (response.id == id) {
+            match = response;
+            break;
+          }
+        }
+        final response = request.toResponse(id: id, createdAt: match?.createdAt ?? now, updatedAt: now);
+        updatedResponse = response;
+        return [
+          for (final existing in list)
+            if (existing.id != id) existing,
+          response,
+        ];
+      },
+      toJson: (list) => list.map((response) => response.toJson()).toList(),
+      fromJson: (json) => (json as List<dynamic>).map((item) => ApiaryResponse.fromJson(item as Map<String, dynamic>)).toList(),
+      entityType: _apiaryEntityType,
+      entityId: id,
+      operation: () => OfflineOperation(
+        id: LocalIdGenerator.generate(),
+        entityType: _apiaryEntityType,
+        operationType: OperationType.update,
+        payload: request.toJson(),
+        status: OperationStatus.pending,
+        createdAt: now,
+        updatedAt: now,
+        localEntityId: id,
+      ),
+      mergeInto: (existing) => existing.copyWith(
+        payload: request.toJson(),
+        status: OperationStatus.pending,
+        updatedAt: now,
+        version: existing.version + 1,
+      ),
+    );
+
+    return Right(updatedResponse!.toEntity().copyWith(syncStatus: ApiarySyncStatus.pending));
+  }
+
   Future<List<OfflineOperation>> _apiaryOperations() async {
     return (await operationQueue.all()).where((operation) => operation.entityType == _apiaryEntityType).toList();
+  }
+
+  /// The current non-synced operation for [id] (a pending `CREATE` if [id]
+  /// is still local, or a pending/failed `UPDATE` if it's a synced entity
+  /// with an unsynced edit) — `null` if [id] has nothing outstanding.
+  Future<OfflineOperation?> _pendingOperationFor(String id) async {
+    final matches = (await _apiaryOperations()).where(
+      (operation) => operation.localEntityId == id && operation.status != OperationStatus.synced,
+    );
+    if (matches.isEmpty) {
+      return null;
+    }
+    return matches.reduce((a, b) => a.updatedAt.isAfter(b.updatedAt) ? a : b);
   }
 
   /// `hasNext: false` — there's no fresh pagination metadata while degraded

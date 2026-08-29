@@ -20,6 +20,7 @@ abstract final class OfflineOperationRowMapper {
     'last_error': operation.lastError,
     'local_entity_id': operation.localEntityId,
     'depends_on_operation_id': operation.dependsOnOperationId,
+    'version': operation.version,
   };
 
   static OfflineOperation fromRow(Map<String, Object?> row) => OfflineOperation(
@@ -34,5 +35,6 @@ abstract final class OfflineOperationRowMapper {
     lastError: row['last_error'] as String?,
     localEntityId: row['local_entity_id'] as String?,
     dependsOnOperationId: row['depends_on_operation_id'] as String?,
+    version: row['version'] as int? ?? 0,
   );
 }

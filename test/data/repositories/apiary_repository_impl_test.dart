@@ -91,6 +91,18 @@ void main() {
     registerFallbackValue(mutateFallback);
     registerFallbackValue(toJsonFallback);
     registerFallbackValue(fromJsonFallback);
+    OfflineOperation operationFallback() => OfflineOperation(
+      id: 'fallback-op',
+      entityType: 'apiary',
+      operationType: OperationType.update,
+      payload: const {},
+      status: OperationStatus.pending,
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
+    OfflineOperation mergeIntoFallback(OfflineOperation existing) => existing;
+    registerFallbackValue(operationFallback);
+    registerFallbackValue(mergeIntoFallback);
   });
 
   setUp(() {
@@ -126,6 +138,27 @@ void main() {
         operation: any(named: 'operation'),
       ),
     ).thenAnswer((_) async {});
+    // Mirrors `SqliteOfflineMutationStore.saveWithConsolidatedOperation`
+    // closely enough for the repository's purposes: just runs `mutate`
+    // against an empty cache so the repository's captured "updated entity"
+    // side effect fires, without modeling actual consolidation (that's
+    // covered directly in `sqlite_offline_mutation_store_test.dart`).
+    when(
+      () => offlineMutationStore.saveWithConsolidatedOperation<List<ApiaryResponse>>(
+        cacheKey: any(named: 'cacheKey'),
+        mutate: any(named: 'mutate'),
+        toJson: any(named: 'toJson'),
+        fromJson: any(named: 'fromJson'),
+        entityType: any(named: 'entityType'),
+        entityId: any(named: 'entityId'),
+        operation: any(named: 'operation'),
+        mergeInto: any(named: 'mergeInto'),
+      ),
+    ).thenAnswer((invocation) async {
+      final mutate =
+          invocation.namedArguments[#mutate] as List<ApiaryResponse> Function(List<ApiaryResponse>?);
+      mutate(null);
+    });
   });
 
   group('getApiaries', () {
@@ -471,10 +504,119 @@ void main() {
       result.fold((_) => fail('expected Right'), (apiary) => expect(apiary.id, 'apiary-1'));
     });
 
-    test('rejects a not-yet-synced local id without calling the network', () async {
+    test('consolidates into the existing pending CREATE instead of erroring on a not-yet-synced local id', () async {
+      when(() => operationQueue.all()).thenAnswer(
+        (_) async => [
+          OfflineOperation(
+            id: 'op-1',
+            entityType: 'apiary',
+            operationType: OperationType.create,
+            payload: const {},
+            status: OperationStatus.pending,
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+            localEntityId: 'local-pending-1',
+          ),
+        ],
+      );
+
+      final result = await repository.updateApiary(id: 'local-pending-1', name: 'Renamed Before Sync');
+
+      result.fold((_) => fail('expected Right'), (apiary) {
+        expect(apiary.name, 'Renamed Before Sync');
+        expect(apiary.syncStatus, ApiarySyncStatus.pending);
+      });
+      verifyNever(() => dataSource.updateApiary(any(), any()));
+      final captured = verify(
+        () => offlineMutationStore.saveWithConsolidatedOperation<List<ApiaryResponse>>(
+          cacheKey: any(named: 'cacheKey'),
+          mutate: any(named: 'mutate'),
+          toJson: any(named: 'toJson'),
+          fromJson: any(named: 'fromJson'),
+          entityType: any(named: 'entityType'),
+          entityId: captureAny(named: 'entityId'),
+          operation: any(named: 'operation'),
+          mergeInto: any(named: 'mergeInto'),
+        ),
+      ).captured;
+      expect(captured.single, 'local-pending-1');
+    });
+
+    test('a local id with no pending operation is rejected as an invariant-violation safety net', () async {
       final result = await repository.updateApiary(id: 'local-pending-1', name: 'Back Garden');
 
       expect(result, isA<Left<Failure, dynamic>>());
+      verifyNever(() => dataSource.updateApiary(any(), any()));
+    });
+
+    test('updates a synced entity locally and enqueues one pending UPDATE while offline', () async {
+      when(() => connectivity.isOnline).thenAnswer((_) async => false);
+
+      final result = await repository.updateApiary(id: 'apiary-1', name: 'Renamed Offline');
+
+      result.fold((_) => fail('expected Right'), (apiary) {
+        expect(apiary.name, 'Renamed Offline');
+        expect(apiary.syncStatus, ApiarySyncStatus.pending);
+      });
+      verifyNever(() => dataSource.updateApiary(any(), any()));
+      final operation =
+          verify(
+                () => offlineMutationStore.saveWithConsolidatedOperation<List<ApiaryResponse>>(
+                  cacheKey: any(named: 'cacheKey'),
+                  mutate: any(named: 'mutate'),
+                  toJson: any(named: 'toJson'),
+                  fromJson: any(named: 'fromJson'),
+                  entityType: any(named: 'entityType'),
+                  entityId: any(named: 'entityId'),
+                  operation: captureAny(named: 'operation'),
+                  mergeInto: any(named: 'mergeInto'),
+                ),
+              ).captured.single
+              as OfflineOperation Function();
+      expect(operation().operationType, OperationType.update);
+      expect(operation().localEntityId, 'apiary-1');
+    });
+
+    test('falls back to a local update when the network call fails with a connectivity error', () async {
+      when(() => dataSource.updateApiary('apiary-1', any())).thenThrow(const InternalException(ErrorTextRaw('no connection')));
+
+      final result = await repository.updateApiary(id: 'apiary-1', name: 'Renamed');
+
+      result.fold((_) => fail('expected Right'), (apiary) => expect(apiary.syncStatus, ApiarySyncStatus.pending));
+      verify(
+        () => offlineMutationStore.saveWithConsolidatedOperation<List<ApiaryResponse>>(
+          cacheKey: any(named: 'cacheKey'),
+          mutate: any(named: 'mutate'),
+          toJson: any(named: 'toJson'),
+          fromJson: any(named: 'fromJson'),
+          entityType: any(named: 'entityType'),
+          entityId: any(named: 'entityId'),
+          operation: any(named: 'operation'),
+          mergeInto: any(named: 'mergeInto'),
+        ),
+      ).called(1);
+    });
+
+    test('an existing pending edit routes further edits offline even while online (never bypasses it)', () async {
+      when(() => connectivity.isOnline).thenAnswer((_) async => true);
+      when(() => operationQueue.all()).thenAnswer(
+        (_) async => [
+          OfflineOperation(
+            id: 'op-1',
+            entityType: 'apiary',
+            operationType: OperationType.update,
+            payload: const {},
+            status: OperationStatus.pending,
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+            localEntityId: 'apiary-1',
+          ),
+        ],
+      );
+
+      final result = await repository.updateApiary(id: 'apiary-1', name: 'Second Edit While Online');
+
+      result.fold((_) => fail('expected Right'), (apiary) => expect(apiary.name, 'Second Edit While Online'));
       verifyNever(() => dataSource.updateApiary(any(), any()));
     });
   });
@@ -496,11 +638,96 @@ void main() {
       expect(result, isA<Left<Failure, void>>());
     });
 
-    test('rejects a not-yet-synced local id without calling the network', () async {
+    test('deletes a never-synced local id locally, without calling the network', () async {
       final result = await repository.deleteApiary('local-pending-1');
+
+      expect(result, isA<Right<Failure, void>>());
+      verifyNever(() => dataSource.deleteApiary(any()));
+    });
+
+    test('cancels the pending CREATE operation when deleting a not-yet-synced local id', () async {
+      final pendingCreate = OfflineOperation(
+        id: 'op-1',
+        entityType: 'apiary',
+        operationType: OperationType.create,
+        payload: const {},
+        status: OperationStatus.pending,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+        localEntityId: 'local-pending-1',
+      );
+      when(() => operationQueue.all()).thenAnswer((_) async => [pendingCreate]);
+      when(() => operationQueue.remove(any())).thenAnswer((_) async {});
+
+      final result = await repository.deleteApiary('local-pending-1');
+
+      expect(result, isA<Right<Failure, void>>());
+      verify(() => operationQueue.remove('op-1')).called(1);
+    });
+
+    test('blocks deleting a synced id while offline, without calling the network', () async {
+      when(() => connectivity.isOnline).thenAnswer((_) async => false);
+
+      final result = await repository.deleteApiary('apiary-1');
 
       expect(result, isA<Left<Failure, void>>());
       verifyNever(() => dataSource.deleteApiary(any()));
+    });
+
+    test('purges the cache and any lingering pending operation after a successful online delete', () async {
+      final existing = ApiaryResponse(id: 'apiary-1', name: 'Back Garden', createdAt: DateTime(2026), updatedAt: DateTime(2026));
+      when(() => localDataSource.read()).thenAnswer((_) async => [existing]);
+      when(() => dataSource.deleteApiary('apiary-1')).thenAnswer((_) async {});
+      final staleEdit = OfflineOperation(
+        id: 'op-2',
+        entityType: 'apiary',
+        operationType: OperationType.update,
+        payload: const {},
+        status: OperationStatus.pending,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+        localEntityId: 'apiary-1',
+      );
+      when(() => operationQueue.all()).thenAnswer((_) async => [staleEdit]);
+      when(() => operationQueue.remove(any())).thenAnswer((_) async {});
+
+      final result = await repository.deleteApiary('apiary-1');
+
+      expect(result, isA<Right<Failure, void>>());
+      final update =
+          verify(() => localDataSource.modify(captureAny())).captured.single
+              as FutureOr<List<ApiaryResponse>> Function(List<ApiaryResponse>?);
+      final written = await update([existing]);
+      expect(written, isEmpty);
+      verify(() => operationQueue.remove('op-2')).called(1);
+    });
+
+    test('treats a 404 as an already-completed delete and purges the stale local record', () async {
+      final existing = ApiaryResponse(id: 'apiary-1', name: 'Back Garden', createdAt: DateTime(2026), updatedAt: DateTime(2026));
+      when(() => localDataSource.read()).thenAnswer((_) async => [existing]);
+      when(
+        () => dataSource.deleteApiary('apiary-1'),
+      ).thenThrow(const ServerException(statusCode: 404, code: 'not_found', message: 'apiary not found'));
+
+      final result = await repository.deleteApiary('apiary-1');
+
+      expect(result, isA<Right<Failure, void>>());
+      final update =
+          verify(() => localDataSource.modify(captureAny())).captured.single
+              as FutureOr<List<ApiaryResponse>> Function(List<ApiaryResponse>?);
+      final written = await update([existing]);
+      expect(written, isEmpty);
+    });
+
+    test('still surfaces a non-404 server error as a failure without purging the cache', () async {
+      when(
+        () => dataSource.deleteApiary('apiary-1'),
+      ).thenThrow(const ServerException(statusCode: 422, code: 'validation_error', message: 'cannot delete'));
+
+      final result = await repository.deleteApiary('apiary-1');
+
+      expect(result, isA<Left<Failure, void>>());
+      verifyNever(() => localDataSource.modify(any()));
     });
   });
 }

@@ -48,6 +48,25 @@ void main() {
       ]);
       expect(merged.map((response) => response.id), ['apiary-1']);
     });
+
+    test('a pending UPDATE on a synced id is not duplicated against the stale server copy', () {
+      final editedLocally = ApiaryResponse(id: 'apiary-1', name: 'Renamed Locally', createdAt: DateTime(2026), updatedAt: DateTime(2026));
+      final updateOp = OfflineOperation(
+        id: 'op-2',
+        entityType: 'apiary',
+        operationType: OperationType.update,
+        payload: const {},
+        status: OperationStatus.pending,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+        localEntityId: 'apiary-1',
+      );
+
+      final merged = merger.mergeFirstPage([serverItem], [editedLocally], [updateOp]);
+
+      expect(merged.length, 1);
+      expect(merged.single.name, 'Renamed Locally');
+    });
   });
 
   group('appendPage', () {

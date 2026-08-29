@@ -67,7 +67,7 @@
       "loadMoreError": "Couldn't load more apiaries",
       "hivesCount": "{count} hives",
       "lastVisit": "Last visit {date}",
-      "syncPending": "Pending sync",
+      "syncPending": "Needs synchronization",
       "syncFailed": "Sync failed"
     },
     "details": {
@@ -78,7 +78,8 @@
       "cancel": "Cancel",
       "addedOn": "Added {date}",
       "deleteConfirmTitle": "Delete apiary?",
-      "deleteConfirmMessage": "This will permanently remove this apiary. This action cannot be undone."
+      "deleteConfirmMessage": "This will permanently remove this apiary. This action cannot be undone.",
+      "deleteRequiresConnection": "This apiary is already saved to the server — connect to the internet to delete it."
     },
     "form": {
       "createTitle": "New Apiary",
@@ -118,7 +119,8 @@
       "unexpectedNetworkError": "Something went wrong. Please check your connection and try again.",
       "requestFailed": "Something went wrong. Please try again.",
       "noActiveSession": "No active session. Please log in again.",
-      "pendingSync": "This apiary hasn't finished syncing yet. Try again once it's synced."
+      "pendingSync": "This apiary hasn't finished syncing yet. Try again once it's synced.",
+      "deleteRequiresConnection": "You need an internet connection to delete this apiary."
     },
     "snackbar": {
       "dismiss": "Dismiss"
@@ -128,7 +130,8 @@
     "banner": {
       "message": "You have data saved offline that can now be uploaded to the server.",
       "action": "Sync now",
-      "syncing": "Syncing offline data…"
+      "syncing": "Syncing offline data…",
+      "offline": "You're offline. Changes will sync once you're back online."
     }
   },
   "server": {

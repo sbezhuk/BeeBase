@@ -15,9 +15,11 @@ final class HoneycombPattern extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
-      child: CustomPaint(
-        size: Size.infinite,
-        painter: HoneycombPainter(color: (color ?? context.colors.honey.brown).withValues(alpha: opacity)),
+      child: ClipRect(
+        child: CustomPaint(
+          size: Size.infinite,
+          painter: HoneycombPainter(color: (color ?? context.colors.honey.brown).withValues(alpha: opacity)),
+        ),
       ),
     );
   }
