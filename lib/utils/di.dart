@@ -3,15 +3,18 @@ import 'package:beebase/core/networking/http/token_refresher.dart';
 import 'package:beebase/core/networking/interceptors/authentication_interceptor.dart';
 import 'package:beebase/core/location/location_service.dart';
 import 'package:beebase/core/networking/interceptors/interceptor_resolver.dart';
-import 'package:beebase/core/offline/local_operation_queue.dart';
-import 'package:beebase/core/offline/offline_operation.dart';
+import 'package:beebase/core/offline/offline_mutation_store.dart';
+import 'package:beebase/core/offline/offline_operations_change_notifier.dart';
 import 'package:beebase/core/offline/operation_queue.dart';
 import 'package:beebase/core/offline/operation_registry.dart';
+import 'package:beebase/core/offline/sqlite_offline_mutation_store.dart';
+import 'package:beebase/core/offline/sqlite_operation_queue.dart';
 import 'package:beebase/core/offline/sync_engine.dart';
 import 'package:beebase/core/offline/sync_engine_impl.dart';
 import 'package:beebase/core/services/connectivity_service.dart';
 import 'package:beebase/core/services/connectivity_service_impl.dart';
 import 'package:beebase/core/services/session_service.dart';
+import 'package:beebase/core/storage/app_database.dart';
 import 'package:beebase/core/storage/secure_storage.dart';
 import 'package:beebase/core/storage/token_storage.dart';
 import 'package:beebase/data/apiary/apiary_operation_handler.dart';
@@ -20,7 +23,7 @@ import 'package:beebase/data/data_source/authentication_data_source.dart';
 import 'package:beebase/data/data_source/interface/apiary_data_source.dart';
 import 'package:beebase/data/data_source/interface/authentication_data_source.dart';
 import 'package:beebase/data/data_source/interface/local_data_source.dart';
-import 'package:beebase/data/data_source/shared_preferences_local_data_source.dart';
+import 'package:beebase/data/data_source/sqlite_local_data_source.dart';
 import 'package:beebase/data/models/apiary_response.dart';
 import 'package:beebase/data/models/user_response.dart';
 import 'package:beebase/data/repositories/apiary_repository_impl.dart';
@@ -38,12 +41,12 @@ import 'package:beebase/presentation/authentication/cubit/login_cubit/login_cubi
 import 'package:beebase/presentation/authentication/cubit/register_cubit/register_cubit.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/router/guardes/authentication_guard.dart';
+import 'package:beebase/presentation/sync/cubit/sync_banner_cubit/sync_banner_cubit.dart';
 import 'package:beebase/utils/app_config.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:get_it/get_it.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 final di = GetIt.instance;
 
@@ -66,30 +69,24 @@ Future<void> initDi() async {
   di.registerLazySingleton<CookieJar>(() => cookieJar);
   di.registerLazySingleton<CookieManager>(() => CookieManager(di()));
 
-  final preferences = await SharedPreferences.getInstance();
-  di.registerLazySingleton<SharedPreferences>(() => preferences);
+  final appDatabase = AppDatabase();
+  await appDatabase.open();
+  di.registerLazySingleton<AppDatabase>(() => appDatabase);
+
   di.registerLazySingleton<LocalDataSource<UserResponse>>(
-    () => SharedPreferencesLocalDataSource<UserResponse>(
-      preferences: di(),
+    () => SqliteLocalDataSource<UserResponse>(
+      database: di(),
       key: 'cached_user',
       toJson: (user) => user.toJson(),
       fromJson: (json) => UserResponse.fromJson(json as Map<String, dynamic>),
     ),
   );
   di.registerLazySingleton<LocalDataSource<List<ApiaryResponse>>>(
-    () => SharedPreferencesLocalDataSource<List<ApiaryResponse>>(
-      preferences: di(),
-      key: 'cached_apiaries',
+    () => SqliteLocalDataSource<List<ApiaryResponse>>(
+      database: di(),
+      key: apiaryCacheKey,
       toJson: (apiaries) => apiaries.map((apiary) => apiary.toJson()).toList(),
       fromJson: (json) => (json as List<dynamic>).map((item) => ApiaryResponse.fromJson(item as Map<String, dynamic>)).toList(),
-    ),
-  );
-  di.registerLazySingleton<LocalDataSource<List<OfflineOperation>>>(
-    () => SharedPreferencesLocalDataSource<List<OfflineOperation>>(
-      preferences: di(),
-      key: 'offline_operations',
-      toJson: (operations) => operations.map((operation) => operation.toJson()).toList(),
-      fromJson: (json) => (json as List<dynamic>).map((item) => OfflineOperation.fromJson(item as Map<String, dynamic>)).toList(),
     ),
   );
   // #endregion
@@ -118,8 +115,11 @@ Future<void> initDi() async {
   // #endregion
 
   // #region Offline
-  di.registerLazySingleton<LocalOperationQueue>(() => LocalOperationQueue(storage: di()));
-  di.registerLazySingleton<OperationQueue>(() => di<LocalOperationQueue>());
+  di.registerLazySingleton<OfflineOperationsChangeNotifier>(OfflineOperationsChangeNotifier.new);
+  di.registerLazySingleton<SqliteOperationQueue>(() => SqliteOperationQueue(database: di(), changeNotifier: di()));
+  di.registerLazySingleton<OperationQueue>(() => di<SqliteOperationQueue>());
+  di.registerLazySingleton<SqliteOfflineMutationStore>(() => SqliteOfflineMutationStore(database: di(), changeNotifier: di()));
+  di.registerLazySingleton<OfflineMutationStore>(() => di<SqliteOfflineMutationStore>());
   di.registerLazySingleton<ApiaryOperationHandler>(
     () => ApiaryOperationHandler(dataSource: di(), localDataSource: di(), refreshNotifier: di()),
   );
@@ -138,7 +138,7 @@ Future<void> initDi() async {
       localDataSource: di(),
       connectivity: di(),
       operationQueue: di(),
-      refreshNotifier: di(),
+      offlineMutationStore: di(),
     ),
   );
   di.registerLazySingleton<IApiaryReader>(() => di<ApiaryRepositoryImpl>());
@@ -152,6 +152,7 @@ Future<void> initDi() async {
 
   // #region Blocs
   di.registerLazySingleton<AuthenticationCubit>(() => AuthenticationCubit(repository: di(), sessionService: di()));
+  di.registerLazySingleton<SyncBannerCubit>(() => SyncBannerCubit(engine: di()));
   di.registerFactory<LoginCubit>(() => LoginCubit(repository: di(), authenticationCubit: di()));
   di.registerFactory<RegisterCubit>(() => RegisterCubit(repository: di(), authenticationCubit: di()));
   di.registerFactory<ApiaryListCubit>(() => ApiaryListCubit(reader: di(), refreshNotifier: di()));

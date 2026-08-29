@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:beebase/core/error/error_text.dart';
 import 'package:beebase/core/networking/exceptions/internal_exception.dart';
 import 'package:beebase/core/networking/exceptions/server_exception.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/core/offline/local_id_generator.dart';
+import 'package:beebase/core/offline/offline_mutation_store.dart';
 import 'package:beebase/core/offline/offline_operation.dart';
 import 'package:beebase/core/offline/operation_queue.dart';
 import 'package:beebase/core/offline/operation_status.dart';
@@ -14,7 +17,6 @@ import 'package:beebase/data/models/apiary_request.dart';
 import 'package:beebase/data/models/apiary_response.dart';
 import 'package:beebase/data/repositories/apiary_repository_impl.dart';
 import 'package:beebase/domain/enum/apiary_sync_status.dart';
-import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
 import 'package:beebase/utils/either.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -27,12 +29,14 @@ class MockConnectivityService extends Mock implements IConnectivityService {}
 
 class MockOperationQueue extends Mock implements OperationQueue {}
 
+class MockOfflineMutationStore extends Mock implements OfflineMutationStore {}
+
 void main() {
   late MockApiaryDataSource dataSource;
   late MockApiaryLocalDataSource localDataSource;
   late MockConnectivityService connectivity;
   late MockOperationQueue operationQueue;
-  late ApiaryListRefreshNotifier refreshNotifier;
+  late MockOfflineMutationStore offlineMutationStore;
   late ApiaryRepositoryImpl repository;
 
   final apiaryResponse = ApiaryResponse(
@@ -58,6 +62,12 @@ void main() {
         updatedAt: DateTime(2026),
       ),
     );
+    List<ApiaryResponse> mutateFallback(List<ApiaryResponse>? current) => <ApiaryResponse>[];
+    Object? toJsonFallback(List<ApiaryResponse> value) => null;
+    List<ApiaryResponse> fromJsonFallback(Object? json) => <ApiaryResponse>[];
+    registerFallbackValue(mutateFallback);
+    registerFallbackValue(toJsonFallback);
+    registerFallbackValue(fromJsonFallback);
   });
 
   setUp(() {
@@ -65,22 +75,35 @@ void main() {
     localDataSource = MockApiaryLocalDataSource();
     connectivity = MockConnectivityService();
     operationQueue = MockOperationQueue();
-    refreshNotifier = ApiaryListRefreshNotifier();
+    offlineMutationStore = MockOfflineMutationStore();
     repository = ApiaryRepositoryImpl(
       dataSource: dataSource,
       localDataSource: localDataSource,
       connectivity: connectivity,
       operationQueue: operationQueue,
-      refreshNotifier: refreshNotifier,
+      offlineMutationStore: offlineMutationStore,
     );
     when(() => connectivity.isOnline).thenAnswer((_) async => true);
     when(() => localDataSource.read()).thenAnswer((_) async => null);
     when(() => localDataSource.write(any())).thenAnswer((_) async {});
+    // Faithfully runs the callback the repository passes, against whatever
+    // `read()` is stubbed to return for the test — mirrors the atomic
+    // read-modify-write `SqliteLocalDataSource.modify` actually performs.
+    when(() => localDataSource.modify(any())).thenAnswer((invocation) async {
+      final update = invocation.positionalArguments.single as FutureOr<List<ApiaryResponse>> Function(List<ApiaryResponse>?);
+      await update(await localDataSource.read());
+    });
     when(() => operationQueue.all()).thenAnswer((_) async => []);
-    when(() => operationQueue.enqueue(any())).thenAnswer((_) async {});
+    when(
+      () => offlineMutationStore.saveWithPendingOperation<List<ApiaryResponse>>(
+        cacheKey: any(named: 'cacheKey'),
+        mutate: any(named: 'mutate'),
+        toJson: any(named: 'toJson'),
+        fromJson: any(named: 'fromJson'),
+        operation: any(named: 'operation'),
+      ),
+    ).thenAnswer((_) async {});
   });
-
-  tearDown(() => refreshNotifier.dispose());
 
   group('getApiaries', () {
     test('returns the mapped list on success and writes through to the cache', () async {
@@ -89,7 +112,10 @@ void main() {
       final result = await repository.getApiaries();
 
       result.fold((_) => fail('expected Right'), (apiaries) => expect(apiaries.single.name, 'Back Garden'));
-      verify(() => localDataSource.write([apiaryResponse])).called(1);
+      final update =
+          verify(() => localDataSource.modify(captureAny())).captured.single
+              as FutureOr<List<ApiaryResponse>> Function(List<ApiaryResponse>?);
+      expect(await update(null), [apiaryResponse]);
     });
 
     test('maps a thrown exception to a Failure when nothing is cached', () async {
@@ -222,7 +248,15 @@ void main() {
       result.fold((_) => fail('expected Right'), (apiary) => expect(apiary.name, 'Back Garden'));
       final captured = verify(() => dataSource.createApiary(captureAny())).captured.single as ApiaryRequest;
       expect(captured.name, 'Back Garden');
-      verifyNever(() => operationQueue.enqueue(any()));
+      verifyNever(
+        () => offlineMutationStore.saveWithPendingOperation<List<ApiaryResponse>>(
+          cacheKey: any(named: 'cacheKey'),
+          mutate: any(named: 'mutate'),
+          toJson: any(named: 'toJson'),
+          fromJson: any(named: 'fromJson'),
+          operation: any(named: 'operation'),
+        ),
+      );
     });
 
     test('maps a validation error to a ServerFailure without queuing anything', () async {
@@ -236,26 +270,45 @@ void main() {
         (failure) => expect(failure, isA<ServerFailure>().having((f) => f.code, 'code', 'validation_error')),
         (_) => fail('expected Left'),
       );
-      verifyNever(() => operationQueue.enqueue(any()));
+      verifyNever(
+        () => offlineMutationStore.saveWithPendingOperation<List<ApiaryResponse>>(
+          cacheKey: any(named: 'cacheKey'),
+          mutate: any(named: 'mutate'),
+          toJson: any(named: 'toJson'),
+          fromJson: any(named: 'fromJson'),
+          operation: any(named: 'operation'),
+        ),
+      );
     });
 
-    test('creates locally and enqueues a pending operation when offline', () async {
+    test('creates locally and enqueues a pending operation atomically when offline', () async {
       when(() => connectivity.isOnline).thenAnswer((_) async => false);
 
       final result = await repository.createApiary(name: 'New Yard', description: 'desc');
 
+      late final String returnedId;
       result.fold((_) => fail('expected Right'), (apiary) {
         expect(apiary.name, 'New Yard');
         expect(apiary.syncStatus, ApiarySyncStatus.pending);
         expect(LocalIdGenerator.isLocal(apiary.id), isTrue);
+        returnedId = apiary.id;
       });
       verifyNever(() => dataSource.createApiary(any()));
-      final cached = verify(() => localDataSource.write(captureAny())).captured.single as List<ApiaryResponse>;
-      expect(cached.single.name, 'New Yard');
-      final enqueued = verify(() => operationQueue.enqueue(captureAny())).captured.single as OfflineOperation;
-      expect(enqueued.entityType, 'apiary');
-      expect(enqueued.operationType, OperationType.create);
-      expect(enqueued.localEntityId, cached.single.id);
+
+      final capturedCacheKey = verify(
+        () => offlineMutationStore.saveWithPendingOperation<List<ApiaryResponse>>(
+          cacheKey: captureAny(named: 'cacheKey'),
+          mutate: any(named: 'mutate'),
+          toJson: any(named: 'toJson'),
+          fromJson: any(named: 'fromJson'),
+          operation: captureAny(named: 'operation'),
+        ),
+      ).captured;
+      expect(capturedCacheKey[0], apiaryCacheKey);
+      final operation = capturedCacheKey[1] as OfflineOperation;
+      expect(operation.entityType, 'apiary');
+      expect(operation.operationType, OperationType.create);
+      expect(operation.localEntityId, returnedId);
     });
 
     test('falls back to a local-first create when the network call fails with a connectivity error', () async {
@@ -264,7 +317,15 @@ void main() {
       final result = await repository.createApiary(name: 'New Yard');
 
       result.fold((_) => fail('expected Right'), (apiary) => expect(apiary.syncStatus, ApiarySyncStatus.pending));
-      verify(() => operationQueue.enqueue(any())).called(1);
+      verify(
+        () => offlineMutationStore.saveWithPendingOperation<List<ApiaryResponse>>(
+          cacheKey: any(named: 'cacheKey'),
+          mutate: any(named: 'mutate'),
+          toJson: any(named: 'toJson'),
+          fromJson: any(named: 'fromJson'),
+          operation: any(named: 'operation'),
+        ),
+      ).called(1);
     });
   });
 

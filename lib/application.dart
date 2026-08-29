@@ -6,6 +6,7 @@ import 'package:beebase/presentation/authentication/cubit/authentication_cubit/a
 import 'package:beebase/presentation/component/color.dart';
 import 'package:beebase/presentation/component/font.dart';
 import 'package:beebase/presentation/router/app_router.dart';
+import 'package:beebase/presentation/sync/cubit/sync_banner_cubit/sync_banner_cubit.dart';
 import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/themes/spacing.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -39,13 +40,12 @@ final class _ApplicationState extends State<Application> with WidgetsBindingObse
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Sync only depends on the foreground app being reachable at all —
-    // resuming (rather than a full cold start) is when a device most often
-    // regains connectivity after being backgrounded, so this is the cheap
-    // "at minimum" resumption point the offline architecture needs, without
-    // any platform-specific background execution.
+    // Never triggers a sync — synchronization is user-initiated only (see
+    // the "Sync now" banner). This just re-derives whether the banner
+    // should show, in case connectivity changed while backgrounded without
+    // the connectivity stream catching it.
     if (state == AppLifecycleState.resumed) {
-      di<SyncEngine>().syncNow();
+      di<SyncEngine>().refreshAvailability();
     }
   }
 
@@ -58,8 +58,11 @@ final class _ApplicationState extends State<Application> with WidgetsBindingObse
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider.value(
-      value: di<AuthenticationCubit>(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: di<AuthenticationCubit>()),
+        BlocProvider.value(value: di<SyncBannerCubit>()),
+      ],
       child: MaterialApp.router(
         theme: _buildTheme(const AppColor.light(), Brightness.light),
         darkTheme: _buildTheme(const AppColor.dark(), Brightness.dark),

@@ -28,7 +28,8 @@ dependencies:
   geolocator: ^14.0.2
   geocoding: ^5.0.0
   connectivity_plus: ^6.1.5
-  shared_preferences: ^2.5.3
+  sqflite: ^2.4.1
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_test:
@@ -39,6 +40,7 @@ dev_dependencies:
   auto_route_generator: ^10.6.0
   bloc_test: ^9.1.7
   mocktail: ^1.0.4
+  sqflite_common_ffi: ^2.3.4
 
 flutter:
   uses-material-design: true

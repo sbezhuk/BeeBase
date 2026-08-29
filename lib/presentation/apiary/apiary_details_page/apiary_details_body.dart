@@ -25,17 +25,20 @@ final class _ApiaryDetailsBody extends StatelessWidget {
               latitude: apiary.lat,
               longitude: apiary.lon,
               height: 220,
-              fallback: const ApiaryPhotoPlaceholder(height: 220),
+              fallback: apiary.syncStatus == ApiarySyncStatus.synced
+                  ? const ApiaryPhotoPlaceholder(height: 220)
+                  : const ApiaryPhotoPlaceholder(
+                      height: 220,
+                      titleKey: 'apiary.offlinePhotoPlaceholder.title',
+                      subtitleKey: 'apiary.offlinePhotoPlaceholder.subtitle',
+                    ),
             ),
             Padding(
               padding: EdgeInsets.fromLTRB(context.spacing.md, context.spacing.md, context.spacing.md, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'apiary.details.sectionLabel'.tr(),
-                    style: context.textStyles.label.copyWith(color: colors.honey.muted),
-                  ),
+                  Text('apiary.details.sectionLabel'.tr(), style: context.textStyles.label.copyWith(color: colors.honey.muted)),
                   SizedBox(height: context.spacing.xs),
                   Text(apiary.name, style: context.textStyles.title),
                   SizedBox(height: context.spacing.sm),

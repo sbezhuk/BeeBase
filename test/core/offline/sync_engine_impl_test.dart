@@ -18,13 +18,13 @@ class MockOperationHandler extends Mock implements OperationHandler {}
 
 class MockConnectivityService extends Mock implements IConnectivityService {}
 
-OfflineOperation _pendingOp({String id = 'op-1', int retryCount = 0}) {
+OfflineOperation _pendingOp({String id = 'op-1', int retryCount = 0, OperationStatus status = OperationStatus.pending}) {
   return OfflineOperation(
     id: id,
     entityType: 'apiary',
     operationType: OperationType.create,
     payload: const {'name': 'Test'},
-    status: OperationStatus.pending,
+    status: status,
     createdAt: DateTime(2026),
     updatedAt: DateTime(2026),
     retryCount: retryCount,
@@ -52,92 +52,164 @@ void main() {
     engine = SyncEngineImpl(queue: queue, registry: registry, connectivity: connectivity);
     when(() => connectivity.isOnline).thenAnswer((_) async => true);
     when(() => connectivity.status).thenAnswer((_) => const Stream.empty());
+    when(() => queue.changes).thenAnswer((_) => const Stream.empty());
+    when(() => queue.all()).thenAnswer((_) async => []);
     when(() => queue.update(any())).thenAnswer((_) async {});
   });
 
-  test('syncNow does nothing when offline', () async {
-    when(() => connectivity.isOnline).thenAnswer((_) async => false);
+  group('syncNow', () {
+    test('does nothing when offline', () async {
+      when(() => connectivity.isOnline).thenAnswer((_) async => false);
 
-    await engine.syncNow();
+      await engine.syncNow();
 
-    verifyNever(() => queue.all());
+      verifyNever(() => queue.all());
+    });
+
+    test('marks a successful operation synced', () async {
+      when(() => queue.all()).thenAnswer((_) async => [_pendingOp()]);
+      when(() => handler.handle(any())).thenAnswer((_) async => const OperationSuccess());
+
+      await engine.syncNow();
+
+      final updates = verify(() => queue.update(captureAny())).captured.cast<OfflineOperation>();
+      expect(updates.map((op) => op.status), [OperationStatus.inProgress, OperationStatus.synced]);
+    });
+
+    test('marks a retryable failure failed and bumps retryCount (no auto-retry loop exists anymore)', () async {
+      when(() => queue.all()).thenAnswer((_) async => [_pendingOp(retryCount: 0)]);
+      when(() => handler.handle(any())).thenAnswer((_) async => const OperationRetryableFailure('timeout'));
+
+      await engine.syncNow();
+
+      final updates = verify(() => queue.update(captureAny())).captured.cast<OfflineOperation>();
+      final finalUpdate = updates.last;
+      expect(finalUpdate.status, OperationStatus.failed);
+      expect(finalUpdate.retryCount, 1);
+      expect(finalUpdate.lastError, 'timeout');
+    });
+
+    test('marks a permanent failure failed and still bumps retryCount for observability', () async {
+      when(() => queue.all()).thenAnswer((_) async => [_pendingOp(retryCount: 0)]);
+      when(() => handler.handle(any())).thenAnswer((_) async => const OperationPermanentFailure('validation failed'));
+
+      await engine.syncNow();
+
+      final updates = verify(() => queue.update(captureAny())).captured.cast<OfflineOperation>();
+      expect(updates.last.status, OperationStatus.failed);
+      expect(updates.last.retryCount, 1);
+      expect(updates.last.lastError, 'validation failed');
+    });
+
+    test('re-processes an already-failed operation — every sync is user-initiated now, no retry cap', () async {
+      when(() => queue.all()).thenAnswer((_) async => [_pendingOp(retryCount: 9, status: OperationStatus.failed)]);
+      when(() => handler.handle(any())).thenAnswer((_) async => const OperationSuccess());
+
+      await engine.syncNow();
+
+      final updates = verify(() => queue.update(captureAny())).captured.cast<OfflineOperation>();
+      expect(updates.last.status, OperationStatus.synced);
+    });
+
+    test('skips an operation whose entity type has no registered handler', () async {
+      final orphanOp = OfflineOperation(
+        id: 'op-2',
+        entityType: 'hive',
+        operationType: OperationType.create,
+        payload: const {},
+        status: OperationStatus.pending,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+      when(() => queue.all()).thenAnswer((_) async => [orphanOp]);
+
+      await engine.syncNow();
+
+      verifyNever(() => queue.update(any()));
+      verifyNever(() => handler.handle(any()));
+    });
+
+    test('ignores a synced operation', () async {
+      when(() => queue.all()).thenAnswer((_) async => [_pendingOp(status: OperationStatus.synced)]);
+
+      await engine.syncNow();
+
+      verifyNever(() => handler.handle(any()));
+    });
   });
 
-  test('syncNow marks a successful operation synced', () async {
-    when(() => queue.all()).thenAnswer((_) async => [_pendingOp()]);
-    when(() => handler.handle(any())).thenAnswer((_) async => const OperationSuccess());
+  group('syncAvailable / start / refreshAvailability', () {
+    test('is false before start() and while offline', () async {
+      expect(engine.syncAvailable.value, isFalse);
+    });
 
-    await engine.syncNow();
+    test('refreshAvailability sets true when online with a pending operation', () async {
+      when(() => queue.all()).thenAnswer((_) async => [_pendingOp()]);
 
-    final updates = verify(() => queue.update(captureAny())).captured.cast<OfflineOperation>();
-    expect(updates.map((op) => op.status), [OperationStatus.inProgress, OperationStatus.synced]);
-  });
+      await engine.refreshAvailability();
 
-  test('syncNow leaves a retryable failure pending and bumps retryCount', () async {
-    when(() => queue.all()).thenAnswer((_) async => [_pendingOp(retryCount: 0)]);
-    when(() => handler.handle(any())).thenAnswer((_) async => const OperationRetryableFailure('timeout'));
+      expect(engine.syncAvailable.value, isTrue);
+    });
 
-    await engine.syncNow();
+    test('refreshAvailability is false when offline even with pending operations', () async {
+      when(() => connectivity.isOnline).thenAnswer((_) async => false);
+      when(() => queue.all()).thenAnswer((_) async => [_pendingOp()]);
 
-    final updates = verify(() => queue.update(captureAny())).captured.cast<OfflineOperation>();
-    final finalUpdate = updates.last;
-    expect(finalUpdate.status, OperationStatus.pending);
-    expect(finalUpdate.retryCount, 1);
-    expect(finalUpdate.lastError, 'timeout');
-  });
+      await engine.refreshAvailability();
 
-  test('syncNow marks failed once the retry cap is reached', () async {
-    when(() => queue.all()).thenAnswer((_) async => [_pendingOp(retryCount: 4)]);
-    when(() => handler.handle(any())).thenAnswer((_) async => const OperationRetryableFailure('still failing'));
+      expect(engine.syncAvailable.value, isFalse);
+    });
 
-    await engine.syncNow();
+    test('refreshAvailability is false when online with nothing pending or failed', () async {
+      when(() => queue.all()).thenAnswer((_) async => [_pendingOp(status: OperationStatus.synced)]);
 
-    final updates = verify(() => queue.update(captureAny())).captured.cast<OfflineOperation>();
-    expect(updates.last.status, OperationStatus.failed);
-  });
+      await engine.refreshAvailability();
 
-  test('syncNow marks a permanent failure failed immediately without bumping retryCount', () async {
-    when(() => queue.all()).thenAnswer((_) async => [_pendingOp(retryCount: 0)]);
-    when(() => handler.handle(any())).thenAnswer((_) async => const OperationPermanentFailure('validation failed'));
+      expect(engine.syncAvailable.value, isFalse);
+    });
 
-    await engine.syncNow();
+    test('a failed operation also counts as available (so the user can retry it)', () async {
+      when(() => queue.all()).thenAnswer((_) async => [_pendingOp(status: OperationStatus.failed)]);
 
-    final updates = verify(() => queue.update(captureAny())).captured.cast<OfflineOperation>();
-    expect(updates.last.status, OperationStatus.failed);
-    expect(updates.last.retryCount, 0);
-  });
+      await engine.refreshAvailability();
 
-  test('syncNow skips an operation whose entity type has no registered handler', () async {
-    final orphanOp = OfflineOperation(
-      id: 'op-2',
-      entityType: 'hive',
-      operationType: OperationType.create,
-      payload: const {},
-      status: OperationStatus.pending,
-      createdAt: DateTime(2026),
-      updatedAt: DateTime(2026),
-    );
-    when(() => queue.all()).thenAnswer((_) async => [orphanOp]);
+      expect(engine.syncAvailable.value, isTrue);
+    });
 
-    await engine.syncNow();
+    test('start() does NOT call syncNow when connectivity is restored — only refreshes availability', () async {
+      final statusController = StreamController<bool>();
+      when(() => connectivity.status).thenAnswer((_) => statusController.stream);
+      when(() => queue.all()).thenAnswer((_) async => [_pendingOp()]);
 
-    verifyNever(() => queue.update(any()));
-    verifyNever(() => handler.handle(any()));
-  });
+      engine.start();
+      await Future<void>.delayed(Duration.zero);
 
-  test('start triggers an initial sync and resyncs when connectivity is restored', () async {
-    final statusController = StreamController<bool>();
-    when(() => connectivity.status).thenAnswer((_) => statusController.stream);
-    when(() => queue.all()).thenAnswer((_) async => []);
+      statusController.add(true);
+      await Future<void>.delayed(Duration.zero);
 
-    engine.start();
-    await Future<void>.delayed(Duration.zero);
-    verify(() => queue.all()).called(1);
+      expect(engine.syncAvailable.value, isTrue);
+      verifyNever(() => handler.handle(any()));
+      verifyNever(() => queue.update(any()));
 
-    statusController.add(true);
-    await Future<void>.delayed(Duration.zero);
-    verify(() => queue.all()).called(1);
+      await statusController.close();
+    });
 
-    await statusController.close();
+    test('start() reacts to the queue changing (a new operation enqueued while already online)', () async {
+      final changesController = StreamController<void>();
+      when(() => queue.changes).thenAnswer((_) => changesController.stream);
+      when(() => queue.all()).thenAnswer((_) async => []);
+
+      engine.start();
+      await Future<void>.delayed(Duration.zero);
+      expect(engine.syncAvailable.value, isFalse);
+
+      when(() => queue.all()).thenAnswer((_) async => [_pendingOp()]);
+      changesController.add(null);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(engine.syncAvailable.value, isTrue);
+
+      await changesController.close();
+    });
   });
 }

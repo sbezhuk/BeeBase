@@ -11,4 +11,9 @@ abstract interface class OperationQueue {
   Future<void> update(OfflineOperation operation);
 
   Future<void> remove(String operationId);
+
+  /// Fires after every [enqueue]/[update]/[remove] — the generic signal
+  /// `SyncEngine` (and, through it, any UI showing "offline data pending")
+  /// listens to, without knowing which entity type changed.
+  Stream<void> get changes;
 }

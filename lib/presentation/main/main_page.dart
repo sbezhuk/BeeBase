@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/presentation/main/main_destinations.dart';
 import 'package:beebase/presentation/router/app_router.dart';
+import 'package:beebase/presentation/sync/offline_sync_banner.dart';
 import 'package:beebase/presentation/widgets/bottom_nav_bar/bottom_nav_primary_action.dart';
 import 'package:beebase/presentation/widgets/bottom_nav_bar/platform_bottom_nav_bar.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -42,7 +43,12 @@ final class MainPage extends StatelessWidget {
                   onPressed: () => context.router.root.push(ApiaryFormRoute()),
                 )
               : null,
-          body: child,
+          body: Column(
+            children: [
+              const OfflineSyncBanner(),
+              Expanded(child: child),
+            ],
+          ),
         );
       },
     );

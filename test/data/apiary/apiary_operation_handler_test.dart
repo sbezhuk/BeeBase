@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:beebase/core/error/error_text.dart';
 import 'package:beebase/core/networking/exceptions/internal_exception.dart';
 import 'package:beebase/core/networking/exceptions/server_exception.dart';
@@ -54,6 +56,10 @@ void main() {
     localDataSource = MockApiaryLocalDataSource();
     refreshNotifier = ApiaryListRefreshNotifier();
     handler = ApiaryOperationHandler(dataSource: dataSource, localDataSource: localDataSource, refreshNotifier: refreshNotifier);
+    when(() => localDataSource.modify(any())).thenAnswer((invocation) async {
+      final update = invocation.positionalArguments.single as FutureOr<List<ApiaryResponse>> Function(List<ApiaryResponse>?);
+      await update(await localDataSource.read());
+    });
   });
 
   tearDown(() => refreshNotifier.dispose());
@@ -72,7 +78,6 @@ void main() {
         updatedAt: DateTime(2026),
       );
       when(() => localDataSource.read()).thenAnswer((_) async => [placeholder]);
-      when(() => localDataSource.write(any())).thenAnswer((_) async {});
       when(
         () => dataSource.createApiary(any(), idempotencyKey: any(named: 'idempotencyKey')),
       ).thenAnswer((_) async => serverResponse);
@@ -80,13 +85,15 @@ void main() {
       final result = await handler.handle(_createOp());
 
       expect(result, isA<OperationSuccess>());
-      final written = verify(() => localDataSource.write(captureAny())).captured.single as List<ApiaryResponse>;
+      final update =
+          verify(() => localDataSource.modify(captureAny())).captured.single
+              as FutureOr<List<ApiaryResponse>> Function(List<ApiaryResponse>?);
+      final written = await update([placeholder]);
       expect(written.map((response) => response.id), ['server-42']);
     });
 
     test('passes the operation id as the idempotency key', () async {
       when(() => localDataSource.read()).thenAnswer((_) async => []);
-      when(() => localDataSource.write(any())).thenAnswer((_) async {});
       when(
         () => dataSource.createApiary(any(), idempotencyKey: any(named: 'idempotencyKey')),
       ).thenAnswer((_) async => serverResponse);
@@ -104,7 +111,7 @@ void main() {
       final result = await handler.handle(_createOp());
 
       expect(result, isA<OperationPermanentFailure>());
-      verifyNever(() => localDataSource.write(any()));
+      verifyNever(() => localDataSource.modify(any()));
     });
 
     test('classifies an InternalException as a retryable failure', () async {

@@ -9,7 +9,10 @@ import 'package:flutter/material.dart';
 /// after the app's honey/hive palette (see [AppColor]), with a colored
 /// accent bar, a message, an optional text action, and a close button.
 /// Purely presentational — entrance/exit motion and lifetime live in
-/// [AppSnackBarStackItem].
+/// [AppSnackBarStackItem]. Also reused directly (outside the toast queue) by
+/// persistent, state-driven banners such as `OfflineSyncBanner` — [trailing],
+/// when given, replaces the action/dismiss area entirely (e.g. a progress
+/// spinner while a sync is in flight, where dismissing wouldn't make sense).
 final class AppSnackBarCard extends StatelessWidget {
   const AppSnackBarCard({
     required this.message,
@@ -17,6 +20,7 @@ final class AppSnackBarCard extends StatelessWidget {
     this.actionLabel,
     this.onAction,
     this.onDismiss,
+    this.trailing,
     super.key,
   });
 
@@ -25,6 +29,7 @@ final class AppSnackBarCard extends StatelessWidget {
   final String? actionLabel;
   final VoidCallback? onAction;
   final VoidCallback? onDismiss;
+  final Widget? trailing;
 
   static const double cardRadius = 14;
 
@@ -51,26 +56,30 @@ final class AppSnackBarCard extends StatelessWidget {
               Container(width: 4, color: variant.accentColor(colors)),
               Expanded(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: spacing.md,
-                    vertical: spacing.sm,
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: spacing.md, vertical: spacing.sm),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(message, style: textStyles.body),
                   ),
                 ),
               ),
-              if (actionLabel != null && onAction != null)
-                TextButton(
-                  onPressed: onAction,
-                  child: Text(actionLabel!, style: textStyles.action),
+              if (trailing != null)
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: spacing.md),
+                  child: trailing,
+                )
+              else ...[
+                if (actionLabel != null && onAction != null)
+                  TextButton(
+                    onPressed: onAction,
+                    child: Text(actionLabel!, style: textStyles.action),
+                  ),
+                IconButton(
+                  onPressed: onDismiss,
+                  icon: Icon(Icons.close, color: colors.honey.muted, size: 20),
+                  tooltip: 'core.snackbar.dismiss'.tr(),
                 ),
-              IconButton(
-                onPressed: onDismiss,
-                icon: Icon(Icons.close, color: colors.honey.muted, size: 20),
-                tooltip: 'core.snackbar.dismiss'.tr(),
-              ),
+              ],
             ],
           ),
         ),

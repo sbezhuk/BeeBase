@@ -54,6 +54,10 @@
       "back": "Back"
     },
     "photoPlaceholder": "Photo coming soon",
+    "offlinePhotoPlaceholder": {
+      "title": "Location preview unavailable offline",
+      "subtitle": "Will appear once this apiary is synced"
+    },
     "list": {
       "title": "Apiaries",
       "addApiary": "Add Apiary",
@@ -117,6 +121,13 @@
     },
     "snackbar": {
       "dismiss": "Dismiss"
+    }
+  },
+  "sync": {
+    "banner": {
+      "message": "You have data saved offline that can now be uploaded to the server.",
+      "action": "Sync now",
+      "syncing": "Syncing offline data…"
     }
   },
   "server": {

@@ -7,6 +7,7 @@ import 'package:beebase/presentation/apiary/extension/apiary_date_x.dart';
 import 'package:beebase/presentation/apiary/extension/apiary_mock_stats_x.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_hexagon_badge.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_map_photo.dart';
+import 'package:beebase/presentation/apiary/widget/apiary_photo_placeholder.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_scaffold.dart';
 import 'package:beebase/presentation/component/honeycomb_pattern.dart';
 import 'package:beebase/presentation/router/app_router.dart';

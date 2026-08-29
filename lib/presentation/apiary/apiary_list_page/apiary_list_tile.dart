@@ -21,7 +21,13 @@ final class _ApiaryListTile extends StatelessWidget {
             latitude: apiary.lat,
             longitude: apiary.lon,
             height: 200,
-            fallback: Container(height: 200, width: double.infinity, color: colors.photoPlaceholder),
+            fallback: apiary.syncStatus == ApiarySyncStatus.synced
+                ? const ApiaryPhotoPlaceholder(height: 200)
+                : const ApiaryPhotoPlaceholder(
+                    height: 200,
+                    titleKey: 'apiary.offlinePhotoPlaceholder.title',
+                    subtitleKey: 'apiary.offlinePhotoPlaceholder.subtitle',
+                  ),
           ),
           Padding(
             padding: EdgeInsets.all(context.spacing.sm),

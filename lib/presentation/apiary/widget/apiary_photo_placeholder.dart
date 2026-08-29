@@ -9,12 +9,17 @@ import 'package:flutter/material.dart';
 /// Stands in wherever [ApiaryMapPhoto] has no coordinates to render — the
 /// module's own honeycomb identity ([ApiaryHexagonBadge] over
 /// [HoneycombPattern]) shown full-bleed at the height of the photo it
-/// replaces. Shared by the details and form pages so every apiary hero
-/// photo slot degrades the same way.
+/// replaces. Shared by the list, details, and form pages so every apiary
+/// hero photo slot degrades the same way. [titleKey]/[subtitleKey] let a
+/// caller swap the copy (e.g. "unavailable offline, will sync later") while
+/// keeping the same visual identity — never introduce a second placeholder
+/// widget for a different message.
 final class ApiaryPhotoPlaceholder extends StatelessWidget {
-  const ApiaryPhotoPlaceholder({required this.height, super.key});
+  const ApiaryPhotoPlaceholder({required this.height, this.titleKey = 'apiary.photoPlaceholder', this.subtitleKey, super.key});
 
   final double height;
+  final String titleKey;
+  final String? subtitleKey;
 
   @override
   Widget build(BuildContext context) {
@@ -27,13 +32,28 @@ final class ApiaryPhotoPlaceholder extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           const Positioned.fill(child: HoneycombPattern(opacity: 0.16)),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const ApiaryHexagonBadge(size: 64),
-              SizedBox(height: context.spacing.sm),
-              Text('apiary.photoPlaceholder'.tr(), style: context.textStyles.label.copyWith(color: colors.honey.muted)),
-            ],
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: context.spacing.md),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const ApiaryHexagonBadge(size: 64),
+                SizedBox(height: context.spacing.sm),
+                Text(
+                  titleKey.tr(),
+                  textAlign: TextAlign.center,
+                  style: context.textStyles.label.copyWith(color: colors.honey.muted),
+                ),
+                if (subtitleKey != null) ...[
+                  SizedBox(height: context.spacing.xs),
+                  Text(
+                    subtitleKey!.tr(),
+                    textAlign: TextAlign.center,
+                    style: context.textStyles.label.copyWith(color: colors.honey.muted.withValues(alpha: 0.7)),
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
       ),

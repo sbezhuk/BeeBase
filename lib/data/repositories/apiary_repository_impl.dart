@@ -1,6 +1,7 @@
 import 'package:beebase/core/error/error_text.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/core/offline/local_id_generator.dart';
+import 'package:beebase/core/offline/offline_mutation_store.dart';
 import 'package:beebase/core/offline/offline_operation.dart';
 import 'package:beebase/core/offline/operation_queue.dart';
 import 'package:beebase/core/offline/operation_status.dart';
@@ -17,10 +18,13 @@ import 'package:beebase/domain/enum/apiary_sync_status.dart';
 import 'package:beebase/domain/repositories/apiary_reader.dart';
 import 'package:beebase/domain/repositories/apiary_writer.dart';
 import 'package:beebase/domain/repositories/repository.dart';
-import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
 import 'package:beebase/utils/either.dart';
 
 const _apiaryEntityType = 'apiary';
+
+/// Cache key both this repository and its DI registration of
+/// `LocalDataSource<List<ApiaryResponse>>` agree on.
+const apiaryCacheKey = 'cached_apiaries';
 
 final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IApiaryWriter {
   ApiaryRepositoryImpl({
@@ -28,7 +32,7 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
     required this.localDataSource,
     required this.connectivity,
     required this.operationQueue,
-    required this.refreshNotifier,
+    required this.offlineMutationStore,
     this.cacheMerger = const ApiaryCacheMerger(),
   });
 
@@ -36,7 +40,7 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
   final LocalDataSource<List<ApiaryResponse>> localDataSource;
   final IConnectivityService connectivity;
   final OperationQueue operationQueue;
-  final ApiaryListRefreshNotifier refreshNotifier;
+  final OfflineMutationStore offlineMutationStore;
   final ApiaryCacheMerger cacheMerger;
 
   /// Network-first with a cache fallback: the repository is the only place
@@ -51,8 +55,11 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
 
     final result = await on(() async {
       final responses = await dataSource.getApiaries();
-      final merged = cacheMerger.mergeWithPending(responses, await localDataSource.read() ?? const [], pendingOps);
-      await localDataSource.write(merged);
+      late List<ApiaryResponse> merged;
+      await localDataSource.modify((current) {
+        merged = cacheMerger.mergeWithPending(responses, current ?? const [], pendingOps);
+        return merged;
+      });
       return merged;
     });
 
@@ -84,7 +91,7 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
     final request = ApiaryRequest(name: name, description: description, location: location, lat: lat, lon: lon);
     final result = await on(() async {
       final response = await dataSource.createApiary(request);
-      await _appendToCache(response);
+      await localDataSource.modify((current) => [...(current ?? const []), response]);
       return response;
     });
 
@@ -122,6 +129,9 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
     return on(() => dataSource.deleteApiary(id));
   }
 
+  /// Saves the local placeholder and enqueues its sync operation atomically
+  /// (see [OfflineMutationStore]) — never local-entity-without-operation or
+  /// the reverse.
   Future<Either<Failure, Apiary>> _createOffline({
     required String name,
     String? description,
@@ -141,9 +151,12 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
       createdAt: now,
       updatedAt: now,
     );
-    await _appendToCache(placeholder);
-    await operationQueue.enqueue(
-      OfflineOperation(
+    await offlineMutationStore.saveWithPendingOperation<List<ApiaryResponse>>(
+      cacheKey: apiaryCacheKey,
+      mutate: (current) => [...(current ?? const []), placeholder],
+      toJson: (list) => list.map((response) => response.toJson()).toList(),
+      fromJson: (json) => (json as List<dynamic>).map((item) => ApiaryResponse.fromJson(item as Map<String, dynamic>)).toList(),
+      operation: OfflineOperation(
         id: LocalIdGenerator.generate(),
         entityType: _apiaryEntityType,
         operationType: OperationType.create,
@@ -154,13 +167,7 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
         localEntityId: localId,
       ),
     );
-    refreshNotifier.notify();
     return Right(placeholder.toEntity().copyWith(syncStatus: ApiarySyncStatus.pending));
-  }
-
-  Future<void> _appendToCache(ApiaryResponse response) async {
-    final cached = await localDataSource.read() ?? const [];
-    await localDataSource.write([...cached, response]);
   }
 
   Future<List<OfflineOperation>> _apiaryOperations() async {

@@ -7,36 +7,42 @@ import 'package:beebase/core/offline/operation_result.dart';
 import 'package:beebase/core/offline/operation_status.dart';
 import 'package:beebase/core/offline/sync_engine.dart';
 import 'package:beebase/core/services/connectivity_service.dart';
+import 'package:flutter/foundation.dart';
 
 final class SyncEngineImpl implements SyncEngine {
   SyncEngineImpl({required this.queue, required this.registry, required this.connectivity});
-
-  static const _maxRetries = 5;
 
   final OperationQueue queue;
   final OperationRegistry registry;
   final IConnectivityService connectivity;
 
+  final ValueNotifier<bool> _syncAvailable = ValueNotifier(false);
   StreamSubscription<bool>? _connectivitySubscription;
+  StreamSubscription<void>? _queueSubscription;
   bool _syncing = false;
 
   @override
+  ValueListenable<bool> get syncAvailable => _syncAvailable;
+
+  @override
   void start() {
-    unawaited(syncNow());
+    unawaited(refreshAvailability());
     _connectivitySubscription?.cancel();
-    _connectivitySubscription = connectivity.status.listen((online) {
-      if (online) {
-        unawaited(syncNow());
-      }
-    });
+    _connectivitySubscription = connectivity.status.listen((_) => refreshAvailability());
+    _queueSubscription?.cancel();
+    _queueSubscription = queue.changes.listen((_) => refreshAvailability());
   }
 
-  /// Guarded by [_syncing] rather than relying solely on [OperationQueue]'s
-  /// internal lock — that lock only protects a single read-modify-write, not
-  /// the whole read-then-process-each-operation sequence below, so two
-  /// overlapping calls (e.g. [start]'s initial attempt racing an immediate
-  /// connectivity event) could otherwise both pick up and process the same
-  /// pending operation.
+  @override
+  Future<void> refreshAvailability() async {
+    final online = await connectivity.isOnline;
+    final hasUnsynced = online && (await queue.all()).any(_needsSync);
+    _syncAvailable.value = hasUnsynced;
+  }
+
+  bool _needsSync(OfflineOperation operation) =>
+      operation.status == OperationStatus.pending || operation.status == OperationStatus.failed;
+
   @override
   Future<void> syncNow() async {
     if (_syncing) {
@@ -47,8 +53,8 @@ final class SyncEngineImpl implements SyncEngine {
     }
     _syncing = true;
     try {
-      final pending = (await queue.all()).where((operation) => operation.status == OperationStatus.pending);
-      for (final operation in pending) {
+      final toProcess = (await queue.all()).where(_needsSync);
+      for (final operation in toProcess) {
         await _process(operation);
       }
     } finally {
@@ -68,13 +74,14 @@ final class SyncEngineImpl implements SyncEngine {
     switch (result) {
       case OperationSuccess():
         await queue.update(operation.copyWith(status: OperationStatus.synced, updatedAt: DateTime.now()));
-      case OperationPermanentFailure(:final message):
-        await queue.update(operation.copyWith(status: OperationStatus.failed, lastError: message, updatedAt: DateTime.now()));
-      case OperationRetryableFailure(:final message):
-        final nextRetryCount = operation.retryCount + 1;
-        final nextStatus = nextRetryCount >= _maxRetries ? OperationStatus.failed : OperationStatus.pending;
+      case OperationRetryableFailure(:final message) || OperationPermanentFailure(:final message):
         await queue.update(
-          operation.copyWith(status: nextStatus, retryCount: nextRetryCount, lastError: message, updatedAt: DateTime.now()),
+          operation.copyWith(
+            status: OperationStatus.failed,
+            retryCount: operation.retryCount + 1,
+            lastError: message,
+            updatedAt: DateTime.now(),
+          ),
         );
     }
   }

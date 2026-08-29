@@ -52,9 +52,10 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
     );
   }
 
-  Future<void> _reconcileCache(String? localEntityId, ApiaryResponse serverResponse) async {
-    final cached = await localDataSource.read() ?? const [];
-    final withoutPlaceholder = cached.where((response) => response.id != localEntityId).toList();
-    await localDataSource.write([...withoutPlaceholder, serverResponse]);
+  Future<void> _reconcileCache(String? localEntityId, ApiaryResponse serverResponse) {
+    return localDataSource.modify((current) {
+      final withoutPlaceholder = (current ?? const []).where((response) => response.id != localEntityId);
+      return [...withoutPlaceholder, serverResponse];
+    });
   }
 }
