@@ -64,6 +64,7 @@
       "emptyTitle": "No apiaries yet",
       "emptySubtitle": "Create your first apiary to start tracking your hives.",
       "retry": "Retry",
+      "loadMoreError": "Couldn't load more apiaries",
       "hivesCount": "{count} hives",
       "lastVisit": "Last visit {date}",
       "syncPending": "Pending sync",

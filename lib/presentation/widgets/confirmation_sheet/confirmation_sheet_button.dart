@@ -4,12 +4,7 @@ part of 'confirmation_sheet.dart';
 /// outlined variant on [color]. Mirrors [PrimaryButton]'s proportions so the
 /// sheet's actions read as part of the same button language.
 final class _ConfirmationSheetButton extends StatelessWidget {
-  const _ConfirmationSheetButton({
-    required this.label,
-    required this.filled,
-    required this.color,
-    required this.onPressed,
-  });
+  const _ConfirmationSheetButton({required this.label, required this.filled, required this.color, required this.onPressed});
 
   final String label;
   final bool filled;
@@ -34,12 +29,7 @@ final class _ConfirmationSheetButton extends StatelessWidget {
               border: filled ? null : Border.all(color: colors.honey.border),
             ),
             child: Center(
-              child: Text(
-                label,
-                style: context.textStyles.button.copyWith(
-                  color: filled ? colors.brand.onPrimary : color,
-                ),
-              ),
+              child: Text(label, style: context.textStyles.button.copyWith(color: filled ? colors.brand.onPrimary : color)),
             ),
           ),
         ),

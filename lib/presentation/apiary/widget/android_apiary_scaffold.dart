@@ -16,6 +16,7 @@ final class AndroidApiaryScaffold extends StatelessWidget {
     this.trailingAction,
     this.onRefresh,
     this.fadeEdges = false,
+    this.controller,
     super.key,
   });
 
@@ -25,11 +26,13 @@ final class AndroidApiaryScaffold extends StatelessWidget {
   final ApiaryScaffoldAction? trailingAction;
   final Future<void> Function()? onRefresh;
   final bool fadeEdges;
+  final ScrollController? controller;
 
   @override
   Widget build(BuildContext context) {
     final action = trailingAction;
     Widget scrollView = CustomScrollView(
+      controller: controller,
       physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
       slivers: [
         SliverAppBar(

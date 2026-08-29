@@ -30,10 +30,7 @@ final class AppTextField extends StatefulWidget {
     this.suffixIcon,
     this.autofillHints,
     super.key,
-  }) : assert(
-         !obscureText || maxLines == 1,
-         'obscureText fields must be single-line',
-       );
+  }) : assert(!obscureText || maxLines == 1, 'obscureText fields must be single-line');
 
   final TextEditingController controller;
   final String label;
@@ -85,9 +82,7 @@ final class _AppTextFieldState extends State<AppTextField> {
           borderRadius: radius,
           borderSide: BorderSide(color: colors.honey.border),
         );
-        final errorBorder = normalBorder.copyWith(
-          borderSide: BorderSide(color: colors.status.error),
-        );
+        final errorBorder = normalBorder.copyWith(borderSide: BorderSide(color: colors.status.error));
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,36 +103,19 @@ final class _AppTextFieldState extends State<AppTextField> {
               cursorColor: colors.brand.primary,
               decoration: InputDecoration(
                 hintText: widget.hintText,
-                hintStyle: context.textStyles.body.copyWith(
-                  color: colors.honey.placeholder,
-                ),
+                hintStyle: context.textStyles.body.copyWith(color: colors.honey.placeholder),
                 filled: true,
                 fillColor: colors.surface.card,
                 contentPadding: widget.maxLines > 1
                     ? EdgeInsets.all(spacing.md)
-                    : EdgeInsets.symmetric(
-                        horizontal: spacing.md,
-                        vertical: spacing.sm + spacing.xs,
-                      ),
+                    : EdgeInsets.symmetric(horizontal: spacing.md, vertical: spacing.sm + spacing.xs),
                 prefixIcon: widget.prefixIcon,
-                suffixIcon: widget.obscureText
-                    ? _visibilityToggle(colors)
-                    : widget.suffixIcon,
+                suffixIcon: widget.obscureText ? _visibilityToggle(colors) : widget.suffixIcon,
                 border: field.hasError ? errorBorder : normalBorder,
                 enabledBorder: field.hasError ? errorBorder : normalBorder,
                 focusedBorder: field.hasError
-                    ? errorBorder.copyWith(
-                        borderSide: BorderSide(
-                          color: colors.status.error,
-                          width: 1.5,
-                        ),
-                      )
-                    : normalBorder.copyWith(
-                        borderSide: BorderSide(
-                          color: colors.brand.primary,
-                          width: 1.5,
-                        ),
-                      ),
+                    ? errorBorder.copyWith(borderSide: BorderSide(color: colors.status.error, width: 1.5))
+                    : normalBorder.copyWith(borderSide: BorderSide(color: colors.brand.primary, width: 1.5)),
               ),
               onChanged: (value) {
                 field.didChange(value);
@@ -160,9 +138,7 @@ final class _AppTextFieldState extends State<AppTextField> {
   Widget _visibilityToggle(AppColor colors) {
     return IconButton(
       icon: Icon(
-        _obscureText
-            ? Icons.visibility_off_outlined
-            : Icons.visibility_outlined,
+        _obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
         color: colors.honey.placeholder,
         size: 20,
       ),

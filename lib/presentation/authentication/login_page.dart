@@ -52,10 +52,7 @@ final class _LoginPageState extends State<LoginPage> {
 
   void _submit() {
     if (_formKey.currentState?.validate() ?? false) {
-      context.read<LoginCubit>().login(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+      context.read<LoginCubit>().login(email: _emailController.text.trim(), password: _passwordController.text);
     }
   }
 
@@ -78,11 +75,7 @@ final class _LoginPageState extends State<LoginPage> {
       return;
     }
     final message = failure.message.resolve();
-    AppSnackBar.show(
-      context,
-      message: message,
-      variant: AppSnackBarVariant.error,
-    );
+    AppSnackBar.show(context, message: message, variant: AppSnackBarVariant.error);
   }
 
   @override
@@ -98,23 +91,13 @@ final class _LoginPageState extends State<LoginPage> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    colors.honey.cream,
-                    colors.honey.creamLight,
-                    colors.surface.background,
-                  ],
+                  colors: [colors.honey.cream, colors.honey.creamLight, colors.surface.background],
                   stops: const [0, 0.42, 1],
                 ),
               ),
             ),
           ),
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 320,
-            child: HoneycombPattern(),
-          ),
+          const Positioned(top: 0, left: 0, right: 0, height: 320, child: HoneycombPattern()),
           SafeArea(
             child: BlocListener<LoginCubit, LoginState>(
               listener: _handleStateChange,
@@ -127,10 +110,8 @@ final class _LoginPageState extends State<LoginPage> {
                     passwordController: _passwordController,
                     emailServerError: _emailServerError,
                     passwordServerError: _passwordServerError,
-                    onEmailChanged: () =>
-                        setState(() => _emailServerError = null),
-                    onPasswordChanged: () =>
-                        setState(() => _passwordServerError = null),
+                    onEmailChanged: () => setState(() => _emailServerError = null),
+                    onPasswordChanged: () => setState(() => _passwordServerError = null),
                     onSubmit: _submit,
                   ),
                 ),

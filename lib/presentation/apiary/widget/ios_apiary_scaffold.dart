@@ -55,6 +55,7 @@ final class IosApiaryScaffold extends StatelessWidget {
     this.trailingAction,
     this.onRefresh,
     this.fadeEdges = false,
+    this.controller,
     super.key,
   });
 
@@ -65,6 +66,7 @@ final class IosApiaryScaffold extends StatelessWidget {
   final ApiaryScaffoldAction? trailingAction;
   final Future<void> Function()? onRefresh;
   final bool fadeEdges;
+  final ScrollController? controller;
 
   @override
   Widget build(BuildContext context) {
@@ -80,12 +82,7 @@ final class IosApiaryScaffold extends StatelessWidget {
         child: SafeArea(
           bottom: false,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              context.spacing.md,
-              context.spacing.sm,
-              context.spacing.md,
-              context.spacing.sm,
-            ),
+            padding: EdgeInsets.fromLTRB(context.spacing.md, context.spacing.sm, context.spacing.md, context.spacing.sm),
             child: Text(
               title,
               style: titleStyle.copyWith(fontSize: 30, height: 1.1),
@@ -141,6 +138,7 @@ final class IosApiaryScaffold extends StatelessWidget {
     }
 
     Widget scrollView = CustomScrollView(
+      controller: controller,
       physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
       slivers: [
         appBarSliver,

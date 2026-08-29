@@ -12,6 +12,7 @@ import 'package:beebase/data/data_source/interface/local_data_source.dart';
 import 'package:beebase/data/models/apiary_request.dart';
 import 'package:beebase/data/models/apiary_response.dart';
 import 'package:beebase/data/models/extensions/apiary_extension.dart';
+import 'package:beebase/data/models/page_request.dart';
 import 'package:beebase/data/repositories/apiary_cache_merger.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/enum/apiary_sync_status.dart';
@@ -19,6 +20,7 @@ import 'package:beebase/domain/repositories/apiary_reader.dart';
 import 'package:beebase/domain/repositories/apiary_writer.dart';
 import 'package:beebase/domain/repositories/repository.dart';
 import 'package:beebase/utils/either.dart';
+import 'package:beebase/utils/pagination/page.dart';
 
 const _apiaryEntityType = 'apiary';
 
@@ -45,30 +47,43 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
 
   /// Network-first with a cache fallback: the repository is the only place
   /// that decides whether the list comes from the API or from the last
-  /// synchronized copy — feature code always just sees a [List<Apiary>].
+  /// synchronized copy, and the only place that accumulates pages into one
+  /// list — feature code always just sees the current [Page<Apiary>] to
+  /// render, never splicing pages together itself. Page 1 (initial load or
+  /// refresh) replaces the cache; page 2+ appends to it (see
+  /// [ApiaryCacheMerger]).
   @override
-  Future<Either<Failure, List<Apiary>>> getApiaries() async {
+  Future<Either<Failure, Page<Apiary>>> getApiaries({required int page, required int limit}) async {
     final pendingOps = await _apiaryOperations();
     if (!await connectivity.isOnline) {
-      return _cachedApiariesOrFailure(const InternalFailure(ErrorTextKey('core.errors.unexpectedNetworkError')), pendingOps);
+      return _cachedPageOrFailure(const InternalFailure(ErrorTextKey('core.errors.unexpectedNetworkError')), pendingOps);
     }
 
     final result = await on(() async {
-      final responses = await dataSource.getApiaries();
+      final paginated = await dataSource.getApiaries(PageRequest(page: page, limit: limit));
       late List<ApiaryResponse> merged;
       await localDataSource.modify((current) {
-        merged = cacheMerger.mergeWithPending(responses, current ?? const [], pendingOps);
+        final oldCache = current ?? const [];
+        merged = page <= 1
+            ? cacheMerger.mergeFirstPage(paginated.items, oldCache, pendingOps)
+            : cacheMerger.appendPage(paginated.items, oldCache);
         return merged;
       });
-      return merged;
+      return (merged, paginated.pagination.hasNext);
     });
 
-    return result.fold((failure) async {
-      if (failure is ServerFailure) {
-        return Left(failure);
-      }
-      return _cachedApiariesOrFailure(failure, pendingOps);
-    }, (merged) => Future.value(Right(cacheMerger.toEntities(merged, pendingOps))));
+    return result.fold(
+      (failure) async {
+        if (failure is ServerFailure) {
+          return Left(failure);
+        }
+        return _cachedPageOrFailure(failure, pendingOps);
+      },
+      (data) async {
+        final (merged, hasNext) = data;
+        return Right(Page(items: cacheMerger.toEntities(merged, pendingOps), hasNext: hasNext));
+      },
+    );
   }
 
   @override
@@ -174,11 +189,15 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
     return (await operationQueue.all()).where((operation) => operation.entityType == _apiaryEntityType).toList();
   }
 
-  Future<Either<Failure, List<Apiary>>> _cachedApiariesOrFailure(Failure failure, List<OfflineOperation> pendingOps) async {
+  /// `hasNext: false` — there's no fresh pagination metadata while degraded
+  /// or offline, so "load more" simply isn't offered again until the next
+  /// successful online fetch; pull-to-refresh is the existing "try again"
+  /// affordance once back online.
+  Future<Either<Failure, Page<Apiary>>> _cachedPageOrFailure(Failure failure, List<OfflineOperation> pendingOps) async {
     final cached = await localDataSource.read();
     if (cached == null || cached.isEmpty) {
       return Left(failure);
     }
-    return Right(cacheMerger.toEntities(cached, pendingOps));
+    return Right(Page(items: cacheMerger.toEntities(cached, pendingOps), hasNext: false));
   }
 }

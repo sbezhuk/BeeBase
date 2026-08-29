@@ -16,7 +16,7 @@ final class _ApiaryListBody extends StatelessWidget {
             hasScrollBody: false,
             child: _ApiaryListErrorView(failure: failure),
           ),
-          ApiaryListLoaded(:final apiaries) => _ApiaryListLoadedView(apiaries: apiaries),
+          final ApiaryListLoaded loaded => _ApiaryListLoadedView(state: loaded),
         };
       },
     );

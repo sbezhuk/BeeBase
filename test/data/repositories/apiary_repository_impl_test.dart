@@ -15,11 +15,33 @@ import 'package:beebase/data/data_source/interface/apiary_data_source.dart';
 import 'package:beebase/data/data_source/interface/local_data_source.dart';
 import 'package:beebase/data/models/apiary_request.dart';
 import 'package:beebase/data/models/apiary_response.dart';
+import 'package:beebase/data/models/page_request.dart';
+import 'package:beebase/data/models/paginated_response.dart';
+import 'package:beebase/data/models/pagination_meta.dart';
 import 'package:beebase/data/repositories/apiary_repository_impl.dart';
 import 'package:beebase/domain/enum/apiary_sync_status.dart';
 import 'package:beebase/utils/either.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+
+PaginatedResponse<ApiaryResponse> _paginated(List<ApiaryResponse> items, {required bool hasNext, int page = 1}) {
+  return PaginatedResponse(
+    items: items,
+    pagination: PaginationMeta(
+      page: page,
+      limit: 20,
+      total: items.length,
+      totalPages: 1,
+      hasNext: hasNext,
+      hasPrevious: page > 1,
+    ),
+  );
+}
+
+// PageRequest has no value equality (matching ApiaryRequest's DTO
+// convention), so a mock stub can't match it by an exact instance — match by
+// its page field instead.
+Matcher _pageRequest(int page) => isA<PageRequest>().having((request) => request.page, 'page', page);
 
 class MockApiaryDataSource extends Mock implements IApiaryDataSource {}
 
@@ -50,6 +72,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(const ApiaryRequest(name: 'fallback'));
+    registerFallbackValue(const PageRequest(page: 1, limit: 20));
     registerFallbackValue(<ApiaryResponse>[]);
     registerFallbackValue(
       OfflineOperation(
@@ -106,41 +129,99 @@ void main() {
   });
 
   group('getApiaries', () {
-    test('returns the mapped list on success and writes through to the cache', () async {
-      when(() => dataSource.getApiaries()).thenAnswer((_) async => [apiaryResponse]);
+    final second = ApiaryResponse(id: 'apiary-2', name: 'Meadow', createdAt: DateTime(2026), updatedAt: DateTime(2026));
 
-      final result = await repository.getApiaries();
+    test('first page (page 1) replaces the cache and returns the mapped items with hasNext', () async {
+      when(
+        () => dataSource.getApiaries(any(that: _pageRequest(1))),
+      ).thenAnswer((_) async => _paginated([apiaryResponse], hasNext: true));
 
-      result.fold((_) => fail('expected Right'), (apiaries) => expect(apiaries.single.name, 'Back Garden'));
+      final result = await repository.getApiaries(page: 1, limit: 20);
+
+      result.fold((_) => fail('expected Right'), (page) {
+        expect(page.items.map((apiary) => apiary.name), ['Back Garden']);
+        expect(page.hasNext, isTrue);
+      });
       final update =
           verify(() => localDataSource.modify(captureAny())).captured.single
               as FutureOr<List<ApiaryResponse>> Function(List<ApiaryResponse>?);
-      expect(await update(null), [apiaryResponse]);
+      // Page 1 replaces whatever was cached before, regardless of its contents.
+      expect(await update([second]), [apiaryResponse]);
+    });
+
+    test('load more (page 2) appends onto the existing cache in order', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => [apiaryResponse]);
+      when(
+        () => dataSource.getApiaries(any(that: _pageRequest(2))),
+      ).thenAnswer((_) async => _paginated([second], hasNext: false, page: 2));
+
+      final result = await repository.getApiaries(page: 2, limit: 20);
+
+      result.fold((_) => fail('expected Right'), (page) {
+        expect(page.items.map((apiary) => apiary.id), ['apiary-1', 'apiary-2']);
+        expect(page.hasNext, isFalse);
+      });
+    });
+
+    test('load more dedupes an item that appears in both the cache and the fresh page', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => [apiaryResponse]);
+      when(
+        () => dataSource.getApiaries(any(that: _pageRequest(2))),
+      ).thenAnswer((_) async => _paginated([apiaryResponse], hasNext: false, page: 2));
+
+      final result = await repository.getApiaries(page: 2, limit: 20);
+
+      result.fold((_) => fail('expected Right'), (page) => expect(page.items.map((apiary) => apiary.id), ['apiary-1']));
     });
 
     test('maps a thrown exception to a Failure when nothing is cached', () async {
-      when(() => dataSource.getApiaries()).thenThrow(const InternalException(ErrorTextRaw('no connection')));
+      when(() => dataSource.getApiaries(any())).thenThrow(const InternalException(ErrorTextRaw('no connection')));
 
-      final result = await repository.getApiaries();
+      final result = await repository.getApiaries(page: 1, limit: 20);
 
       expect(result, isA<Left<Failure, dynamic>>());
     });
 
     test('falls back to the cache when a connectivity failure occurs mid-request', () async {
-      when(() => dataSource.getApiaries()).thenThrow(const InternalException(ErrorTextRaw('no connection')));
+      when(() => dataSource.getApiaries(any())).thenThrow(const InternalException(ErrorTextRaw('no connection')));
       when(() => localDataSource.read()).thenAnswer((_) async => [apiaryResponse]);
 
-      final result = await repository.getApiaries();
+      final result = await repository.getApiaries(page: 1, limit: 20);
 
-      result.fold((_) => fail('expected Right'), (apiaries) => expect(apiaries.single.name, 'Back Garden'));
+      result.fold((_) => fail('expected Right'), (page) => expect(page.items.single.name, 'Back Garden'));
+    });
+
+    test('a network failure on page 2 falls back to the cache accumulated before that request', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => [apiaryResponse]);
+      when(
+        () => dataSource.getApiaries(any(that: _pageRequest(2))),
+      ).thenThrow(const InternalException(ErrorTextRaw('no connection')));
+
+      final result = await repository.getApiaries(page: 2, limit: 20);
+
+      result.fold((_) => fail('expected Right'), (page) {
+        expect(page.items.map((apiary) => apiary.id), ['apiary-1']);
+        expect(page.hasNext, isFalse);
+      });
     });
 
     test('does not fall back to the cache on a real server failure', () async {
       when(
-        () => dataSource.getApiaries(),
+        () => dataSource.getApiaries(any()),
       ).thenThrow(const ServerException(statusCode: 403, code: 'forbidden', message: 'not allowed'));
 
-      final result = await repository.getApiaries();
+      final result = await repository.getApiaries(page: 1, limit: 20);
+
+      expect(result, isA<Left<Failure, dynamic>>());
+    });
+
+    test('a server failure on page 2 also propagates without falling back to the cache', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => [apiaryResponse]);
+      when(
+        () => dataSource.getApiaries(any(that: _pageRequest(2))),
+      ).thenThrow(const ServerException(statusCode: 403, code: 'forbidden', message: 'not allowed'));
+
+      final result = await repository.getApiaries(page: 2, limit: 20);
 
       expect(result, isA<Left<Failure, dynamic>>());
     });
@@ -149,22 +230,35 @@ void main() {
       when(() => connectivity.isOnline).thenAnswer((_) async => false);
       when(() => localDataSource.read()).thenAnswer((_) async => [apiaryResponse]);
 
-      final result = await repository.getApiaries();
+      final result = await repository.getApiaries(page: 1, limit: 20);
 
-      result.fold((_) => fail('expected Right'), (apiaries) => expect(apiaries.single.name, 'Back Garden'));
-      verifyNever(() => dataSource.getApiaries());
+      result.fold((_) => fail('expected Right'), (page) {
+        expect(page.items.single.name, 'Back Garden');
+        expect(page.hasNext, isFalse);
+      });
+      verifyNever(() => dataSource.getApiaries(any()));
+    });
+
+    test('an offline "load more" attempt never calls the network either', () async {
+      when(() => connectivity.isOnline).thenAnswer((_) async => false);
+      when(() => localDataSource.read()).thenAnswer((_) async => [apiaryResponse]);
+
+      final result = await repository.getApiaries(page: 2, limit: 20);
+
+      result.fold((_) => fail('expected Right'), (page) => expect(page.hasNext, isFalse));
+      verifyNever(() => dataSource.getApiaries(any()));
     });
 
     test('fails when offline with nothing cached', () async {
       when(() => connectivity.isOnline).thenAnswer((_) async => false);
 
-      final result = await repository.getApiaries();
+      final result = await repository.getApiaries(page: 1, limit: 20);
 
       expect(result, isA<Left<Failure, dynamic>>());
-      verifyNever(() => dataSource.getApiaries());
+      verifyNever(() => dataSource.getApiaries(any()));
     });
 
-    test('keeps a not-yet-synced local apiary alongside a fresh server list', () async {
+    test('keeps a not-yet-synced local apiary alongside a fresh page-1 server list', () async {
       final pendingLocal = ApiaryResponse(
         id: 'local-pending-1',
         name: 'New Yard',
@@ -172,7 +266,9 @@ void main() {
         updatedAt: DateTime(2026),
       );
       when(() => localDataSource.read()).thenAnswer((_) async => [pendingLocal]);
-      when(() => dataSource.getApiaries()).thenAnswer((_) async => [apiaryResponse]);
+      when(
+        () => dataSource.getApiaries(any(that: _pageRequest(1))),
+      ).thenAnswer((_) async => _paginated([apiaryResponse], hasNext: false));
       when(() => operationQueue.all()).thenAnswer(
         (_) async => [
           OfflineOperation(
@@ -188,13 +284,13 @@ void main() {
         ],
       );
 
-      final result = await repository.getApiaries();
+      final result = await repository.getApiaries(page: 1, limit: 20);
 
-      result.fold((_) => fail('expected Right'), (apiaries) {
-        expect(apiaries.map((apiary) => apiary.id), containsAll(['apiary-1', 'local-pending-1']));
-        final pending = apiaries.firstWhere((apiary) => apiary.id == 'local-pending-1');
+      result.fold((_) => fail('expected Right'), (page) {
+        expect(page.items.map((apiary) => apiary.id), containsAll(['apiary-1', 'local-pending-1']));
+        final pending = page.items.firstWhere((apiary) => apiary.id == 'local-pending-1');
         expect(pending.syncStatus, ApiarySyncStatus.pending);
-        final synced = apiaries.firstWhere((apiary) => apiary.id == 'apiary-1');
+        final synced = page.items.firstWhere((apiary) => apiary.id == 'apiary-1');
         expect(synced.syncStatus, ApiarySyncStatus.synced);
       });
     });
@@ -207,7 +303,9 @@ void main() {
         updatedAt: DateTime(2026),
       );
       when(() => localDataSource.read()).thenAnswer((_) async => [pendingLocal]);
-      when(() => dataSource.getApiaries()).thenAnswer((_) async => [apiaryResponse]);
+      when(
+        () => dataSource.getApiaries(any(that: _pageRequest(1))),
+      ).thenAnswer((_) async => _paginated([apiaryResponse], hasNext: false));
       when(() => operationQueue.all()).thenAnswer(
         (_) async => [
           OfflineOperation(
@@ -223,9 +321,44 @@ void main() {
         ],
       );
 
-      final result = await repository.getApiaries();
+      final result = await repository.getApiaries(page: 1, limit: 20);
 
-      result.fold((_) => fail('expected Right'), (apiaries) => expect(apiaries.map((apiary) => apiary.id), ['apiary-1']));
+      result.fold((_) => fail('expected Right'), (page) => expect(page.items.map((apiary) => apiary.id), ['apiary-1']));
+    });
+
+    test('a load-more (page 2) fetch does not re-add a pending placeholder a second time', () async {
+      final pendingLocal = ApiaryResponse(
+        id: 'local-pending-1',
+        name: 'New Yard',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+      // Cache already reflects page 1: the server item plus the pending placeholder.
+      when(() => localDataSource.read()).thenAnswer((_) async => [apiaryResponse, pendingLocal]);
+      when(
+        () => dataSource.getApiaries(any(that: _pageRequest(2))),
+      ).thenAnswer((_) async => _paginated([second], hasNext: false, page: 2));
+      when(() => operationQueue.all()).thenAnswer(
+        (_) async => [
+          OfflineOperation(
+            id: 'op-1',
+            entityType: 'apiary',
+            operationType: OperationType.create,
+            payload: const {},
+            status: OperationStatus.pending,
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+            localEntityId: 'local-pending-1',
+          ),
+        ],
+      );
+
+      final result = await repository.getApiaries(page: 2, limit: 20);
+
+      result.fold((_) => fail('expected Right'), (page) {
+        expect(page.items.where((apiary) => apiary.id == 'local-pending-1').length, 1);
+        expect(page.items.map((apiary) => apiary.id), ['apiary-1', 'local-pending-1', 'apiary-2']);
+      });
     });
   });
 

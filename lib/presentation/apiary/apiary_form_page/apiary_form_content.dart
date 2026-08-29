@@ -32,9 +32,7 @@ final class _ApiaryFormContent extends StatelessWidget {
           label: 'apiary.form.nameLabel'.tr(),
           controller: nameController,
           hintText: 'apiary.form.nameHint'.tr(),
-          validator: (value) => (value == null || value.trim().isEmpty)
-              ? 'apiary.form.validations.nameRequired'.tr()
-              : null,
+          validator: (value) => (value == null || value.trim().isEmpty) ? 'apiary.form.validations.nameRequired'.tr() : null,
         ),
         SizedBox(height: context.spacing.md),
         AppTextField(

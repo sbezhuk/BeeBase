@@ -24,6 +24,7 @@ final class ApiaryScaffold extends StatelessWidget {
     this.trailingAction,
     this.onRefresh,
     this.fadeEdges = false,
+    this.controller,
     super.key,
   });
 
@@ -33,6 +34,7 @@ final class ApiaryScaffold extends StatelessWidget {
   final ApiaryScaffoldAction? trailingAction;
   final Future<void> Function()? onRefresh;
   final bool fadeEdges;
+  final ScrollController? controller;
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +46,7 @@ final class ApiaryScaffold extends StatelessWidget {
         trailingAction: trailingAction,
         onRefresh: onRefresh,
         fadeEdges: fadeEdges,
+        controller: controller,
         onBack: () => context.router.maybePop(),
       ),
       _ => AndroidApiaryScaffold(
@@ -53,6 +56,7 @@ final class ApiaryScaffold extends StatelessWidget {
         trailingAction: trailingAction,
         onRefresh: onRefresh,
         fadeEdges: fadeEdges,
+        controller: controller,
       ),
     };
   }

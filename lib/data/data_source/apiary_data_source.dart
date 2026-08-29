@@ -5,6 +5,9 @@ import 'package:beebase/core/networking/interceptors/interceptor_resolver.dart';
 import 'package:beebase/data/data_source/interface/apiary_data_source.dart';
 import 'package:beebase/data/models/apiary_request.dart';
 import 'package:beebase/data/models/apiary_response.dart';
+import 'package:beebase/data/models/idempotency_key_header.dart';
+import 'package:beebase/data/models/page_request.dart';
+import 'package:beebase/data/models/paginated_response.dart';
 import 'package:dio/dio.dart' as dio;
 
 final class ApiaryDataSource implements IApiaryDataSource {
@@ -16,9 +19,9 @@ final class ApiaryDataSource implements IApiaryDataSource {
   final DioClient _dioClient;
 
   @override
-  Future<List<ApiaryResponse>> getApiaries() async {
-    final response = await _dioClient.get<List<dynamic>>(ApiEndpoints.apiaries.list);
-    return (response.data ?? const []).map((json) => ApiaryResponse.fromJson(json as Map<String, dynamic>)).toList();
+  Future<PaginatedResponse<ApiaryResponse>> getApiaries(PageRequest request) async {
+    final response = await _dioClient.get<Map<String, dynamic>>(ApiEndpoints.apiaries.list, queryParameters: request.toJson());
+    return PaginatedResponse.fromJson(response.data!, (json) => ApiaryResponse.fromJson(json as Map<String, dynamic>));
   }
 
   @override
@@ -32,7 +35,7 @@ final class ApiaryDataSource implements IApiaryDataSource {
     final response = await _dioClient.post<Map<String, dynamic>>(
       ApiEndpoints.apiaries.list,
       data: request.toJson(),
-      headers: idempotencyKey == null ? null : {'Idempotency-Key': idempotencyKey},
+      headers: idempotencyKey == null ? null : IdempotencyKeyHeader(idempotencyKey: idempotencyKey).toJson(),
     );
     return ApiaryResponse.fromJson(response.data!);
   }

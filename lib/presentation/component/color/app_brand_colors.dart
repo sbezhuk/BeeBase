@@ -3,11 +3,7 @@ import 'package:flutter/material.dart';
 /// The brand accent — buttons, focus states, selected chrome.
 @immutable
 final class AppBrandColors {
-  const AppBrandColors({
-    required this.primary,
-    required this.primaryDark,
-    required this.onPrimary,
-  });
+  const AppBrandColors({required this.primary, required this.primaryDark, required this.onPrimary});
 
   final Color primary;
   final Color primaryDark;
@@ -18,11 +14,7 @@ final class AppBrandColors {
   // color for this: unlike surface tones, it must not flip with the theme.
   final Color onPrimary;
 
-  AppBrandColors copyWith({
-    Color? primary,
-    Color? primaryDark,
-    Color? onPrimary,
-  }) {
+  AppBrandColors copyWith({Color? primary, Color? primaryDark, Color? onPrimary}) {
     return AppBrandColors(
       primary: primary ?? this.primary,
       primaryDark: primaryDark ?? this.primaryDark,

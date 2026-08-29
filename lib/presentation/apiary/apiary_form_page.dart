@@ -42,9 +42,7 @@ final class ApiaryFormPage extends StatefulWidget implements AutoRouteWrapper {
 final class _ApiaryFormPageState extends State<ApiaryFormPage> {
   final _formKey = GlobalKey<FormState>();
   late final _nameController = TextEditingController(text: widget.apiary?.name);
-  late final _descriptionController = TextEditingController(
-    text: widget.apiary?.description,
-  );
+  late final _descriptionController = TextEditingController(text: widget.apiary?.description);
   bool _isFetchingLocation = false;
 
   /// The resolved address and coordinates, geolocation-only — there's no
@@ -91,18 +89,13 @@ final class _ApiaryFormPageState extends State<ApiaryFormPage> {
     final result = await cubit.resolveCurrentLocation();
     if (!mounted) return;
 
-    result.fold(
-      (failure) => AppSnackBar.show(
-        context,
-        message: failure.messageKey.tr(),
-        variant: AppSnackBarVariant.error,
-      ),
-      (location) {
-        _locationAddress = location.address;
-        _latitude = location.latitude;
-        _longitude = location.longitude;
-      },
-    );
+    result.fold((failure) => AppSnackBar.show(context, message: failure.messageKey.tr(), variant: AppSnackBarVariant.error), (
+      location,
+    ) {
+      _locationAddress = location.address;
+      _latitude = location.latitude;
+      _longitude = location.longitude;
+    });
     setState(() => _isFetchingLocation = false);
   }
 
@@ -110,20 +103,14 @@ final class _ApiaryFormPageState extends State<ApiaryFormPage> {
     if (state is ApiaryFormSuccess) {
       context.router.pop(state.apiary);
     } else if (state is ApiaryFormError) {
-      AppSnackBar.show(
-        context,
-        message: state.failure.message.resolve(),
-        variant: AppSnackBarVariant.error,
-      );
+      AppSnackBar.show(context, message: state.failure.message.resolve(), variant: AppSnackBarVariant.error);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return ApiaryScaffold(
-      title: _isEditing
-          ? 'apiary.form.editTitle'.tr()
-          : 'apiary.form.createTitle'.tr(),
+      title: _isEditing ? 'apiary.form.editTitle'.tr() : 'apiary.form.createTitle'.tr(),
       slivers: [
         BlocListener<ApiaryFormCubit, ApiaryFormState>(
           listener: _handleStateChange,

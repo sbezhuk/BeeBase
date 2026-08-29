@@ -22,6 +22,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 part 'apiary_list_page/apiary_list_body.dart';
 part 'apiary_list_page/apiary_list_loaded_view.dart';
+part 'apiary_list_page/apiary_list_load_more_error.dart';
 part 'apiary_list_page/apiary_list_tile.dart';
 part 'apiary_list_page/apiary_sync_badge.dart';
 part 'apiary_list_page/apiary_list_stat.dart';
@@ -52,6 +53,33 @@ final class ApiaryListPage extends StatefulWidget implements AutoRouteWrapper {
 }
 
 final class _ApiaryListPageState extends State<ApiaryListPage> {
+  // How close to the bottom (in logical pixels) the user needs to scroll
+  // before the next page is requested — a scroll-behavior heuristic, not a
+  // themed visual dimension, so it isn't sourced from context.spacing.
+  static const double _loadMoreThreshold = 300;
+
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - _loadMoreThreshold) {
+      context.read<ApiaryListCubit>().loadNextPage();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<ApiaryListCubit>();
@@ -60,6 +88,7 @@ final class _ApiaryListPageState extends State<ApiaryListPage> {
       showBackButton: false,
       onRefresh: cubit.refresh,
       fadeEdges: true,
+      controller: _scrollController,
       slivers: const [_ApiaryListBody()],
     );
   }

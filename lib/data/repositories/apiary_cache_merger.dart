@@ -12,13 +12,14 @@ import 'package:beebase/domain/enum/apiary_sync_status.dart';
 final class ApiaryCacheMerger {
   const ApiaryCacheMerger();
 
-  /// Keeps any cache entry still awaiting sync alongside the fresh server
-  /// list, so a not-yet-synced offline-created apiary doesn't disappear the
-  /// moment the next online fetch runs. Safe from duplicating a
-  /// since-synced entry: `ApiaryOperationHandler` removes the local
+  /// Page 1 (initial load or refresh): the fresh server page becomes the new
+  /// front of the cache, and any cache entry still awaiting sync survives
+  /// alongside it, so a not-yet-synced offline-created apiary doesn't
+  /// disappear the moment the next online fetch runs. Safe from duplicating
+  /// a since-synced entry: `ApiaryOperationHandler` removes the local
   /// placeholder from the cache before the operation is ever marked synced.
-  List<ApiaryResponse> mergeWithPending(
-    List<ApiaryResponse> serverList,
+  List<ApiaryResponse> mergeFirstPage(
+    List<ApiaryResponse> serverPage,
     List<ApiaryResponse> oldCache,
     List<OfflineOperation> pendingOps,
   ) {
@@ -27,7 +28,17 @@ final class ApiaryCacheMerger {
         .map((operation) => operation.localEntityId)
         .toSet();
     final stillPending = oldCache.where((response) => unsyncedLocalIds.contains(response.id));
-    return [...serverList, ...stillPending];
+    return [...serverPage, ...stillPending];
+  }
+
+  /// Page 2+: appends a fresh page onto whatever's already accumulated.
+  /// Pending placeholders are never re-added here — they're already in
+  /// [oldCache] from the page-1 fetch. Dedupes by id defensively: page-offset
+  /// pagination over a collection that can change server-side between two
+  /// page fetches can otherwise return the same row twice.
+  List<ApiaryResponse> appendPage(List<ApiaryResponse> serverPage, List<ApiaryResponse> oldCache) {
+    final existingIds = oldCache.map((response) => response.id).toSet();
+    return [...oldCache, ...serverPage.where((response) => !existingIds.contains(response.id))];
   }
 
   List<Apiary> toEntities(List<ApiaryResponse> responses, List<OfflineOperation> pendingOps) {
