@@ -241,4 +241,37 @@ void main() {
       await changesController.close();
     });
   });
+
+  group('hasPendingOperations', () {
+    test('is false before start() and when nothing is queued', () async {
+      expect(engine.hasPendingOperations.value, isFalse);
+    });
+
+    test('is true offline with a pending operation, unlike syncAvailable', () async {
+      when(() => connectivity.isOnline).thenAnswer((_) async => false);
+      when(() => queue.all()).thenAnswer((_) async => [_pendingOp()]);
+
+      await engine.refreshAvailability();
+
+      expect(engine.hasPendingOperations.value, isTrue);
+      expect(engine.syncAvailable.value, isFalse);
+    });
+
+    test('a failed operation also counts as pending', () async {
+      when(() => connectivity.isOnline).thenAnswer((_) async => false);
+      when(() => queue.all()).thenAnswer((_) async => [_pendingOp(status: OperationStatus.failed)]);
+
+      await engine.refreshAvailability();
+
+      expect(engine.hasPendingOperations.value, isTrue);
+    });
+
+    test('is false when everything is synced, online or off', () async {
+      when(() => queue.all()).thenAnswer((_) async => [_pendingOp(status: OperationStatus.synced)]);
+
+      await engine.refreshAvailability();
+
+      expect(engine.hasPendingOperations.value, isFalse);
+    });
+  });
 }

@@ -110,7 +110,12 @@
   "profile": {
     "page": {
       "title": "Profile",
-      "placeholder": "Profile details go here."
+      "placeholder": "Profile details go here.",
+      "sync": {
+        "title": "Offline data",
+        "pending": "There is data to synchronize.",
+        "upToDate": "There is no data to synchronize."
+      }
     }
   },
   "core": {
@@ -131,7 +136,8 @@
       "message": "You have data saved offline that can now be uploaded to the server.",
       "action": "Sync now",
       "syncing": "Syncing offline data…",
-      "offline": "You're offline. Changes will sync once you're back online."
+      "offline": "You're offline. Changes will sync once you're back online.",
+      "backOnline": "You're back online."
     }
   },
   "server": {

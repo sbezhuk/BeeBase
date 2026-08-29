@@ -1,11 +1,16 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';
+import 'package:beebase/presentation/component/buttons/primary_button.dart';
 import 'package:beebase/presentation/component/honey_gradient_background.dart';
+import 'package:beebase/presentation/sync/cubit/sync_banner_cubit/sync_banner_cubit.dart';
+import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
 import 'package:beebase/utils/extensions/theme_text_styles.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+part 'profile_page/profile_sync_section.dart';
 
 @RoutePage()
 final class ProfilePage extends StatelessWidget {
@@ -38,6 +43,8 @@ final class ProfilePage extends StatelessWidget {
                       if (email != null) Text(email, style: context.textStyles.title),
                       SizedBox(height: context.spacing.sm),
                       Text('profile.page.placeholder'.tr(), style: context.textStyles.body),
+                      SizedBox(height: context.spacing.xl),
+                      const _ProfileSyncSection(),
                     ],
                   );
                 },

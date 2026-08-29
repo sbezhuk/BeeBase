@@ -11,11 +11,15 @@ import 'package:flutter_test/flutter_test.dart';
 
 class _FakeSyncEngine implements SyncEngine {
   final ValueNotifier<bool> _available = ValueNotifier(false);
+  final ValueNotifier<bool> _pending = ValueNotifier(false);
   int syncNowCallCount = 0;
   Completer<void>? syncGate;
 
   @override
   ValueListenable<bool> get syncAvailable => _available;
+
+  @override
+  ValueListenable<bool> get hasPendingOperations => _pending;
 
   @override
   void start() {}

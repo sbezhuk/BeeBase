@@ -17,12 +17,16 @@ final class SyncEngineImpl implements SyncEngine {
   final IConnectivityService connectivity;
 
   final ValueNotifier<bool> _syncAvailable = ValueNotifier(false);
+  final ValueNotifier<bool> _hasPendingOperations = ValueNotifier(false);
   StreamSubscription<bool>? _connectivitySubscription;
   StreamSubscription<void>? _queueSubscription;
   bool _syncing = false;
 
   @override
   ValueListenable<bool> get syncAvailable => _syncAvailable;
+
+  @override
+  ValueListenable<bool> get hasPendingOperations => _hasPendingOperations;
 
   @override
   void start() {
@@ -36,8 +40,9 @@ final class SyncEngineImpl implements SyncEngine {
   @override
   Future<void> refreshAvailability() async {
     final online = await connectivity.isOnline;
-    final hasUnsynced = online && (await queue.all()).any(_needsSync);
-    _syncAvailable.value = hasUnsynced;
+    final hasUnsynced = (await queue.all()).any(_needsSync);
+    _hasPendingOperations.value = hasUnsynced;
+    _syncAvailable.value = online && hasUnsynced;
   }
 
   bool _needsSync(OfflineOperation operation) =>

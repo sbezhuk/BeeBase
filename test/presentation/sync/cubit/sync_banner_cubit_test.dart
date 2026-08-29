@@ -5,11 +5,15 @@ import 'package:flutter_test/flutter_test.dart';
 
 class _FakeSyncEngine implements SyncEngine {
   final ValueNotifier<bool> _available = ValueNotifier(false);
+  final ValueNotifier<bool> _pending = ValueNotifier(false);
   int syncNowCallCount = 0;
   Future<void> Function()? onSyncNow;
 
   @override
   ValueListenable<bool> get syncAvailable => _available;
+
+  @override
+  ValueListenable<bool> get hasPendingOperations => _pending;
 
   @override
   void start() {}
@@ -27,6 +31,8 @@ class _FakeSyncEngine implements SyncEngine {
   }
 
   void setAvailable(bool value) => _available.value = value;
+
+  void setPending(bool value) => _pending.value = value;
 }
 
 void main() {

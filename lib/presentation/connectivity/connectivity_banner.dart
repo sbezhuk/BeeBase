@@ -5,14 +5,18 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-/// App-wide "you're offline" notification — mounted inside the main tab
-/// shell alongside [OfflineSyncBanner] (not the pre-auth screens). Renders
-/// nothing itself: it's purely a [ConnectivityCubit] listener that drives
-/// the shared [AppSnackBar] under a fixed [_tag] distinct from
-/// [OfflineSyncBanner]'s, so the two can stack independently rather than
-/// clobbering each other. Shown while [ConnectivityOffline]; hidden as soon
-/// as connectivity returns — the separate "you have data to sync" banner
-/// then takes over if there's anything pending.
+/// App-wide connectivity notifications — mounted inside the main tab shell
+/// alongside [OfflineSyncBanner] (not the pre-auth screens). Renders nothing
+/// itself: it's purely a [ConnectivityCubit] listener that drives the shared
+/// [AppSnackBar]. The "you're offline" message is persistent, under a fixed
+/// [_tag] distinct from [OfflineSyncBanner]'s so the two can stack
+/// independently; once connectivity returns, that persistent banner is
+/// swapped for a brief "connection restored" confirmation (a plain,
+/// auto-dismissing toast — not tagged/persistent, since it doesn't need
+/// updating in place) so the user sees the state actually changed, rather
+/// than the offline banner just silently vanishing. The separate "you have
+/// data to sync" banner still takes over on its own if there's anything
+/// pending.
 final class ConnectivityBanner extends StatefulWidget {
   const ConnectivityBanner({super.key});
 
@@ -22,6 +26,11 @@ final class ConnectivityBanner extends StatefulWidget {
 
 final class _ConnectivityBannerState extends State<ConnectivityBanner> {
   static const _tag = 'connectivity';
+
+  // Only true once this widget has actually observed ConnectivityOffline —
+  // guards the "connection restored" toast so it fires on a genuine
+  // offline→online transition, never on first mount while already online.
+  bool _wasOffline = false;
 
   @override
   void initState() {
@@ -46,11 +55,22 @@ final class _ConnectivityBannerState extends State<ConnectivityBanner> {
   }
 
   void _present(ConnectivityState state) {
-    if (state is ConnectivityOnline) {
-      AppSnackBar.hide(_tag);
+    if (state is ConnectivityOffline) {
+      _wasOffline = true;
+      AppSnackBar.show(
+        context,
+        tag: _tag,
+        duration: null,
+        variant: AppSnackBarVariant.warning,
+        message: 'sync.banner.offline'.tr(),
+      );
       return;
     }
 
-    AppSnackBar.show(context, tag: _tag, duration: null, variant: AppSnackBarVariant.warning, message: 'sync.banner.offline'.tr());
+    AppSnackBar.hide(_tag);
+    if (_wasOffline) {
+      _wasOffline = false;
+      AppSnackBar.show(context, variant: AppSnackBarVariant.success, message: 'sync.banner.backOnline'.tr());
+    }
   }
 }

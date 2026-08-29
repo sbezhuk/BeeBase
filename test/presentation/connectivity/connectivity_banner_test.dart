@@ -42,7 +42,9 @@ void main() {
   Future<void> pumpBanner(WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: BlocProvider<ConnectivityCubit>.value(value: cubit, child: const ConnectivityBanner())),
+        home: Scaffold(
+          body: BlocProvider<ConnectivityCubit>.value(value: cubit, child: const ConnectivityBanner()),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -63,7 +65,11 @@ void main() {
     expect(find.byType(AppSnackBarCard), findsOneWidget);
   });
 
-  testWidgets('hides the banner once connectivity returns', (tester) async {
+  // easy_localization has no EasyLocalization ancestor in this test, so
+  // `.tr()` falls back to returning the key itself.
+  const backOnlineKey = 'sync.banner.backOnline';
+
+  testWidgets('swaps the persistent offline banner for a "back online" confirmation once connectivity returns', (tester) async {
     await pumpBanner(tester);
     connectivity.emit(false);
     await tester.pumpAndSettle();
@@ -72,6 +78,13 @@ void main() {
     connectivity.emit(true);
     await tester.pumpAndSettle();
 
-    expect(find.byType(AppSnackBarCard), findsNothing);
+    expect(find.byType(AppSnackBarCard), findsOneWidget);
+    expect(find.text(backOnlineKey), findsOneWidget);
+  });
+
+  testWidgets('does not show a "back online" confirmation on first mount while already online', (tester) async {
+    await pumpBanner(tester);
+
+    expect(find.text(backOnlineKey), findsNothing);
   });
 }
