@@ -26,11 +26,6 @@ void main() {
   late _FakeConnectivityService connectivity;
   late ConnectivityCubit cubit;
 
-  setUp(() {
-    connectivity = _FakeConnectivityService();
-    cubit = ConnectivityCubit(connectivity: connectivity);
-  });
-
   tearDown(() async {
     await cubit.close();
     await connectivity.dispose();
@@ -39,7 +34,16 @@ void main() {
   // Mirrors OfflineSyncBanner's own test: the banner presents through the
   // shared AppSnackBar overlay from a post-frame callback, so every helper
   // flushes that frame before handing control back to the test body.
+  //
+  // The fake and cubit are built here rather than in `setUp` — `setUp`/
+  // `tearDown` run outside the `testWidgets` body's fake-async zone, so a
+  // `StreamController`-backed subscription created there needs a genuine
+  // async boundary (`tester.runAsync`) to deliver across zones, which
+  // `pump`/`pumpAndSettle` never cross. Building them inside the test body
+  // keeps everything in the same zone the pumps actually flush.
   Future<void> pumpBanner(WidgetTester tester) async {
+    connectivity = _FakeConnectivityService();
+    cubit = ConnectivityCubit(connectivity: connectivity);
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
