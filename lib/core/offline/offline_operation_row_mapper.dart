@@ -20,6 +20,7 @@ abstract final class OfflineOperationRowMapper {
     'last_error': operation.lastError,
     'local_entity_id': operation.localEntityId,
     'depends_on_operation_id': operation.dependsOnOperationId,
+    'resolved_entity_id': operation.resolvedEntityId,
     'version': operation.version,
   };
 
@@ -35,6 +36,7 @@ abstract final class OfflineOperationRowMapper {
     lastError: row['last_error'] as String?,
     localEntityId: row['local_entity_id'] as String?,
     dependsOnOperationId: row['depends_on_operation_id'] as String?,
+    resolvedEntityId: row['resolved_entity_id'] as String?,
     version: row['version'] as int? ?? 0,
   );
 }

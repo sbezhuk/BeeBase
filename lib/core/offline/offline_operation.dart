@@ -20,6 +20,7 @@ final class OfflineOperation {
     this.lastError,
     this.localEntityId,
     this.dependsOnOperationId,
+    this.resolvedEntityId,
     this.version = 0,
   });
 
@@ -34,10 +35,19 @@ final class OfflineOperation {
   final String? lastError;
   final String? localEntityId;
 
-  /// The id of an operation this one must wait behind (e.g. creating a Hive
-  /// that belongs to an Apiary not yet synced). Modeled but not enforced by
-  /// [SyncEngine] today — there is only one entity type in the queue so far.
+  /// The id of an operation this one must wait behind — e.g. creating a Hive
+  /// that belongs to an Apiary not yet synced. [SyncEngine] won't dispatch
+  /// this operation to its handler until the referenced operation's row has
+  /// [OperationStatus.synced]; a handler that needs the dependency's
+  /// server-assigned id reads it back off that row's [resolvedEntityId].
   final String? dependsOnOperationId;
+
+  /// The server-assigned id this operation's entity got once synced — set
+  /// only on a successful `create` (see [OperationSuccess.resolvedEntityId]).
+  /// This is how a dependent operation (via [dependsOnOperationId]) looks up
+  /// the real id to use once its dependency has synced, since the local id
+  /// it was created with no longer resolves to anything server-side.
+  final String? resolvedEntityId;
 
   /// Bumped every time a newer local edit is consolidated into this same
   /// operation (see `OfflineMutationStore.saveWithConsolidatedOperation`).
@@ -55,6 +65,7 @@ final class OfflineOperation {
     int? retryCount,
     String? lastError,
     String? localEntityId,
+    String? resolvedEntityId,
     int? version,
   }) {
     return OfflineOperation(
@@ -69,6 +80,7 @@ final class OfflineOperation {
       lastError: lastError ?? this.lastError,
       localEntityId: localEntityId ?? this.localEntityId,
       dependsOnOperationId: dependsOnOperationId,
+      resolvedEntityId: resolvedEntityId ?? this.resolvedEntityId,
       version: version ?? this.version,
     );
   }
@@ -85,6 +97,7 @@ final class OfflineOperation {
     'lastError': lastError,
     'localEntityId': localEntityId,
     'dependsOnOperationId': dependsOnOperationId,
+    'resolvedEntityId': resolvedEntityId,
     'version': version,
   };
 
@@ -100,6 +113,7 @@ final class OfflineOperation {
     lastError: json['lastError'] as String?,
     localEntityId: json['localEntityId'] as String?,
     dependsOnOperationId: json['dependsOnOperationId'] as String?,
+    resolvedEntityId: json['resolvedEntityId'] as String?,
     version: json['version'] as int? ?? 0,
   );
 }

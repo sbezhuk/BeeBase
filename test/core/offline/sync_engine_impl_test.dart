@@ -18,7 +18,12 @@ class MockOperationHandler extends Mock implements OperationHandler {}
 
 class MockConnectivityService extends Mock implements IConnectivityService {}
 
-OfflineOperation _pendingOp({String id = 'op-1', int retryCount = 0, OperationStatus status = OperationStatus.pending}) {
+OfflineOperation _pendingOp({
+  String id = 'op-1',
+  int retryCount = 0,
+  OperationStatus status = OperationStatus.pending,
+  String? dependsOnOperationId,
+}) {
   return OfflineOperation(
     id: id,
     entityType: 'apiary',
@@ -29,6 +34,7 @@ OfflineOperation _pendingOp({String id = 'op-1', int retryCount = 0, OperationSt
     updatedAt: DateTime(2026),
     retryCount: retryCount,
     localEntityId: 'local-1',
+    dependsOnOperationId: dependsOnOperationId,
   );
 }
 
@@ -149,6 +155,53 @@ void main() {
       // in the state it wants (re-targeted and pending), so the engine must
       // not additionally mark it synced.
       expect(updates.map((op) => op.status), [OperationStatus.inProgress]);
+    });
+
+    test('marks a successful create synced with its resolvedEntityId', () async {
+      when(() => queue.all()).thenAnswer((_) async => [_pendingOp()]);
+      when(() => handler.handle(any())).thenAnswer((_) async => const OperationSuccess(resolvedEntityId: 'server-9'));
+
+      await engine.syncNow();
+
+      final updates = verify(() => queue.update(captureAny())).captured.cast<OfflineOperation>();
+      expect(updates.last.status, OperationStatus.synced);
+      expect(updates.last.resolvedEntityId, 'server-9');
+    });
+
+    test('does not dispatch an operation whose dependency has not synced yet', () async {
+      final dependency = _pendingOp(id: 'op-0', status: OperationStatus.pending);
+      final dependent = _pendingOp(id: 'op-1', dependsOnOperationId: 'op-0');
+      when(() => queue.all()).thenAnswer((_) async => [dependent]);
+      when(() => queue.find('op-0')).thenAnswer((_) async => dependency);
+
+      await engine.syncNow();
+
+      verifyNever(() => handler.handle(any()));
+      verifyNever(() => queue.update(any()));
+    });
+
+    test('does not dispatch an operation whose dependency no longer exists', () async {
+      final dependent = _pendingOp(id: 'op-1', dependsOnOperationId: 'op-0');
+      when(() => queue.all()).thenAnswer((_) async => [dependent]);
+      when(() => queue.find('op-0')).thenAnswer((_) async => null);
+
+      await engine.syncNow();
+
+      verifyNever(() => handler.handle(any()));
+      verifyNever(() => queue.update(any()));
+    });
+
+    test('dispatches an operation once its dependency has synced, within the same drain', () async {
+      final dependency = _pendingOp(id: 'op-0', status: OperationStatus.synced, dependsOnOperationId: null);
+      final dependent = _pendingOp(id: 'op-1', dependsOnOperationId: 'op-0');
+      when(() => queue.all()).thenAnswer((_) async => [dependent]);
+      when(() => queue.find('op-0')).thenAnswer((_) async => dependency);
+      when(() => handler.handle(any())).thenAnswer((_) async => const OperationSuccess());
+
+      await engine.syncNow();
+
+      final updates = verify(() => queue.update(captureAny())).captured.cast<OfflineOperation>();
+      expect(updates.map((op) => op.status), [OperationStatus.inProgress, OperationStatus.synced]);
     });
 
     test('a failure does not clobber a payload that changed while the request was in flight', () async {

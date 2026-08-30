@@ -60,7 +60,7 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
       }
       await _reconcileCache(operation.localEntityId, response);
       refreshNotifier.notify();
-      return const OperationSuccess();
+      return OperationSuccess(resolvedEntityId: response.id);
     });
   }
 

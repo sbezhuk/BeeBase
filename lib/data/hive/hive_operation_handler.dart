@@ -1,4 +1,5 @@
 import 'package:beebase/core/networking/failures/failure.dart';
+import 'package:beebase/core/offline/local_id_generator.dart';
 import 'package:beebase/core/offline/offline_operation.dart';
 import 'package:beebase/core/offline/operation_handler.dart';
 import 'package:beebase/core/offline/operation_queue.dart';
@@ -49,7 +50,16 @@ final class HiveOperationHandler extends Repository
   }
 
   Future<OperationResult> _handleCreate(OfflineOperation operation) async {
-    final apiaryId = operation.payload[_payloadApiaryIdKey] as String;
+    final rawApiaryId = operation.payload[_payloadApiaryIdKey] as String;
+    final apiaryId = await _resolveApiaryId(
+      rawApiaryId,
+      operation.dependsOnOperationId,
+    );
+    if (apiaryId == null) {
+      return const OperationRetryableFailure(
+        'The parent apiary has not synced yet.',
+      );
+    }
     final request = HiveRequest.fromJson(operation.payload);
     final result = await on(
       () => dataSource.createHive(
@@ -76,8 +86,33 @@ final class HiveOperationHandler extends Repository
       }
       await _reconcileCache(operation.localEntityId, response);
       refreshNotifier.notify();
-      return const OperationSuccess();
+      return OperationSuccess(resolvedEntityId: response.id);
     });
+  }
+
+  /// Resolves the apiary id to actually send with a queued create. Most of
+  /// the time [rawApiaryId] (the id captured when the hive was created
+  /// offline) is already a real backend id and is returned as-is. When the
+  /// hive was created under an apiary that was *itself* still a local
+  /// placeholder, [rawApiaryId] is a local id the backend has never heard
+  /// of — the real id has to be read off the apiary's own now-synced
+  /// operation (see [OfflineOperation.dependsOnOperationId] /
+  /// [OfflineOperation.resolvedEntityId]). Returns `null` if that dependency
+  /// hasn't synced yet, which `SyncEngine` should already have prevented by
+  /// not dispatching this operation in the first place — this is a
+  /// defensive fallback, not the primary guard.
+  Future<String?> _resolveApiaryId(
+    String rawApiaryId,
+    String? dependsOnOperationId,
+  ) async {
+    if (!LocalIdGenerator.isLocal(rawApiaryId)) {
+      return rawApiaryId;
+    }
+    if (dependsOnOperationId == null) {
+      return null;
+    }
+    final dependency = await operationQueue.find(dependsOnOperationId);
+    return dependency?.resolvedEntityId;
   }
 
   Future<OperationResult> _handleUpdate(OfflineOperation operation) async {

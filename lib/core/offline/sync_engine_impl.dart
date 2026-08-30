@@ -68,6 +68,21 @@ final class SyncEngineImpl implements SyncEngine {
   }
 
   Future<void> _process(OfflineOperation operation) async {
+    // An operation that depends on another (e.g. creating a Hive under an
+    // Apiary that was itself created offline) must not be sent until that
+    // dependency has actually synced — its payload may still be pointing at
+    // a local id the backend has never heard of. `queue.find` re-reads the
+    // row fresh, so a dependency processed earlier in this same drain of the
+    // queue (chronological order — see `SqliteOperationQueue.all`) is
+    // already visible here without waiting for another `syncNow()` call.
+    final dependsOnId = operation.dependsOnOperationId;
+    if (dependsOnId != null) {
+      final dependency = await queue.find(dependsOnId);
+      if (dependency == null || dependency.status != OperationStatus.synced) {
+        return;
+      }
+    }
+
     final handler = registry.handlerFor(operation.entityType);
     if (handler == null) {
       return;
@@ -84,8 +99,10 @@ final class SyncEngineImpl implements SyncEngine {
     final current = await queue.find(operation.id) ?? operation;
 
     switch (result) {
-      case OperationSuccess():
-        await queue.update(current.copyWith(status: OperationStatus.synced, updatedAt: DateTime.now()));
+      case OperationSuccess(:final resolvedEntityId):
+        await queue.update(
+          current.copyWith(status: OperationStatus.synced, resolvedEntityId: resolvedEntityId, updatedAt: DateTime.now()),
+        );
       case OperationSuperseded():
         break;
       case OperationRetryableFailure(:final message) || OperationPermanentFailure(:final message):

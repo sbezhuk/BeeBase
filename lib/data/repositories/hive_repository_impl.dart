@@ -27,6 +27,12 @@ import 'package:beebase/utils/pagination/page.dart';
 
 const _hiveEntityType = 'hive';
 
+/// Must match `ApiaryRepositoryImpl`'s private `_apiaryEntityType` — used
+/// here only to look up a still-pending apiary `create` operation when a
+/// hive is created offline under an apiary that is itself only a local
+/// placeholder (see [HiveRepositoryImpl._createOffline]).
+const _apiaryEntityType = 'apiary';
+
 /// Cache key both this repository and its DI registration of
 /// `LocalDataSource<List<HiveResponse>>` agree on. One cache holds the
 /// caller's hives across every apiary — see [HiveCacheMerger] for how reads
@@ -269,6 +275,14 @@ final class HiveRepositoryImpl extends Repository
   /// Saves the local placeholder and enqueues its sync operation atomically
   /// (see [OfflineMutationStore]) — never local-entity-without-operation or
   /// the reverse.
+  ///
+  /// If [apiaryId] is itself still a local placeholder (its own apiary was
+  /// also created offline and hasn't synced), this hive's `create` operation
+  /// is linked to that apiary's pending `create` operation via
+  /// [OfflineOperation.dependsOnOperationId] — otherwise `SyncEngine` could
+  /// try to create this hive under an apiary id the backend has never heard
+  /// of. See [HiveOperationHandler] for how that dependency is resolved once
+  /// it syncs.
   Future<Either<Failure, Hive>> _createOffline({
     required String apiaryId,
     required String name,
@@ -276,6 +290,9 @@ final class HiveRepositoryImpl extends Repository
   }) async {
     final now = DateTime.now();
     final localId = LocalIdGenerator.generate();
+    final dependsOnOperationId = LocalIdGenerator.isLocal(apiaryId)
+        ? await _pendingApiaryCreateOperationId(apiaryId)
+        : null;
     final placeholder = HiveResponse(
       id: localId,
       apiaryId: apiaryId,
@@ -303,11 +320,28 @@ final class HiveRepositoryImpl extends Repository
         createdAt: now,
         updatedAt: now,
         localEntityId: localId,
+        dependsOnOperationId: dependsOnOperationId,
       ),
     );
     return Right(
       placeholder.toEntity().copyWith(syncStatus: HiveSyncStatus.pending),
     );
+  }
+
+  /// The still-pending (or already-processed but not-yet-synced) `create`
+  /// operation for the apiary identified by the local id [apiaryId] — `null`
+  /// if none is found, which would mean the invariant "a local apiary id
+  /// always has a pending create operation" was violated elsewhere.
+  Future<String?> _pendingApiaryCreateOperationId(String apiaryId) async {
+    final operations = await operationQueue.all();
+    for (final operation in operations) {
+      if (operation.entityType == _apiaryEntityType &&
+          operation.localEntityId == apiaryId &&
+          operation.operationType == OperationType.create) {
+        return operation.id;
+      }
+    }
+    return null;
   }
 
   /// Updates the cached entity and folds the change into the single

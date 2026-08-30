@@ -54,6 +54,7 @@ void main() {
       lastError: 'boom',
       localEntityId: 'local-1',
       dependsOnOperationId: 'op-0',
+      resolvedEntityId: 'server-9',
     );
 
     await queue.enqueue(operation);
@@ -69,6 +70,7 @@ void main() {
     expect(stored.lastError, 'boom');
     expect(stored.localEntityId, 'local-1');
     expect(stored.dependsOnOperationId, 'op-0');
+    expect(stored.resolvedEntityId, 'server-9');
   });
 
   test('update replaces only the matching operation', () async {

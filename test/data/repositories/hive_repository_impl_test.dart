@@ -498,6 +498,64 @@ void main() {
         );
       },
     );
+
+    test(
+      'links to the parent apiary\'s pending CREATE operation when the apiary id is itself still local',
+      () async {
+        when(() => connectivity.isOnline).thenAnswer((_) async => false);
+        const localApiaryId = 'local-apiary-1';
+        final apiaryCreateOp = OfflineOperation(
+          id: 'apiary-op-1',
+          entityType: 'apiary',
+          operationType: OperationType.create,
+          payload: const {'name': 'New Apiary'},
+          status: OperationStatus.pending,
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+          localEntityId: localApiaryId,
+        );
+        when(
+          () => operationQueue.all(),
+        ).thenAnswer((_) async => [apiaryCreateOp]);
+
+        await repository.createHive(apiaryId: localApiaryId, name: 'New Hive');
+
+        final captured = verify(
+          () =>
+              offlineMutationStore.saveWithPendingOperation<List<HiveResponse>>(
+                cacheKey: any(named: 'cacheKey'),
+                mutate: any(named: 'mutate'),
+                toJson: any(named: 'toJson'),
+                fromJson: any(named: 'fromJson'),
+                operation: captureAny(named: 'operation'),
+              ),
+        ).captured;
+        final operation = captured.single as OfflineOperation;
+        expect(operation.dependsOnOperationId, 'apiary-op-1');
+      },
+    );
+
+    test(
+      'leaves dependsOnOperationId null when the apiary id is already a real backend id',
+      () async {
+        when(() => connectivity.isOnline).thenAnswer((_) async => false);
+
+        await repository.createHive(apiaryId: apiaryId, name: 'New Hive');
+
+        final captured = verify(
+          () =>
+              offlineMutationStore.saveWithPendingOperation<List<HiveResponse>>(
+                cacheKey: any(named: 'cacheKey'),
+                mutate: any(named: 'mutate'),
+                toJson: any(named: 'toJson'),
+                fromJson: any(named: 'fromJson'),
+                operation: captureAny(named: 'operation'),
+              ),
+        ).captured;
+        final operation = captured.single as OfflineOperation;
+        expect(operation.dependsOnOperationId, isNull);
+      },
+    );
   });
 
   group('updateHive', () {

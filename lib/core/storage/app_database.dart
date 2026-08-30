@@ -16,7 +16,7 @@ final class AppDatabase {
   AppDatabase({DatabaseFactory? factory, this._pathOverride}) : _factory = factory ?? databaseFactory;
 
   static const _fileName = 'beebase.db';
-  static const _version = 2;
+  static const _version = 3;
 
   final DatabaseFactory _factory;
   final String? _pathOverride;
@@ -56,6 +56,7 @@ final class AppDatabase {
         last_error TEXT,
         local_entity_id TEXT,
         depends_on_operation_id TEXT,
+        resolved_entity_id TEXT,
         version INTEGER NOT NULL DEFAULT 0
       )
     ''');
@@ -64,6 +65,9 @@ final class AppDatabase {
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE offline_operations ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
+    }
+    if (oldVersion < 3) {
+      await db.execute('ALTER TABLE offline_operations ADD COLUMN resolved_entity_id TEXT');
     }
   }
 }

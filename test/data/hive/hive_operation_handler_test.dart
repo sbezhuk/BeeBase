@@ -247,6 +247,114 @@ void main() {
     );
   });
 
+  group('create with a still-local parent apiary', () {
+    OfflineOperation createOpForLocalApiary({String? dependsOnOperationId}) {
+      return OfflineOperation(
+        id: 'op-1',
+        entityType: 'hive',
+        operationType: OperationType.create,
+        payload: {
+          'apiaryId': 'local-apiary-1',
+          ...const HiveRequest(name: 'New Hive', notes: 'desc').toJson(),
+        },
+        status: OperationStatus.pending,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+        localEntityId: 'local-1',
+        dependsOnOperationId: dependsOnOperationId,
+      );
+    }
+
+    test(
+      'resolves the real apiary id from the synced dependency operation before sending',
+      () async {
+        when(() => localDataSource.read()).thenAnswer((_) async => []);
+        when(
+          () => operationQueue.find('apiary-op-1'),
+        ).thenAnswer(
+          (_) async => OfflineOperation(
+            id: 'apiary-op-1',
+            entityType: 'apiary',
+            operationType: OperationType.create,
+            payload: const {},
+            status: OperationStatus.synced,
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+            resolvedEntityId: 'server-apiary-9',
+          ),
+        );
+        when(
+          () => dataSource.createHive(
+            any(),
+            apiaryId: any(named: 'apiaryId'),
+            idempotencyKey: any(named: 'idempotencyKey'),
+          ),
+        ).thenAnswer((_) async => serverResponse);
+
+        final result = await handler.handle(
+          createOpForLocalApiary(dependsOnOperationId: 'apiary-op-1'),
+        );
+
+        expect(result, isA<OperationSuccess>());
+        verify(
+          () => dataSource.createHive(
+            any(),
+            apiaryId: 'server-apiary-9',
+            idempotencyKey: 'op-1',
+          ),
+        ).called(1);
+      },
+    );
+
+    test(
+      'fails retryably without calling the API when the dependency has not synced yet',
+      () async {
+        when(
+          () => operationQueue.find('apiary-op-1'),
+        ).thenAnswer(
+          (_) async => OfflineOperation(
+            id: 'apiary-op-1',
+            entityType: 'apiary',
+            operationType: OperationType.create,
+            payload: const {},
+            status: OperationStatus.pending,
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+          ),
+        );
+
+        final result = await handler.handle(
+          createOpForLocalApiary(dependsOnOperationId: 'apiary-op-1'),
+        );
+
+        expect(result, isA<OperationRetryableFailure>());
+        verifyNever(
+          () => dataSource.createHive(
+            any(),
+            apiaryId: any(named: 'apiaryId'),
+            idempotencyKey: any(named: 'idempotencyKey'),
+          ),
+        );
+      },
+    );
+
+    test(
+      'fails retryably when there is no dependency operation id at all',
+      () async {
+        final result = await handler.handle(createOpForLocalApiary());
+
+        expect(result, isA<OperationRetryableFailure>());
+        verifyNever(
+          () => dataSource.createHive(
+            any(),
+            apiaryId: any(named: 'apiaryId'),
+            idempotencyKey: any(named: 'idempotencyKey'),
+          ),
+        );
+      },
+    );
+  });
+
   group('update', () {
     test(
       'reconciles the cache with the server response and reports success',
