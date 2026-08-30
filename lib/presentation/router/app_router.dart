@@ -1,10 +1,14 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/domain/entity/apiary.dart';
+import 'package:beebase/domain/entity/hive.dart';
 import 'package:beebase/presentation/apiary/apiary_details_page.dart';
 import 'package:beebase/presentation/apiary/apiary_form_page.dart';
 import 'package:beebase/presentation/apiary/apiary_list_page.dart';
 import 'package:beebase/presentation/authentication/login_page.dart';
 import 'package:beebase/presentation/authentication/register_page.dart';
+import 'package:beebase/presentation/hive/hive_details_page.dart';
+import 'package:beebase/presentation/hive/hive_form_page.dart';
+import 'package:beebase/presentation/hive/hive_list_page.dart';
 import 'package:beebase/presentation/home/home_page.dart';
 import 'package:beebase/presentation/main/main_page.dart';
 import 'package:beebase/presentation/profile/profile_page.dart';
@@ -36,5 +40,8 @@ final class AppRouter extends RootStackRouter {
     ),
     AutoRoute(page: ApiaryDetailsRoute.page, path: '/apiaries/details', guards: [authenticationGuard]),
     AutoRoute(page: ApiaryFormRoute.page, path: '/apiaries/form', guards: [authenticationGuard]),
+    AutoRoute(page: HiveListRoute.page, path: '/apiaries/hives', guards: [authenticationGuard]),
+    AutoRoute(page: HiveDetailsRoute.page, path: '/apiaries/hives/details', guards: [authenticationGuard]),
+    AutoRoute(page: HiveFormRoute.page, path: '/apiaries/hives/form', guards: [authenticationGuard]),
   ];
 }

@@ -1,12 +1,10 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:beebase/domain/entity/apiary.dart';
-import 'package:beebase/domain/enum/apiary_sync_status.dart';
-import 'package:beebase/presentation/apiary/cubit/apiary_delete_cubit/apiary_delete_cubit.dart';
-import 'package:beebase/presentation/apiary/extension/apiary_date_x.dart';
-import 'package:beebase/presentation/apiary/widget/apiary_map_photo.dart';
-import 'package:beebase/presentation/apiary/widget/apiary_photo_placeholder.dart';
-import 'package:beebase/presentation/apiary/widget/apiary_sync_badge.dart';
+import 'package:beebase/domain/entity/hive.dart';
+import 'package:beebase/domain/enum/hive_sync_status.dart';
 import 'package:beebase/presentation/connectivity/cubit/connectivity_cubit/connectivity_cubit.dart';
+import 'package:beebase/presentation/hive/cubit/hive_delete_cubit/hive_delete_cubit.dart';
+import 'package:beebase/presentation/hive/extension/hive_date_x.dart';
+import 'package:beebase/presentation/hive/widget/hive_sync_badge.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold_action.dart';
@@ -22,51 +20,49 @@ import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-part 'apiary_details_page/apiary_details_body.dart';
-part 'apiary_details_page/apiary_details_detail_row.dart';
-part 'apiary_details_page/apiary_details_delete_link.dart';
-part 'apiary_details_page/apiary_details_hives_link.dart';
-part 'apiary_details_page/apiary_details_info_section.dart';
+part 'hive_details_page/hive_details_body.dart';
+part 'hive_details_page/hive_details_detail_row.dart';
+part 'hive_details_page/hive_details_delete_link.dart';
+part 'hive_details_page/hive_details_info_section.dart';
 
 @RoutePage()
-final class ApiaryDetailsPage extends StatefulWidget
-    implements AutoRouteWrapper {
-  const ApiaryDetailsPage({required this.apiary, super.key});
+final class HiveDetailsPage extends StatefulWidget implements AutoRouteWrapper {
+  const HiveDetailsPage({required this.hive, super.key});
 
-  final Apiary apiary;
+  final Hive hive;
 
   @override
   Widget wrappedRoute(BuildContext context) {
     return BlocProvider(
-      create: (_) => di.get<ApiaryDeleteCubit>(param1: apiary),
+      create: (_) => di.get<HiveDeleteCubit>(param1: hive),
       child: this,
     );
   }
 
   @override
-  State<ApiaryDetailsPage> createState() => _ApiaryDetailsPageState();
+  State<HiveDetailsPage> createState() => _HiveDetailsPageState();
 }
 
-final class _ApiaryDetailsPageState extends State<ApiaryDetailsPage> {
-  late Apiary _apiary = widget.apiary;
+final class _HiveDetailsPageState extends State<HiveDetailsPage> {
+  late Hive _hive = widget.hive;
   bool _isDeleting = false;
 
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: _apiary.name,
+      title: _hive.name,
       trailingAction: AppScaffoldAction(
-        label: 'apiary.details.edit'.tr(),
+        label: 'hive.details.edit'.tr(),
         materialIcon: Icons.edit_outlined,
         cupertinoIcon: CupertinoIcons.pencil,
         onPressed: _isDeleting ? () {} : () => _edit(context),
       ),
       slivers: [
-        BlocConsumer<ApiaryDeleteCubit, ApiaryDeleteState>(
+        BlocConsumer<HiveDeleteCubit, HiveDeleteState>(
           listener: _handleStateChange,
           builder: (context, state) {
-            _isDeleting = state is ApiaryDeleteLoading;
-            return _ApiaryDetailsBody(apiary: _apiary, isDeleting: _isDeleting);
+            _isDeleting = state is HiveDeleteLoading;
+            return _HiveDetailsBody(hive: _hive, isDeleting: _isDeleting);
           },
         ),
       ],
@@ -74,16 +70,16 @@ final class _ApiaryDetailsPageState extends State<ApiaryDetailsPage> {
   }
 
   Future<void> _edit(BuildContext context) async {
-    final updated = await context.router.push<Apiary>(
-      ApiaryFormRoute(apiary: _apiary),
+    final updated = await context.router.push<Hive>(
+      HiveFormRoute(apiaryId: _hive.apiaryId, hive: _hive),
     );
-    if (updated != null && mounted) setState(() => _apiary = updated);
+    if (updated != null && mounted) setState(() => _hive = updated);
   }
 
-  void _handleStateChange(BuildContext context, ApiaryDeleteState state) {
-    if (state is ApiaryDeleteSuccess) {
+  void _handleStateChange(BuildContext context, HiveDeleteState state) {
+    if (state is HiveDeleteSuccess) {
       context.router.maybePop(true);
-    } else if (state is ApiaryDeleteError) {
+    } else if (state is HiveDeleteError) {
       AppSnackBar.show(
         context,
         message: state.failure.message.resolve(),

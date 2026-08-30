@@ -8,10 +8,10 @@ import 'package:beebase/presentation/apiary/extension/apiary_mock_stats_x.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_hexagon_badge.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_map_photo.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_photo_placeholder.dart';
-import 'package:beebase/presentation/apiary/widget/apiary_scaffold.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_sync_badge.dart';
 import 'package:beebase/presentation/component/honeycomb_pattern.dart';
 import 'package:beebase/presentation/router/app_router.dart';
+import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold.dart';
 import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
@@ -45,7 +45,10 @@ final class ApiaryListPage extends StatefulWidget implements AutoRouteWrapper {
 
   @override
   Widget wrappedRoute(BuildContext context) {
-    return BlocProvider(create: (_) => di.get<ApiaryListCubit>()..loadApiaries(), child: this);
+    return BlocProvider(
+      create: (_) => di.get<ApiaryListCubit>()..loadApiaries(),
+      child: this,
+    );
   }
 
   @override
@@ -83,7 +86,7 @@ final class _ApiaryListPageState extends State<ApiaryListPage> {
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<ApiaryListCubit>();
-    return ApiaryScaffold(
+    return AppScaffold(
       title: 'apiary.list.title'.tr(),
       showBackButton: false,
       onRefresh: cubit.refresh,

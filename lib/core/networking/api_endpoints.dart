@@ -1,5 +1,6 @@
 import 'package:beebase/core/networking/apiary_endpoints.dart';
 import 'package:beebase/core/networking/auth_endpoints.dart';
+import 'package:beebase/core/networking/hive_endpoints.dart';
 
 /// Path constants for the BeeBase API, shared between data sources and the
 /// networking layer (e.g. [TokenRefresher] needs the refresh path without
@@ -8,4 +9,5 @@ import 'package:beebase/core/networking/auth_endpoints.dart';
 abstract final class ApiEndpoints {
   static const auth = AuthEndpoints();
   static const apiaries = ApiaryEndpoints();
+  static const hives = HiveEndpoints();
 }

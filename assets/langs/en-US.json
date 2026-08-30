@@ -50,9 +50,6 @@
     }
   },
   "apiary": {
-    "common": {
-      "back": "Back"
-    },
     "photoPlaceholder": "Photo coming soon",
     "offlinePhotoPlaceholder": {
       "title": "Location preview unavailable offline",
@@ -79,7 +76,8 @@
       "addedOn": "Added {date}",
       "deleteConfirmTitle": "Delete apiary?",
       "deleteConfirmMessage": "This will permanently remove this apiary. This action cannot be undone.",
-      "deleteRequiresConnection": "This apiary is already saved to the server — connect to the internet to delete it."
+      "deleteRequiresConnection": "This apiary is already saved to the server — connect to the internet to delete it.",
+      "manageHives": "Manage Hives"
     },
     "form": {
       "createTitle": "New Apiary",
@@ -107,6 +105,44 @@
       }
     }
   },
+  "hive": {
+    "list": {
+      "addHive": "Add Hive",
+      "emptyTitle": "No hives yet",
+      "emptySubtitle": "Add your first hive to start tracking it.",
+      "retry": "Retry",
+      "loadMoreError": "Couldn't load more hives",
+      "syncPending": "Needs synchronization",
+      "syncFailed": "Sync failed"
+    },
+    "details": {
+      "sectionLabel": "Hive",
+      "edit": "Edit",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "addedOn": "Added {date}",
+      "deleteConfirmTitle": "Delete hive?",
+      "deleteConfirmMessage": "This will permanently remove this hive. This action cannot be undone.",
+      "deleteRequiresConnection": "This hive is already saved to the server — connect to the internet to delete it."
+    },
+    "form": {
+      "createTitle": "New Hive",
+      "editTitle": "Edit Hive",
+      "nameLabel": "Name",
+      "nameHint": "e.g. Hive 1",
+      "descriptionLabel": "Description",
+      "descriptionHint": "Add any notes about this hive",
+      "submitCreate": "Create Hive",
+      "submitUpdate": "Save Changes",
+      "validations": {
+        "nameRequired": "Hive name is required"
+      }
+    },
+    "errors": {
+      "pendingSync": "This hive hasn't finished syncing yet. Try again once it's synced.",
+      "deleteRequiresConnection": "You need an internet connection to delete this hive."
+    }
+  },
   "profile": {
     "page": {
       "title": "Profile",
@@ -119,6 +155,9 @@
     }
   },
   "core": {
+    "common": {
+      "back": "Back"
+    },
     "errors": {
       "requestCancelled": "The request was cancelled. Please try again.",
       "unexpectedNetworkError": "Something went wrong. Please check your connection and try again.",

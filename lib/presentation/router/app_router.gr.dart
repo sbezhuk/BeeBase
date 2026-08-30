@@ -124,6 +124,177 @@ class ApiaryListRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [HiveDetailsPage]
+class HiveDetailsRoute extends PageRouteInfo<HiveDetailsRouteArgs> {
+  HiveDetailsRoute({
+    required Hive hive,
+    Key? key,
+    List<PageRouteInfo>? children,
+  }) : super(
+         HiveDetailsRoute.name,
+         args: HiveDetailsRouteArgs(hive: hive, key: key),
+         initialChildren: children,
+       );
+
+  static const String name = 'HiveDetailsRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      final args = data.argsAs<HiveDetailsRouteArgs>();
+      return WrappedRoute(
+        child: HiveDetailsPage(hive: args.hive, key: args.key),
+      );
+    },
+  );
+}
+
+class HiveDetailsRouteArgs {
+  const HiveDetailsRouteArgs({required this.hive, this.key});
+
+  final Hive hive;
+
+  final Key? key;
+
+  @override
+  String toString() {
+    return 'HiveDetailsRouteArgs{hive: $hive, key: $key}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! HiveDetailsRouteArgs) return false;
+    return hive == other.hive && key == other.key;
+  }
+
+  @override
+  int get hashCode => hive.hashCode ^ key.hashCode;
+}
+
+/// generated route for
+/// [HiveFormPage]
+class HiveFormRoute extends PageRouteInfo<HiveFormRouteArgs> {
+  HiveFormRoute({
+    required String apiaryId,
+    Hive? hive,
+    Key? key,
+    List<PageRouteInfo>? children,
+  }) : super(
+         HiveFormRoute.name,
+         args: HiveFormRouteArgs(apiaryId: apiaryId, hive: hive, key: key),
+         initialChildren: children,
+       );
+
+  static const String name = 'HiveFormRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      final args = data.argsAs<HiveFormRouteArgs>();
+      return WrappedRoute(
+        child: HiveFormPage(
+          apiaryId: args.apiaryId,
+          hive: args.hive,
+          key: args.key,
+        ),
+      );
+    },
+  );
+}
+
+class HiveFormRouteArgs {
+  const HiveFormRouteArgs({required this.apiaryId, this.hive, this.key});
+
+  final String apiaryId;
+
+  final Hive? hive;
+
+  final Key? key;
+
+  @override
+  String toString() {
+    return 'HiveFormRouteArgs{apiaryId: $apiaryId, hive: $hive, key: $key}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! HiveFormRouteArgs) return false;
+    return apiaryId == other.apiaryId && hive == other.hive && key == other.key;
+  }
+
+  @override
+  int get hashCode => apiaryId.hashCode ^ hive.hashCode ^ key.hashCode;
+}
+
+/// generated route for
+/// [HiveListPage]
+class HiveListRoute extends PageRouteInfo<HiveListRouteArgs> {
+  HiveListRoute({
+    required String apiaryId,
+    required String apiaryName,
+    Key? key,
+    List<PageRouteInfo>? children,
+  }) : super(
+         HiveListRoute.name,
+         args: HiveListRouteArgs(
+           apiaryId: apiaryId,
+           apiaryName: apiaryName,
+           key: key,
+         ),
+         initialChildren: children,
+       );
+
+  static const String name = 'HiveListRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      final args = data.argsAs<HiveListRouteArgs>();
+      return WrappedRoute(
+        child: HiveListPage(
+          apiaryId: args.apiaryId,
+          apiaryName: args.apiaryName,
+          key: args.key,
+        ),
+      );
+    },
+  );
+}
+
+class HiveListRouteArgs {
+  const HiveListRouteArgs({
+    required this.apiaryId,
+    required this.apiaryName,
+    this.key,
+  });
+
+  final String apiaryId;
+
+  final String apiaryName;
+
+  final Key? key;
+
+  @override
+  String toString() {
+    return 'HiveListRouteArgs{apiaryId: $apiaryId, apiaryName: $apiaryName, key: $key}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! HiveListRouteArgs) return false;
+    return apiaryId == other.apiaryId &&
+        apiaryName == other.apiaryName &&
+        key == other.key;
+  }
+
+  @override
+  int get hashCode => apiaryId.hashCode ^ apiaryName.hashCode ^ key.hashCode;
+}
+
+/// generated route for
 /// [HomePage]
 class HomeRoute extends PageRouteInfo<void> {
   const HomeRoute({List<PageRouteInfo>? children})

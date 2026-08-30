@@ -50,6 +50,8 @@ final class _ApiaryDetailsBody extends StatelessWidget {
                     icon: Icons.calendar_today_outlined,
                     text: 'apiary.details.addedOn'.tr(namedArgs: {'date': apiary.createdAt.toApiaryDisplayDate()}),
                   ),
+                  sectionDivider(),
+                  _ApiaryDetailsHivesLink(apiary: apiary),
                   if (hasLocation) ...[
                     sectionDivider(),
                     _ApiaryDetailsInfoSection(

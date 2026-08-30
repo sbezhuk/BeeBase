@@ -20,18 +20,26 @@ import 'package:beebase/core/storage/token_storage.dart';
 import 'package:beebase/data/apiary/apiary_operation_handler.dart';
 import 'package:beebase/data/data_source/apiary_data_source.dart';
 import 'package:beebase/data/data_source/authentication_data_source.dart';
+import 'package:beebase/data/data_source/hive_data_source.dart';
 import 'package:beebase/data/data_source/interface/apiary_data_source.dart';
 import 'package:beebase/data/data_source/interface/authentication_data_source.dart';
+import 'package:beebase/data/data_source/interface/hive_data_source.dart';
 import 'package:beebase/data/data_source/interface/local_data_source.dart';
 import 'package:beebase/data/data_source/sqlite_local_data_source.dart';
+import 'package:beebase/data/hive/hive_operation_handler.dart';
 import 'package:beebase/data/models/apiary_response.dart';
+import 'package:beebase/data/models/hive_response.dart';
 import 'package:beebase/data/models/user_response.dart';
 import 'package:beebase/data/repositories/apiary_repository_impl.dart';
 import 'package:beebase/data/repositories/authentication_repository_impl.dart';
+import 'package:beebase/data/repositories/hive_repository_impl.dart';
 import 'package:beebase/domain/entity/apiary.dart';
+import 'package:beebase/domain/entity/hive.dart';
 import 'package:beebase/domain/repositories/apiary_reader.dart';
 import 'package:beebase/domain/repositories/apiary_writer.dart';
 import 'package:beebase/domain/repositories/authentication_repository.dart';
+import 'package:beebase/domain/repositories/hive_reader.dart';
+import 'package:beebase/domain/repositories/hive_writer.dart';
 import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_delete_cubit/apiary_delete_cubit.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_form_cubit/apiary_form_cubit.dart';
@@ -40,6 +48,10 @@ import 'package:beebase/presentation/authentication/cubit/authentication_cubit/a
 import 'package:beebase/presentation/authentication/cubit/login_cubit/login_cubit.dart';
 import 'package:beebase/presentation/authentication/cubit/register_cubit/register_cubit.dart';
 import 'package:beebase/presentation/connectivity/cubit/connectivity_cubit/connectivity_cubit.dart';
+import 'package:beebase/presentation/hive/cubit/hive_delete_cubit/hive_delete_cubit.dart';
+import 'package:beebase/presentation/hive/cubit/hive_form_cubit/hive_form_cubit.dart';
+import 'package:beebase/presentation/hive/cubit/hive_list_cubit/hive_list_cubit.dart';
+import 'package:beebase/presentation/hive/hive_list_refresh_notifier.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/router/guardes/authentication_guard.dart';
 import 'package:beebase/presentation/sync/cubit/sync_banner_cubit/sync_banner_cubit.dart';
@@ -58,6 +70,7 @@ Future<void> initDi() async {
   di.registerLazySingleton<SessionService>(() => SessionService());
   di.registerLazySingleton<LocationService>(LocationService.new);
   di.registerLazySingleton<ApiaryListRefreshNotifier>(ApiaryListRefreshNotifier.new);
+  di.registerLazySingleton<HiveListRefreshNotifier>(HiveListRefreshNotifier.new);
   di.registerLazySingleton<ConnectivityService>(ConnectivityService.new);
   di.registerLazySingleton<IConnectivityService>(() => di<ConnectivityService>());
   // #endregion
@@ -90,6 +103,14 @@ Future<void> initDi() async {
       fromJson: (json) => (json as List<dynamic>).map((item) => ApiaryResponse.fromJson(item as Map<String, dynamic>)).toList(),
     ),
   );
+  di.registerLazySingleton<LocalDataSource<List<HiveResponse>>>(
+    () => SqliteLocalDataSource<List<HiveResponse>>(
+      database: di(),
+      key: hiveCacheKey,
+      toJson: (hives) => hives.map((hive) => hive.toJson()).toList(),
+      fromJson: (json) => (json as List<dynamic>).map((item) => HiveResponse.fromJson(item as Map<String, dynamic>)).toList(),
+    ),
+  );
   // #endregion
 
   // #region Interceptors
@@ -113,6 +134,8 @@ Future<void> initDi() async {
   di.registerLazySingleton<IAuthenticationDataSource>(() => di<AuthenticationDataSource>());
   di.registerLazySingleton<ApiaryDataSource>(() => ApiaryDataSource(dioClient: di(), resolver: di()));
   di.registerLazySingleton<IApiaryDataSource>(() => di<ApiaryDataSource>());
+  di.registerLazySingleton<HiveDataSource>(() => HiveDataSource(dioClient: di(), resolver: di()));
+  di.registerLazySingleton<IHiveDataSource>(() => di<HiveDataSource>());
   // #endregion
 
   // #region Offline
@@ -124,7 +147,12 @@ Future<void> initDi() async {
   di.registerLazySingleton<ApiaryOperationHandler>(
     () => ApiaryOperationHandler(dataSource: di(), localDataSource: di(), refreshNotifier: di(), operationQueue: di()),
   );
-  di.registerLazySingleton<OperationRegistry>(() => OperationRegistry({'apiary': di<ApiaryOperationHandler>()}));
+  di.registerLazySingleton<HiveOperationHandler>(
+    () => HiveOperationHandler(dataSource: di(), localDataSource: di(), refreshNotifier: di(), operationQueue: di()),
+  );
+  di.registerLazySingleton<OperationRegistry>(
+    () => OperationRegistry({'apiary': di<ApiaryOperationHandler>(), 'hive': di<HiveOperationHandler>()}),
+  );
   di.registerLazySingleton<SyncEngineImpl>(() => SyncEngineImpl(queue: di(), registry: di(), connectivity: di()));
   di.registerLazySingleton<SyncEngine>(() => di<SyncEngineImpl>());
   // #endregion
@@ -144,6 +172,11 @@ Future<void> initDi() async {
   );
   di.registerLazySingleton<IApiaryReader>(() => di<ApiaryRepositoryImpl>());
   di.registerLazySingleton<IApiaryWriter>(() => di<ApiaryRepositoryImpl>());
+  di.registerLazySingleton<HiveRepositoryImpl>(
+    () => HiveRepositoryImpl(dataSource: di(), localDataSource: di(), connectivity: di(), operationQueue: di(), offlineMutationStore: di()),
+  );
+  di.registerLazySingleton<IHiveReader>(() => di<HiveRepositoryImpl>());
+  di.registerLazySingleton<IHiveWriter>(() => di<HiveRepositoryImpl>());
   // #endregion
 
   // #region Router
@@ -163,6 +196,15 @@ Future<void> initDi() async {
   );
   di.registerFactoryParam<ApiaryDeleteCubit, Apiary, void>(
     (apiary, _) => ApiaryDeleteCubit(writer: di(), apiary: apiary, refreshNotifier: di()),
+  );
+  di.registerFactoryParam<HiveListCubit, String, void>(
+    (apiaryId, _) => HiveListCubit(reader: di(), apiaryId: apiaryId, refreshNotifier: di()),
+  );
+  di.registerFactoryParam<HiveFormCubit, String, Hive?>(
+    (apiaryId, initial) => HiveFormCubit(writer: di(), apiaryId: apiaryId, refreshNotifier: di(), initial: initial),
+  );
+  di.registerFactoryParam<HiveDeleteCubit, Hive, void>(
+    (hive, _) => HiveDeleteCubit(writer: di(), hive: hive, refreshNotifier: di()),
   );
   // #endregion
 }

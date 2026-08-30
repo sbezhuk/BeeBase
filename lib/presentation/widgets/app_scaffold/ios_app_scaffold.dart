@@ -1,6 +1,6 @@
-import 'package:beebase/presentation/apiary/widget/apiary_scaffold_action.dart';
 import 'package:beebase/presentation/component/font.dart';
 import 'package:beebase/presentation/component/honey_gradient_background.dart';
+import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold_action.dart';
 import 'package:beebase/presentation/widgets/fading_edge_scroll_view/fading_edge_scroll_view.dart';
 import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
@@ -17,27 +17,27 @@ import 'package:flutter/material.dart'
         SliverToBoxAdapter;
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
-/// Apiary page shell for iOS: a Liquid Glass navigation bar with a compact
-/// glass back button (per the design brief, never the standard Material
-/// chevron here) over a soft honey-tinted backdrop. The app bar is always
-/// the first item of one [CustomScrollView] together with [slivers], so it
-/// scrolls away with the rest of the content instead of staying pinned —
-/// [GlassAppBar] is used directly as a plain sliver child rather than
-/// through [GlassScaffold], which would pin it to the top of a Stack.
+/// Page shell for iOS: a Liquid Glass navigation bar with a compact glass
+/// back button (per the design brief, never the standard Material chevron
+/// here) over a soft honey-tinted backdrop. The app bar is always the first
+/// item of one [CustomScrollView] together with [slivers], so it scrolls
+/// away with the rest of the content instead of staying pinned — [GlassAppBar]
+/// is used directly as a plain sliver child rather than through
+/// [GlassScaffold], which would pin it to the top of a Stack.
 ///
 /// Used two different ways, which need two different top-level wraps:
 ///
-/// - Details/Form are pushed as their own root-level routes, so they own the
-///   full screen: the scroll view is wrapped in `SafeArea(top: false)` (the
-///   [GlassAppBar] sliver already pads its own top inset internally) so the
-///   home indicator area at the bottom is respected too.
-/// - The list page is tab *content* — it already lives inside [MainPage]'s
-///   own `GlassScaffold` (the tab shell), which reserves the bottom nav bar
-///   space itself. [showBackButton] is `false` only for that tab-root case,
-///   and doubles as the signal to render a plain inline title sliver (with
-///   its own top-only [SafeArea]) instead of a [GlassAppBar], with no outer
-///   [SafeArea] wrap that would double-pad the bottom.
-final class IosApiaryScaffold extends StatelessWidget {
+/// - Details/Form pages are pushed as their own root-level routes, so they
+///   own the full screen: the scroll view is wrapped in `SafeArea(top:
+///   false)` (the [GlassAppBar] sliver already pads its own top inset
+///   internally) so the home indicator area at the bottom is respected too.
+/// - A tab-root list page (e.g. the Apiaries tab) already lives inside
+///   [MainPage]'s own `GlassScaffold` (the tab shell), which reserves the
+///   bottom nav bar space itself. [showBackButton] is `false` only for that
+///   tab-root case, and doubles as the signal to render a plain inline title
+///   sliver (with its own top-only [SafeArea]) instead of a [GlassAppBar],
+///   with no outer [SafeArea] wrap that would double-pad the bottom.
+final class IosAppScaffold extends StatelessWidget {
   // Matches GlassTabBar.minimizable's own default `barHeight` (see
   // MainPage's IosBottomNavigationBar, which never overrides it) — there is
   // no shared constant exported by liquid_glass_widgets for this. The
@@ -47,7 +47,7 @@ final class IosApiaryScaffold extends StatelessWidget {
   // clearance itself so its last item can still scroll clear of the bar.
   static const double _floatingTabBarClearance = 64;
 
-  const IosApiaryScaffold({
+  const IosAppScaffold({
     required this.title,
     required this.slivers,
     required this.onBack,
@@ -63,7 +63,7 @@ final class IosApiaryScaffold extends StatelessWidget {
   final List<Widget> slivers;
   final VoidCallback onBack;
   final bool showBackButton;
-  final ApiaryScaffoldAction? trailingAction;
+  final AppScaffoldAction? trailingAction;
   final Future<void> Function()? onRefresh;
   final bool fadeEdges;
   final ScrollController? controller;
@@ -107,7 +107,7 @@ final class IosApiaryScaffold extends StatelessWidget {
           // identity.
           leading: Semantics(
             button: true,
-            label: 'apiary.common.back'.tr(),
+            label: 'core.common.back'.tr(),
             child: GlassButton(
               icon: const Icon(CupertinoIcons.back),
               iconColor: colors.brand.primary,

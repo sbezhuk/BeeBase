@@ -1,0 +1,24 @@
+import 'package:beebase/core/networking/failures/failure.dart';
+import 'package:beebase/domain/entity/hive.dart';
+import 'package:beebase/utils/either.dart';
+
+abstract interface class IHiveWriter {
+  Future<Either<Failure, Hive>> createHive({
+    required String apiaryId,
+    required String name,
+    String? notes,
+  });
+
+  /// [apiaryId] is never sent to the server (a hive can't change apiary via
+  /// `PUT /api/v1/hives/{id}` — there's no `apiary_id` field on that
+  /// endpoint's request body) — it's threaded through purely so the local
+  /// offline path can reconstruct a full [Hive] without a round trip.
+  Future<Either<Failure, Hive>> updateHive({
+    required String apiaryId,
+    required String id,
+    required String name,
+    String? notes,
+  });
+
+  Future<Either<Failure, void>> deleteHive(String id);
+}
