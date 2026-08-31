@@ -78,7 +78,7 @@ Future<void> initDi() async {
   di.registerLazySingleton<SecureStorage>(() => const SecureStorage());
   di.registerLazySingleton<TokenStorage>(() => TokenStorage(secureStorage: di()));
   di.registerLazySingleton<SessionService>(() => SessionService());
-  di.registerLazySingleton<LocationService>(LocationService.new);
+  di.registerLazySingleton<LocationService>(() => LocationService(connectivity: di()));
   di.registerLazySingleton<ApiaryListRefreshNotifier>(ApiaryListRefreshNotifier.new);
   di.registerLazySingleton<HiveListRefreshNotifier>(HiveListRefreshNotifier.new);
   di.registerLazySingleton<ConnectivityService>(ConnectivityService.new);

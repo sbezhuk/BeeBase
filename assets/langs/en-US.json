@@ -92,6 +92,7 @@
         "optionalHint": "Optional — you can add it anytime later.",
         "useCurrentLocation": "Use current location",
         "updateCurrentLocation": "Update current location",
+        "offlineAddress": "Current location (address unavailable while offline)",
         "errors": {
           "serviceDisabled": "Turn on location services to use your current location.",
           "permissionDenied": "Location permission is required to use your current location.",
@@ -150,6 +151,10 @@
       "takePhoto": "Take photo",
       "chooseFromGallery": "Choose from gallery",
       "remove": "Remove photo",
+      "deleteConfirmTitle": "Delete photo?",
+      "deleteConfirmMessage": "This will permanently remove this photo. This action cannot be undone.",
+      "delete": "Delete",
+      "cancel": "Cancel",
       "uploading": "Uploading…",
       "pendingSync": "Needs synchronization",
       "uploadFailedRetry": "Upload failed — tap to retry"

@@ -43,6 +43,12 @@ final class MediaGalleryItem {
 
   final String? errorMessage;
 
+  /// Whether this photo has never reached the server — a staged pick (no
+  /// [attachment] yet) or an attached one still carrying a local-only id
+  /// (offline-created, not yet synced). These stay deletable offline; an
+  /// already-synced photo (real server id) requires connectivity to delete.
+  bool get isLocalOnly => attachment?.isLocalOnly ?? true;
+
   MediaGalleryItem copyWith({
     MediaGalleryItemStatus? status,
     MediaAttachment? attachment,
