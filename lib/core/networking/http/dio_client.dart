@@ -33,9 +33,14 @@ class DioClient {
     return _run(() => _dio.get<T>(path, queryParameters: queryParameters));
   }
 
-  Future<Response<T>> post<T>(String path, {Object? data, Map<String, dynamic>? headers}) {
+  Future<Response<T>> post<T>(
+    String path, {
+    Object? data,
+    Map<String, dynamic>? headers,
+    void Function(int sent, int total)? onSendProgress,
+  }) {
     final options = headers == null ? null : Options(headers: headers);
-    return _run(() => _dio.post<T>(path, data: data, options: options));
+    return _run(() => _dio.post<T>(path, data: data, options: options, onSendProgress: onSendProgress));
   }
 
   Future<Response<T>> put<T>(String path, {Object? data}) {
@@ -48,6 +53,12 @@ class DioClient {
 
   Future<Response<T>> fetch<T>(RequestOptions requestOptions) {
     return _run(() => _dio.fetch<T>(requestOptions));
+  }
+
+  /// Downloads raw, non-JSON response content (e.g. a media file's bytes) —
+  /// [get] has no way to request [ResponseType.bytes].
+  Future<Response<List<int>>> getBytes(String path) {
+    return _run(() => _dio.get<List<int>>(path, options: Options(responseType: ResponseType.bytes)));
   }
 
   Future<Response<T>> _run<T>(Future<Response<T>> Function() request) async {

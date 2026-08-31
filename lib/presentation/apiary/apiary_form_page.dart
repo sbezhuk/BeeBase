@@ -1,10 +1,13 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/domain/entity/apiary.dart';
+import 'package:beebase/domain/enum/media_owner_type.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_form_cubit/apiary_form_cubit.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_section_card.dart';
 import 'package:beebase/presentation/component/buttons/primary_button.dart';
 import 'package:beebase/presentation/component/font.dart';
 import 'package:beebase/presentation/component/text_field/app_text_field.dart';
+import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
+import 'package:beebase/presentation/media/widget/media_gallery_section.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold.dart';
 import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar.dart';
 import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar_variant.dart';
@@ -29,8 +32,13 @@ final class ApiaryFormPage extends StatefulWidget implements AutoRouteWrapper {
 
   @override
   Widget wrappedRoute(BuildContext context) {
-    return BlocProvider(
-      create: (_) => di.get<ApiaryFormCubit>(param1: apiary),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => di.get<ApiaryFormCubit>(param1: apiary)),
+        BlocProvider(
+          create: (_) => di.get<MediaGalleryCubit>(param1: MediaOwnerType.apiary, param2: apiary?.id)..load(),
+        ),
+      ],
       child: this,
     );
   }
@@ -42,9 +50,7 @@ final class ApiaryFormPage extends StatefulWidget implements AutoRouteWrapper {
 final class _ApiaryFormPageState extends State<ApiaryFormPage> {
   final _formKey = GlobalKey<FormState>();
   late final _nameController = TextEditingController(text: widget.apiary?.name);
-  late final _descriptionController = TextEditingController(
-    text: widget.apiary?.description,
-  );
+  late final _descriptionController = TextEditingController(text: widget.apiary?.description);
   bool _isFetchingLocation = false;
 
   /// The resolved address and coordinates, geolocation-only — there's no
@@ -80,6 +86,7 @@ final class _ApiaryFormPageState extends State<ApiaryFormPage> {
         location: _locationAddress,
         lat: _latitude,
         lon: _longitude,
+        mediaGalleryCubit: context.read<MediaGalleryCubit>(),
       );
     }
   }
@@ -91,18 +98,13 @@ final class _ApiaryFormPageState extends State<ApiaryFormPage> {
     final result = await cubit.resolveCurrentLocation();
     if (!mounted) return;
 
-    result.fold(
-      (failure) => AppSnackBar.show(
-        context,
-        message: failure.messageKey.tr(),
-        variant: AppSnackBarVariant.error,
-      ),
-      (location) {
-        _locationAddress = location.address;
-        _latitude = location.latitude;
-        _longitude = location.longitude;
-      },
-    );
+    result.fold((failure) => AppSnackBar.show(context, message: failure.messageKey.tr(), variant: AppSnackBarVariant.error), (
+      location,
+    ) {
+      _locationAddress = location.address;
+      _latitude = location.latitude;
+      _longitude = location.longitude;
+    });
     setState(() => _isFetchingLocation = false);
   }
 
@@ -110,20 +112,14 @@ final class _ApiaryFormPageState extends State<ApiaryFormPage> {
     if (state is ApiaryFormSuccess) {
       context.router.pop(state.apiary);
     } else if (state is ApiaryFormError) {
-      AppSnackBar.show(
-        context,
-        message: state.failure.message.resolve(),
-        variant: AppSnackBarVariant.error,
-      );
+      AppSnackBar.show(context, message: state.failure.message.resolve(), variant: AppSnackBarVariant.error);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: _isEditing
-          ? 'apiary.form.editTitle'.tr()
-          : 'apiary.form.createTitle'.tr(),
+      title: _isEditing ? 'apiary.form.editTitle'.tr() : 'apiary.form.createTitle'.tr(),
       slivers: [
         BlocListener<ApiaryFormCubit, ApiaryFormState>(
           listener: _handleStateChange,

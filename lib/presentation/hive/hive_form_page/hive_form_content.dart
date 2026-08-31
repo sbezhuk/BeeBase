@@ -22,9 +22,7 @@ final class _HiveFormContent extends StatelessWidget {
           label: 'hive.form.nameLabel'.tr(),
           controller: nameController,
           hintText: 'hive.form.nameHint'.tr(),
-          validator: (value) => (value == null || value.trim().isEmpty)
-              ? 'hive.form.validations.nameRequired'.tr()
-              : null,
+          validator: (value) => (value == null || value.trim().isEmpty) ? 'hive.form.validations.nameRequired'.tr() : null,
         ),
         SizedBox(height: context.spacing.md),
         AppTextField(
@@ -33,6 +31,8 @@ final class _HiveFormContent extends StatelessWidget {
           hintText: 'hive.form.descriptionHint'.tr(),
           maxLines: 4,
         ),
+        SizedBox(height: context.spacing.md),
+        const MediaGallerySection(),
         SizedBox(height: context.spacing.xl),
         _HiveFormSubmitButton(isEditing: isEditing, onPressed: onSubmit),
       ],

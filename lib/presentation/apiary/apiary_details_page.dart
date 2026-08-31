@@ -1,12 +1,14 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/enum/apiary_sync_status.dart';
+import 'package:beebase/domain/enum/media_owner_type.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_delete_cubit/apiary_delete_cubit.dart';
 import 'package:beebase/presentation/apiary/extension/apiary_date_x.dart';
-import 'package:beebase/presentation/apiary/widget/apiary_map_photo.dart';
-import 'package:beebase/presentation/apiary/widget/apiary_photo_placeholder.dart';
+import 'package:beebase/presentation/apiary/widget/apiary_preview_image.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_sync_badge.dart';
 import 'package:beebase/presentation/connectivity/cubit/connectivity_cubit/connectivity_cubit.dart';
+import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
+import 'package:beebase/presentation/media/widget/media_gallery_section.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold_action.dart';
@@ -29,16 +31,20 @@ part 'apiary_details_page/apiary_details_hives_link.dart';
 part 'apiary_details_page/apiary_details_info_section.dart';
 
 @RoutePage()
-final class ApiaryDetailsPage extends StatefulWidget
-    implements AutoRouteWrapper {
+final class ApiaryDetailsPage extends StatefulWidget implements AutoRouteWrapper {
   const ApiaryDetailsPage({required this.apiary, super.key});
 
   final Apiary apiary;
 
   @override
   Widget wrappedRoute(BuildContext context) {
-    return BlocProvider(
-      create: (_) => di.get<ApiaryDeleteCubit>(param1: apiary),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => di.get<ApiaryDeleteCubit>(param1: apiary)),
+        BlocProvider(
+          create: (_) => di.get<MediaGalleryCubit>(param1: MediaOwnerType.apiary, param2: apiary.id)..load(),
+        ),
+      ],
       child: this,
     );
   }
@@ -74,9 +80,7 @@ final class _ApiaryDetailsPageState extends State<ApiaryDetailsPage> {
   }
 
   Future<void> _edit(BuildContext context) async {
-    final updated = await context.router.push<Apiary>(
-      ApiaryFormRoute(apiary: _apiary),
-    );
+    final updated = await context.router.push<Apiary>(ApiaryFormRoute(apiary: _apiary));
     if (updated != null && mounted) setState(() => _apiary = updated);
   }
 
@@ -84,11 +88,7 @@ final class _ApiaryDetailsPageState extends State<ApiaryDetailsPage> {
     if (state is ApiaryDeleteSuccess) {
       context.router.maybePop(true);
     } else if (state is ApiaryDeleteError) {
-      AppSnackBar.show(
-        context,
-        message: state.failure.message.resolve(),
-        variant: AppSnackBarVariant.error,
-      );
+      AppSnackBar.show(context, message: state.failure.message.resolve(), variant: AppSnackBarVariant.error);
     }
   }
 }

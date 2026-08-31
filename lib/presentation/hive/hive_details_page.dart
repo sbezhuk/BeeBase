@@ -1,10 +1,13 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/domain/entity/hive.dart';
 import 'package:beebase/domain/enum/hive_sync_status.dart';
+import 'package:beebase/domain/enum/media_owner_type.dart';
 import 'package:beebase/presentation/connectivity/cubit/connectivity_cubit/connectivity_cubit.dart';
 import 'package:beebase/presentation/hive/cubit/hive_delete_cubit/hive_delete_cubit.dart';
 import 'package:beebase/presentation/hive/extension/hive_date_x.dart';
 import 'package:beebase/presentation/hive/widget/hive_sync_badge.dart';
+import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
+import 'package:beebase/presentation/media/widget/media_gallery_section.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold_action.dart';
@@ -33,8 +36,13 @@ final class HiveDetailsPage extends StatefulWidget implements AutoRouteWrapper {
 
   @override
   Widget wrappedRoute(BuildContext context) {
-    return BlocProvider(
-      create: (_) => di.get<HiveDeleteCubit>(param1: hive),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => di.get<HiveDeleteCubit>(param1: hive)),
+        BlocProvider(
+          create: (_) => di.get<MediaGalleryCubit>(param1: MediaOwnerType.hive, param2: hive.id)..load(),
+        ),
+      ],
       child: this,
     );
   }
@@ -70,9 +78,7 @@ final class _HiveDetailsPageState extends State<HiveDetailsPage> {
   }
 
   Future<void> _edit(BuildContext context) async {
-    final updated = await context.router.push<Hive>(
-      HiveFormRoute(apiaryId: _hive.apiaryId, hive: _hive),
-    );
+    final updated = await context.router.push<Hive>(HiveFormRoute(apiaryId: _hive.apiaryId, hive: _hive));
     if (updated != null && mounted) setState(() => _hive = updated);
   }
 
@@ -80,11 +86,7 @@ final class _HiveDetailsPageState extends State<HiveDetailsPage> {
     if (state is HiveDeleteSuccess) {
       context.router.maybePop(true);
     } else if (state is HiveDeleteError) {
-      AppSnackBar.show(
-        context,
-        message: state.failure.message.resolve(),
-        variant: AppSnackBarVariant.error,
-      );
+      AppSnackBar.show(context, message: state.failure.message.resolve(), variant: AppSnackBarVariant.error);
     }
   }
 }

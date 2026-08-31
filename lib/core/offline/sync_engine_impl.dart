@@ -45,8 +45,16 @@ final class SyncEngineImpl implements SyncEngine {
     _syncAvailable.value = online && hasUnsynced;
   }
 
+  // `inProgress` is included so a row stranded there (a handler threw before
+  // `_process` could resolve it to `synced`/`failed` — see the try/catch
+  // below, which now prevents that for anything processed after this fix,
+  // but a row already stuck on a device from before it shipped needs a way
+  // back in) gets picked up by the next `syncNow()` instead of being
+  // silently excluded forever.
   bool _needsSync(OfflineOperation operation) =>
-      operation.status == OperationStatus.pending || operation.status == OperationStatus.failed;
+      operation.status == OperationStatus.pending ||
+      operation.status == OperationStatus.failed ||
+      operation.status == OperationStatus.inProgress;
 
   @override
   Future<void> syncNow() async {
@@ -89,7 +97,34 @@ final class SyncEngineImpl implements SyncEngine {
     }
 
     await queue.update(operation.copyWith(status: OperationStatus.inProgress, updatedAt: DateTime.now()));
-    final result = await handler.handle(operation);
+
+    final OperationResult result;
+    try {
+      result = await handler.handle(operation);
+    } catch (e) {
+      // A handler is expected to report failure through `OperationResult`,
+      // not by throwing — `MediaOperationHandler` in particular calls into
+      // local file I/O (`dio.MultipartFile.fromFile`, `DioMediaType.parse`)
+      // that can throw something outside the `ServerException` /
+      // `CancellationException` / `InternalException` set `Repository.on()`
+      // catches. Left uncaught, that exception would abort this whole
+      // `syncNow()` pass (every later operation in `toProcess` silently
+      // skipped) and strand this row at `inProgress` forever, since
+      // `_needsSync` — before this catch existed — never re-selected it.
+      // Catching here keeps one bad operation from taking the rest of the
+      // batch down with it and always resolves the row to `failed` so it's
+      // retried on the next sync instead of disappearing.
+      final current = await queue.find(operation.id) ?? operation;
+      await queue.update(
+        current.copyWith(
+          status: OperationStatus.failed,
+          retryCount: current.retryCount + 1,
+          lastError: e.toString(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      return;
+    }
 
     // Re-read the row rather than trusting the pre-call `operation`: a
     // handler may have consolidated a newer local edit into it (or, on

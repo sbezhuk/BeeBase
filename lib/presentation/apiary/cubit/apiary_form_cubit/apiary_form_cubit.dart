@@ -3,8 +3,10 @@ import 'package:beebase/core/location/location_service.dart';
 import 'package:beebase/core/location/resolved_location.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/entity/apiary.dart';
+import 'package:beebase/domain/enum/media_owner_type.dart';
 import 'package:beebase/domain/repositories/apiary_writer.dart';
 import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
+import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/utils/either.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -28,10 +30,22 @@ final class ApiaryFormCubit extends Cubit<ApiaryFormState> with ApiaryFormEmitte
 
   bool get isEditing => initial != null;
 
-  Future<void> submit({required String name, String? description, String? location, double? lat, double? lon}) {
+  /// [mediaGalleryCubit] is optional so this method's existing callers/tests
+  /// don't need to know about media at all — when given, any photos staged
+  /// in it get attached to the just-created/-updated apiary right after a
+  /// successful submit (see [ApiaryFormEmitter.emitSubmit]).
+  Future<void> submit({
+    required String name,
+    String? description,
+    String? location,
+    double? lat,
+    double? lon,
+    MediaGalleryCubit? mediaGalleryCubit,
+  }) {
     return emitSubmit(
       writer,
       refreshNotifier,
+      mediaGalleryCubit,
       initial: initial,
       name: name,
       description: description,

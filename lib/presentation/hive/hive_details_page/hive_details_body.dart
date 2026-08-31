@@ -10,15 +10,9 @@ final class _HiveDetailsBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final hasDescription = hive.notes != null && hive.notes!.isNotEmpty;
-    Widget sectionDivider() =>
-        Divider(color: colors.surface.border, height: context.spacing.xl);
+    Widget sectionDivider() => Divider(color: colors.surface.border, height: context.spacing.xl);
     return SliverPadding(
-      padding: EdgeInsets.fromLTRB(
-        context.spacing.md,
-        context.spacing.md,
-        context.spacing.md,
-        context.spacing.lg,
-      ),
+      padding: EdgeInsets.fromLTRB(context.spacing.md, context.spacing.md, context.spacing.md, context.spacing.lg),
       sliver: SliverToBoxAdapter(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -26,23 +20,11 @@ final class _HiveDetailsBody extends StatelessWidget {
             Container(
               width: 72,
               height: 72,
-              decoration: BoxDecoration(
-                color: colors.honey.border,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.hive_outlined,
-                size: 36,
-                color: colors.brand.primary,
-              ),
+              decoration: BoxDecoration(color: colors.honey.border, shape: BoxShape.circle),
+              child: Icon(Icons.hive_outlined, size: 36, color: colors.brand.primary),
             ),
             SizedBox(height: context.spacing.md),
-            Text(
-              'hive.details.sectionLabel'.tr(),
-              style: context.textStyles.label.copyWith(
-                color: colors.honey.muted,
-              ),
-            ),
+            Text('hive.details.sectionLabel'.tr(), style: context.textStyles.label.copyWith(color: colors.honey.muted)),
             SizedBox(height: context.spacing.xs),
             Text(hive.name, style: context.textStyles.title),
             if (hive.syncStatus != HiveSyncStatus.synced) ...[
@@ -52,10 +34,10 @@ final class _HiveDetailsBody extends StatelessWidget {
             SizedBox(height: context.spacing.sm),
             _HiveDetailsDetailRow(
               icon: Icons.calendar_today_outlined,
-              text: 'hive.details.addedOn'.tr(
-                namedArgs: {'date': hive.createdAt.toHiveDisplayDate()},
-              ),
+              text: 'hive.details.addedOn'.tr(namedArgs: {'date': hive.createdAt.toHiveDisplayDate()}),
             ),
+            sectionDivider(),
+            const MediaGallerySection(),
             if (hasDescription) ...[
               sectionDivider(),
               _HiveDetailsInfoSection(

@@ -204,6 +204,37 @@ void main() {
       expect(updates.map((op) => op.status), [OperationStatus.inProgress, OperationStatus.synced]);
     });
 
+    test(
+      'a handler throwing (not returning an OperationResult) is caught and marks the operation failed instead of stranding it in progress',
+      () async {
+        when(() => queue.all()).thenAnswer((_) async => [_pendingOp(retryCount: 0)]);
+        when(() => handler.handle(any())).thenThrow(const FormatException('bad mime type'));
+
+        await engine.syncNow();
+
+        final updates = verify(() => queue.update(captureAny())).captured.cast<OfflineOperation>();
+        expect(updates.map((op) => op.status), [OperationStatus.inProgress, OperationStatus.failed]);
+        expect(updates.last.retryCount, 1);
+        expect(updates.last.lastError, contains('bad mime type'));
+      },
+    );
+
+    test('a handler throwing for one operation does not abort the rest of the batch', () async {
+      final first = _pendingOp(id: 'op-1');
+      final second = _pendingOp(id: 'op-2');
+      when(() => queue.all()).thenAnswer((_) async => [first, second]);
+      when(() => queue.find('op-1')).thenAnswer((_) async => first);
+      when(() => queue.find('op-2')).thenAnswer((_) async => second);
+      when(() => handler.handle(first)).thenThrow(Exception('missing file'));
+      when(() => handler.handle(second)).thenAnswer((_) async => const OperationSuccess());
+
+      await engine.syncNow();
+
+      final updates = verify(() => queue.update(captureAny())).captured.cast<OfflineOperation>();
+      expect(updates.where((op) => op.id == 'op-1').map((op) => op.status), [OperationStatus.inProgress, OperationStatus.failed]);
+      expect(updates.where((op) => op.id == 'op-2').map((op) => op.status), [OperationStatus.inProgress, OperationStatus.synced]);
+    });
+
     test('a failure does not clobber a payload that changed while the request was in flight', () async {
       final sent = _pendingOp(id: 'op-1');
       when(() => queue.all()).thenAnswer((_) async => [sent]);
@@ -257,6 +288,17 @@ void main() {
 
       expect(engine.syncAvailable.value, isTrue);
     });
+
+    test(
+      'a row stuck in progress (e.g. stranded before the handler-exception fix, or by an app kill mid-request) also counts as available',
+      () async {
+        when(() => queue.all()).thenAnswer((_) async => [_pendingOp(status: OperationStatus.inProgress)]);
+
+        await engine.refreshAvailability();
+
+        expect(engine.syncAvailable.value, isTrue);
+      },
+    );
 
     test('start() does NOT call syncNow when connectivity is restored — only refreshes availability', () async {
       final statusController = StreamController<bool>();

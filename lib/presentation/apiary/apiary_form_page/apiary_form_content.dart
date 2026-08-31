@@ -49,6 +49,8 @@ final class _ApiaryFormContent extends StatelessWidget {
           isFetchingLocation: isFetchingLocation,
           onUseCurrentLocation: onUseCurrentLocation,
         ),
+        SizedBox(height: context.spacing.md),
+        const MediaGallerySection(),
         SizedBox(height: context.spacing.xl),
         _ApiaryFormSubmitButton(isEditing: isEditing, onPressed: onSubmit),
       ],

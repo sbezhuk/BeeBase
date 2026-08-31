@@ -4,7 +4,7 @@ part of '../apiary_list_page.dart';
 /// photo placeholder (and eventually a real photo) spans the whole width.
 /// Caption info sits below the photo, not overlaid on it.
 final class _ApiaryListTile extends StatelessWidget {
-  const _ApiaryListTile({required this.apiary});
+  const _ApiaryListTile({required this.apiary, super.key});
 
   final Apiary apiary;
 
@@ -17,17 +17,9 @@ final class _ApiaryListTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ApiaryMapPhoto(
-            latitude: apiary.lat,
-            longitude: apiary.lon,
-            height: 200,
-            fallback: apiary.syncStatus == ApiarySyncStatus.synced
-                ? const ApiaryPhotoPlaceholder(height: 200)
-                : const ApiaryPhotoPlaceholder(
-                    height: 200,
-                    titleKey: 'apiary.offlinePhotoPlaceholder.title',
-                    subtitleKey: 'apiary.offlinePhotoPlaceholder.subtitle',
-                  ),
+          BlocProvider(
+            create: (_) => di.get<MediaGalleryCubit>(param1: MediaOwnerType.apiary, param2: apiary.id)..load(),
+            child: ApiaryPreviewImage(apiary: apiary, height: 200),
           ),
           Padding(
             padding: EdgeInsets.all(context.spacing.sm),

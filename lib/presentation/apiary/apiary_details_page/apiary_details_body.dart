@@ -21,18 +21,7 @@ final class _ApiaryDetailsBody extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(height: context.spacing.md),
-            ApiaryMapPhoto(
-              latitude: apiary.lat,
-              longitude: apiary.lon,
-              height: 220,
-              fallback: apiary.syncStatus == ApiarySyncStatus.synced
-                  ? const ApiaryPhotoPlaceholder(height: 220)
-                  : const ApiaryPhotoPlaceholder(
-                      height: 220,
-                      titleKey: 'apiary.offlinePhotoPlaceholder.title',
-                      subtitleKey: 'apiary.offlinePhotoPlaceholder.subtitle',
-                    ),
-            ),
+            ApiaryPreviewImage(apiary: apiary, height: 220),
             Padding(
               padding: EdgeInsets.fromLTRB(context.spacing.md, context.spacing.md, context.spacing.md, 0),
               child: Column(
@@ -52,6 +41,8 @@ final class _ApiaryDetailsBody extends StatelessWidget {
                   ),
                   sectionDivider(),
                   _ApiaryDetailsHivesLink(apiary: apiary),
+                  sectionDivider(),
+                  const MediaGallerySection(),
                   if (hasLocation) ...[
                     sectionDivider(),
                     _ApiaryDetailsInfoSection(

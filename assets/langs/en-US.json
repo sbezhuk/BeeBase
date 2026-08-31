@@ -143,6 +143,23 @@
       "deleteRequiresConnection": "You need an internet connection to delete this hive."
     }
   },
+  "media": {
+    "gallery": {
+      "title": "Photos",
+      "addPhoto": "Add photo",
+      "takePhoto": "Take photo",
+      "chooseFromGallery": "Choose from gallery",
+      "remove": "Remove photo",
+      "uploading": "Uploading…",
+      "pendingSync": "Needs synchronization",
+      "uploadFailedRetry": "Upload failed — tap to retry"
+    },
+    "errors": {
+      "updateNotSupported": "Media cannot be updated.",
+      "offlineDeleteNotSupported": "Offline delete is not supported yet.",
+      "ownerNotSynced": "The parent apiary/hive has not synced yet."
+    }
+  },
   "profile": {
     "page": {
       "title": "Profile",
@@ -187,7 +204,13 @@
       "email_required": "Email is required.",
       "email_taken": "An account with this email already exists.",
       "password_required": "Password is required.",
-      "password_too_short": "Password must be at least 8 characters."
+      "password_too_short": "Password must be at least 8 characters.",
+      "unsupported_file_type": "This file type isn't supported. Please choose a photo instead.",
+      "file_too_large": "This photo is too large to upload.",
+      "apiary_not_found": "This apiary couldn't be found on the server.",
+      "hive_not_found": "This hive couldn't be found on the server.",
+      "media_not_found": "This photo couldn't be found on the server.",
+      "media_id_conflict": "This photo was already uploaded by another account."
     }
   }
 }

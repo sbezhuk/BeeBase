@@ -2,14 +2,15 @@ import 'package:auto_route/auto_route.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/enum/apiary_sync_status.dart';
+import 'package:beebase/domain/enum/media_owner_type.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_list_cubit/apiary_list_cubit.dart';
 import 'package:beebase/presentation/apiary/extension/apiary_date_x.dart';
 import 'package:beebase/presentation/apiary/extension/apiary_mock_stats_x.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_hexagon_badge.dart';
-import 'package:beebase/presentation/apiary/widget/apiary_map_photo.dart';
-import 'package:beebase/presentation/apiary/widget/apiary_photo_placeholder.dart';
+import 'package:beebase/presentation/apiary/widget/apiary_preview_image.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_sync_badge.dart';
 import 'package:beebase/presentation/component/honeycomb_pattern.dart';
+import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold.dart';
 import 'package:beebase/utils/di.dart';
@@ -45,10 +46,7 @@ final class ApiaryListPage extends StatefulWidget implements AutoRouteWrapper {
 
   @override
   Widget wrappedRoute(BuildContext context) {
-    return BlocProvider(
-      create: (_) => di.get<ApiaryListCubit>()..loadApiaries(),
-      child: this,
-    );
+    return BlocProvider(create: (_) => di.get<ApiaryListCubit>()..loadApiaries(), child: this);
   }
 
   @override

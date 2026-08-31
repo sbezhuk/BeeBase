@@ -3,7 +3,8 @@ part of '../hive_form_cubit.dart';
 mixin HiveFormEmitter on Cubit<HiveFormState> {
   Future<void> emitSubmit(
     IHiveWriter writer,
-    HiveListRefreshNotifier refreshNotifier, {
+    HiveListRefreshNotifier refreshNotifier,
+    MediaGalleryCubit? mediaGalleryCubit, {
     required String apiaryId,
     required Hive? initial,
     required String name,
@@ -12,13 +13,11 @@ mixin HiveFormEmitter on Cubit<HiveFormState> {
     emit(const HiveFormLoading());
     final result = initial == null
         ? await writer.createHive(apiaryId: apiaryId, name: name, notes: notes)
-        : await writer.updateHive(
-            apiaryId: apiaryId,
-            id: initial.id,
-            name: name,
-            notes: notes,
-          );
-    result.fold((failure) => emit(HiveFormError(failure)), (hive) {
+        : await writer.updateHive(apiaryId: apiaryId, id: initial.id, name: name, notes: notes);
+    await result.fold((failure) async => emit(HiveFormError(failure)), (hive) async {
+      if (mediaGalleryCubit != null && mediaGalleryCubit.hasStagedPhotos) {
+        await mediaGalleryCubit.attachTo(MediaOwnerType.hive, hive.id);
+      }
       refreshNotifier.notify();
       emit(HiveFormSuccess(hive));
     });

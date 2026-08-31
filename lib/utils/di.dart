@@ -15,6 +15,7 @@ import 'package:beebase/core/services/connectivity_service.dart';
 import 'package:beebase/core/services/connectivity_service_impl.dart';
 import 'package:beebase/core/services/session_service.dart';
 import 'package:beebase/core/storage/app_database.dart';
+import 'package:beebase/core/storage/local_media_store.dart';
 import 'package:beebase/core/storage/secure_storage.dart';
 import 'package:beebase/core/storage/token_storage.dart';
 import 'package:beebase/data/apiary/apiary_operation_handler.dart';
@@ -25,21 +26,29 @@ import 'package:beebase/data/data_source/interface/apiary_data_source.dart';
 import 'package:beebase/data/data_source/interface/authentication_data_source.dart';
 import 'package:beebase/data/data_source/interface/hive_data_source.dart';
 import 'package:beebase/data/data_source/interface/local_data_source.dart';
+import 'package:beebase/data/data_source/interface/media_data_source.dart';
+import 'package:beebase/data/data_source/media_data_source.dart';
 import 'package:beebase/data/data_source/sqlite_local_data_source.dart';
 import 'package:beebase/data/hive/hive_operation_handler.dart';
+import 'package:beebase/data/media/media_operation_handler.dart';
 import 'package:beebase/data/models/apiary_response.dart';
 import 'package:beebase/data/models/hive_response.dart';
+import 'package:beebase/data/models/media_response.dart';
 import 'package:beebase/data/models/user_response.dart';
 import 'package:beebase/data/repositories/apiary_repository_impl.dart';
 import 'package:beebase/data/repositories/authentication_repository_impl.dart';
 import 'package:beebase/data/repositories/hive_repository_impl.dart';
+import 'package:beebase/data/repositories/media_repository_impl.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/entity/hive.dart';
+import 'package:beebase/domain/enum/media_owner_type.dart';
 import 'package:beebase/domain/repositories/apiary_reader.dart';
 import 'package:beebase/domain/repositories/apiary_writer.dart';
 import 'package:beebase/domain/repositories/authentication_repository.dart';
 import 'package:beebase/domain/repositories/hive_reader.dart';
 import 'package:beebase/domain/repositories/hive_writer.dart';
+import 'package:beebase/domain/repositories/media_reader.dart';
+import 'package:beebase/domain/repositories/media_writer.dart';
 import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_delete_cubit/apiary_delete_cubit.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_form_cubit/apiary_form_cubit.dart';
@@ -52,6 +61,7 @@ import 'package:beebase/presentation/hive/cubit/hive_delete_cubit/hive_delete_cu
 import 'package:beebase/presentation/hive/cubit/hive_form_cubit/hive_form_cubit.dart';
 import 'package:beebase/presentation/hive/cubit/hive_list_cubit/hive_list_cubit.dart';
 import 'package:beebase/presentation/hive/hive_list_refresh_notifier.dart';
+import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/router/guardes/authentication_guard.dart';
 import 'package:beebase/presentation/sync/cubit/sync_banner_cubit/sync_banner_cubit.dart';
@@ -111,6 +121,15 @@ Future<void> initDi() async {
       fromJson: (json) => (json as List<dynamic>).map((item) => HiveResponse.fromJson(item as Map<String, dynamic>)).toList(),
     ),
   );
+  di.registerLazySingleton<LocalDataSource<List<MediaResponse>>>(
+    () => SqliteLocalDataSource<List<MediaResponse>>(
+      database: di(),
+      key: mediaCacheKey,
+      toJson: (items) => items.map((response) => response.toJson()).toList(),
+      fromJson: (json) => (json as List<dynamic>).map((item) => MediaResponse.fromJson(item as Map<String, dynamic>)).toList(),
+    ),
+  );
+  di.registerLazySingleton<LocalMediaStore>(LocalMediaStore.new);
   // #endregion
 
   // #region Interceptors
@@ -136,6 +155,8 @@ Future<void> initDi() async {
   di.registerLazySingleton<IApiaryDataSource>(() => di<ApiaryDataSource>());
   di.registerLazySingleton<HiveDataSource>(() => HiveDataSource(dioClient: di(), resolver: di()));
   di.registerLazySingleton<IHiveDataSource>(() => di<HiveDataSource>());
+  di.registerLazySingleton<MediaDataSource>(() => MediaDataSource(dioClient: di(), resolver: di()));
+  di.registerLazySingleton<IMediaDataSource>(() => di<MediaDataSource>());
   // #endregion
 
   // #region Offline
@@ -150,8 +171,22 @@ Future<void> initDi() async {
   di.registerLazySingleton<HiveOperationHandler>(
     () => HiveOperationHandler(dataSource: di(), localDataSource: di(), refreshNotifier: di(), operationQueue: di()),
   );
+  di.registerLazySingleton<MediaOperationHandler>(
+    () => MediaOperationHandler(
+      dataSource: di(),
+      localDataSource: di(),
+      localMediaStore: di(),
+      operationQueue: di(),
+      apiaryRefreshNotifier: di(),
+      hiveRefreshNotifier: di(),
+    ),
+  );
   di.registerLazySingleton<OperationRegistry>(
-    () => OperationRegistry({'apiary': di<ApiaryOperationHandler>(), 'hive': di<HiveOperationHandler>()}),
+    () => OperationRegistry({
+      'apiary': di<ApiaryOperationHandler>(),
+      'hive': di<HiveOperationHandler>(),
+      'media': di<MediaOperationHandler>(),
+    }),
   );
   di.registerLazySingleton<SyncEngineImpl>(() => SyncEngineImpl(queue: di(), registry: di(), connectivity: di()));
   di.registerLazySingleton<SyncEngine>(() => di<SyncEngineImpl>());
@@ -173,10 +208,28 @@ Future<void> initDi() async {
   di.registerLazySingleton<IApiaryReader>(() => di<ApiaryRepositoryImpl>());
   di.registerLazySingleton<IApiaryWriter>(() => di<ApiaryRepositoryImpl>());
   di.registerLazySingleton<HiveRepositoryImpl>(
-    () => HiveRepositoryImpl(dataSource: di(), localDataSource: di(), connectivity: di(), operationQueue: di(), offlineMutationStore: di()),
+    () => HiveRepositoryImpl(
+      dataSource: di(),
+      localDataSource: di(),
+      connectivity: di(),
+      operationQueue: di(),
+      offlineMutationStore: di(),
+    ),
   );
   di.registerLazySingleton<IHiveReader>(() => di<HiveRepositoryImpl>());
   di.registerLazySingleton<IHiveWriter>(() => di<HiveRepositoryImpl>());
+  di.registerLazySingleton<MediaRepositoryImpl>(
+    () => MediaRepositoryImpl(
+      dataSource: di(),
+      localDataSource: di(),
+      localMediaStore: di(),
+      connectivity: di(),
+      operationQueue: di(),
+      offlineMutationStore: di(),
+    ),
+  );
+  di.registerLazySingleton<IMediaReader>(() => di<MediaRepositoryImpl>());
+  di.registerLazySingleton<IMediaWriter>(() => di<MediaRepositoryImpl>());
   // #endregion
 
   // #region Router
@@ -205,6 +258,23 @@ Future<void> initDi() async {
   );
   di.registerFactoryParam<HiveDeleteCubit, Hive, void>(
     (hive, _) => HiveDeleteCubit(writer: di(), hive: hive, refreshNotifier: di()),
+  );
+  di.registerFactoryParam<MediaGalleryCubit, MediaOwnerType, String?>(
+    (ownerType, ownerId) => MediaGalleryCubit(
+      reader: di(),
+      writer: di(),
+      localMediaStore: di(),
+      ownerType: ownerType,
+      ownerId: ownerId,
+      notifyOwnerListChanged: switch (ownerType) {
+        MediaOwnerType.apiary => di<ApiaryListRefreshNotifier>().notify,
+        MediaOwnerType.hive => di<HiveListRefreshNotifier>().notify,
+      },
+      ownerListChanges: switch (ownerType) {
+        MediaOwnerType.apiary => di<ApiaryListRefreshNotifier>().onChanged,
+        MediaOwnerType.hive => di<HiveListRefreshNotifier>().onChanged,
+      },
+    ),
   );
   // #endregion
 }
