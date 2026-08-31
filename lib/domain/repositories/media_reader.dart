@@ -17,4 +17,12 @@ abstract interface class IMediaReader {
   /// a local copy of (see CLAUDE.md: the UI layer never calls a data source
   /// directly, always through a repository).
   Future<Either<Failure, List<int>>> downloadMedia(String id);
+
+  /// Records that [id] now has a valid local render-cache copy at
+  /// [localFilePath], so a future `getMedia` call (a reload, a pull-to-
+  /// refresh, a cold app restart) knows not to re-download it. Called once a
+  /// `downloadMedia` result has actually been written to disk — see
+  /// `MediaGalleryEmitter.resolveItemDisplayPath`. Best-effort and never
+  /// throws, matching `LocalDataSource`.
+  Future<void> cacheDownloadedMedia(String id, String localFilePath);
 }

@@ -57,4 +57,18 @@ final class MediaResponse {
   final String? localFilePath;
 
   Map<String, dynamic> toJson() => _$MediaResponseToJson(this);
+
+  MediaResponse copyWith({String? localFilePath}) {
+    return MediaResponse(
+      id: id,
+      ownerType: ownerType,
+      ownerId: ownerId,
+      originalFilename: originalFilename,
+      contentType: contentType,
+      sizeBytes: sizeBytes,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      localFilePath: localFilePath ?? this.localFilePath,
+    );
+  }
 }

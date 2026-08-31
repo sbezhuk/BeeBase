@@ -1,6 +1,12 @@
 part of '../media_gallery_cubit.dart';
 
 mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
+  /// Keyed by attachment id, so two `MediaThumbnail`s asking for the same
+  /// photo at once (e.g. the Apiary/Hive details page's hero preview and its
+  /// gallery strip, both bound to this same cubit) share one network call
+  /// and one disk write instead of racing two independent ones.
+  final Map<String, Future<String?>> _inFlightDownloads = {};
+
   Future<String?> resolveItemDisplayPath(
     IMediaReader reader,
     LocalMediaStore localMediaStore,
@@ -14,14 +20,65 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
     if (attachment == null) {
       return null;
     }
-    final result = await reader.downloadMedia(attachment.id);
-    return result.fold((_) => Future.value(null), (bytes) {
-      final extension = _extensionFor(attachment.originalFilename);
-      return localMediaStore.save(
+    final extension = extensionFromFilename(attachment.originalFilename);
+
+    // The deterministic render-cache path for this attachment may already
+    // hold a valid copy from a previous download — `item.localFilePath`
+    // above only reflects what this particular `MediaAttachment` instance
+    // was built with, which is `null` for anything freshly re-fetched from
+    // the server (see `MediaCacheMerger`). Checking here (instead of only
+    // trusting `item.localFilePath`) is what makes offline viewing of a
+    // previously-seen photo actually work, and what avoids a redundant
+    // re-download for one that's already cached.
+    final cachedPath = await localMediaStore.validExistingPath(
+      attachment.id,
+      extension: extension,
+    );
+    if (cachedPath != null) {
+      await reader.cacheDownloadedMedia(attachment.id, cachedPath);
+      return cachedPath;
+    }
+
+    return _inFlightDownloads[attachment.id] ??=
+        _downloadAndCache(
+          reader,
+          localMediaStore,
+          attachment.id,
+          extension,
+        ).whenComplete(() {
+          // A block body, not `whenComplete(() => _inFlightDownloads.remove(...))`
+          // — `Map.remove` returns the value it removed, which *is* the very
+          // `Future` this `whenComplete` call is attached to (see the map
+          // assignment above). An arrow body would hand that Future straight
+          // back to `whenComplete`, which then waits for whatever Future its
+          // action returns before completing — i.e. this future waiting on
+          // itself, deadlocking forever. The block body returns `void` instead.
+          _inFlightDownloads.remove(attachment.id);
+        });
+  }
+
+  /// One retry on failure — enough to ride out a transient blip (the kind
+  /// that made this "sometimes" fail rather than reliably either way)
+  /// without turning a genuinely offline/unreachable case into a long
+  /// blocking wait for the `FutureBuilder` this feeds.
+  Future<String?> _downloadAndCache(
+    IMediaReader reader,
+    LocalMediaStore localMediaStore,
+    String attachmentId,
+    String extension,
+  ) async {
+    var result = await reader.downloadMedia(attachmentId);
+    if (result.isLeft) {
+      result = await reader.downloadMedia(attachmentId);
+    }
+    return result.fold((_) => null, (bytes) async {
+      final path = await localMediaStore.save(
         Uint8List.fromList(bytes),
-        id: attachment.id,
+        id: attachmentId,
         extension: extension,
       );
+      await reader.cacheDownloadedMedia(attachmentId, path);
+      return path;
     });
   }
 
@@ -78,7 +135,7 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
 
     final bytes = await picked.readAsBytes();
     final localId = LocalIdGenerator.generate();
-    final extension = _extensionFor(picked.name);
+    final extension = extensionFromFilename(picked.name);
     final contentType = _contentTypeFor(extension);
     final localFilePath = await localMediaStore.save(
       Uint8List.fromList(bytes),
@@ -308,12 +365,6 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
         current.items.where((item) => item.localId != localId).toList(),
       ),
     );
-  }
-
-  String _extensionFor(String filename) {
-    final dotIndex = filename.lastIndexOf('.');
-    if (dotIndex == -1 || dotIndex == filename.length - 1) return 'jpg';
-    return filename.substring(dotIndex + 1).toLowerCase();
   }
 
   String _contentTypeFor(String extension) => switch (extension) {

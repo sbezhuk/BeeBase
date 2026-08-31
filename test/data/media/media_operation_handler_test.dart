@@ -104,6 +104,15 @@ void main() {
       await update(await localDataSource.read());
     });
     when(() => localMediaStore.delete(any())).thenAnswer((_) async {});
+    when(
+      () => localMediaStore.adopt(
+        any(),
+        id: any(named: 'id'),
+        extension: any(named: 'extension'),
+      ),
+    ).thenAnswer(
+      (invocation) async => '/media/${invocation.namedArguments[#id]}.jpg',
+    );
   });
 
   tearDown(() {
@@ -135,7 +144,10 @@ void main() {
         ).thenAnswer((_) async => serverResponse);
 
         final result = await handler.handle(
-          _createOp(id: 'op-99', idempotencyKey: 'ab12cd34-ef56-4789-a012-3456789abcde'),
+          _createOp(
+            id: 'op-99',
+            idempotencyKey: 'ab12cd34-ef56-4789-a012-3456789abcde',
+          ),
         );
 
         expect(result, isA<OperationSuccess>());
@@ -150,79 +162,83 @@ void main() {
             idempotencyKey: 'ab12cd34-ef56-4789-a012-3456789abcde',
           ),
         ).called(1);
-        verify(() => localMediaStore.delete('/tmp/photo.jpg')).called(1);
+        // Adopted (renamed) onto the server id's deterministic cache path,
+        // not deleted — see LocalMediaStore.adopt — so the photo stays
+        // available offline right after syncing instead of needing a
+        // redundant re-download.
+        verify(
+          () => localMediaStore.adopt(
+            '/tmp/photo.jpg',
+            id: 'media-server-1',
+            extension: 'jpg',
+          ),
+        ).called(1);
+        verifyNever(() => localMediaStore.delete(any()));
         final update =
             verify(() => localDataSource.modify(captureAny())).captured.single
                 as FutureOr<List<MediaResponse>> Function(List<MediaResponse>?);
         final written = await update([]);
         expect(written.single.id, 'media-server-1');
+        expect(written.single.localFilePath, '/media/media-server-1.jpg');
       },
     );
 
-    test(
-      'notifies the apiary list refresh notifier on success so an open '
-      'gallery for that owner reloads',
-      () async {
-        when(() => localDataSource.read()).thenAnswer((_) async => []);
-        when(
-          () => dataSource.uploadMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
-            filePath: any(named: 'filePath'),
-            originalFilename: any(named: 'originalFilename'),
-            contentType: any(named: 'contentType'),
-            idempotencyKey: any(named: 'idempotencyKey'),
-          ),
-        ).thenAnswer((_) async => serverResponse);
-        final notified = expectLater(
-          apiaryRefreshNotifier.onChanged,
-          emits(anything),
-        );
+    test('notifies the apiary list refresh notifier on success so an open '
+        'gallery for that owner reloads', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => []);
+      when(
+        () => dataSource.uploadMedia(
+          ownerType: any(named: 'ownerType'),
+          ownerId: any(named: 'ownerId'),
+          filePath: any(named: 'filePath'),
+          originalFilename: any(named: 'originalFilename'),
+          contentType: any(named: 'contentType'),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      ).thenAnswer((_) async => serverResponse);
+      final notified = expectLater(
+        apiaryRefreshNotifier.onChanged,
+        emits(anything),
+      );
 
-        await handler.handle(_createOp(ownerType: 'apiary'));
+      await handler.handle(_createOp(ownerType: 'apiary'));
 
-        await notified;
-      },
-    );
+      await notified;
+    });
 
-    test(
-      'notifies the hive list refresh notifier on success when the photo '
-      'belongs to a hive',
-      () async {
-        when(() => localDataSource.read()).thenAnswer((_) async => []);
-        when(
-          () => dataSource.uploadMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
-            filePath: any(named: 'filePath'),
-            originalFilename: any(named: 'originalFilename'),
-            contentType: any(named: 'contentType'),
-            idempotencyKey: any(named: 'idempotencyKey'),
-          ),
-        ).thenAnswer(
-          (_) async => MediaResponse(
-            id: 'media-server-2',
-            ownerType: MediaOwnerType.hive,
-            ownerId: 'hive-1',
-            originalFilename: 'photo.jpg',
-            contentType: 'image/jpeg',
-            sizeBytes: 2048,
-            createdAt: DateTime(2026),
-            updatedAt: DateTime(2026),
-          ),
-        );
-        final notified = expectLater(
-          hiveRefreshNotifier.onChanged,
-          emits(anything),
-        );
+    test('notifies the hive list refresh notifier on success when the photo '
+        'belongs to a hive', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => []);
+      when(
+        () => dataSource.uploadMedia(
+          ownerType: any(named: 'ownerType'),
+          ownerId: any(named: 'ownerId'),
+          filePath: any(named: 'filePath'),
+          originalFilename: any(named: 'originalFilename'),
+          contentType: any(named: 'contentType'),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      ).thenAnswer(
+        (_) async => MediaResponse(
+          id: 'media-server-2',
+          ownerType: MediaOwnerType.hive,
+          ownerId: 'hive-1',
+          originalFilename: 'photo.jpg',
+          contentType: 'image/jpeg',
+          sizeBytes: 2048,
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        ),
+      );
+      final notified = expectLater(
+        hiveRefreshNotifier.onChanged,
+        emits(anything),
+      );
 
-        await handler.handle(
-          _createOp(ownerType: 'hive', ownerId: 'hive-1'),
-        );
+      await handler.handle(_createOp(ownerType: 'hive', ownerId: 'hive-1'));
 
-        await notified;
-      },
-    );
+      await notified;
+    });
 
     test('resolves the real owner id once its dependency has synced', () async {
       when(() => localDataSource.read()).thenAnswer((_) async => []);

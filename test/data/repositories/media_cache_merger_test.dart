@@ -49,16 +49,26 @@ void main() {
   group('mergeFirstPage', () {
     test('replaces the old cache with the fresh server page', () {
       final stale = _response(id: 'stale');
-      final merged = merger.mergeFirstPage([serverItem], [stale], const []);
+      final merged = merger.mergeFirstPage(
+        [serverItem],
+        [stale],
+        ownerType: MediaOwnerType.apiary,
+        ownerIds: const {'apiary-1'},
+        pendingOps: const [],
+      );
       expect(merged.map((response) => response.id), ['media-1']);
     });
 
     test(
       'keeps a not-yet-synced local placeholder alongside the fresh server page',
       () {
-        final merged = merger.mergeFirstPage([serverItem], [pendingLocal], [
-          pendingOp('local-pending-1'),
-        ]);
+        final merged = merger.mergeFirstPage(
+          [serverItem],
+          [pendingLocal],
+          ownerType: MediaOwnerType.apiary,
+          ownerIds: const {'apiary-1'},
+          pendingOps: [pendingOp('local-pending-1')],
+        );
         expect(merged.map((response) => response.id), [
           'media-1',
           'local-pending-1',
@@ -67,10 +77,98 @@ void main() {
     );
 
     test('drops a local placeholder once its operation is synced', () {
-      final merged = merger.mergeFirstPage([serverItem], [pendingLocal], [
-        pendingOp('local-pending-1', status: OperationStatus.synced),
-      ]);
+      final merged = merger.mergeFirstPage(
+        [serverItem],
+        [pendingLocal],
+        ownerType: MediaOwnerType.apiary,
+        ownerIds: const {'apiary-1'},
+        pendingOps: [
+          pendingOp('local-pending-1', status: OperationStatus.synced),
+        ],
+      );
       expect(merged.map((response) => response.id), ['media-1']);
+    });
+
+    test('carries forward a previously known local cache path onto the fresh '
+        'server record for the same id — a bare server response never has '
+        'one, so without this a photo forgets it was already downloaded on '
+        'every refresh and re-downloads it every time', () {
+      final oldCacheEntry = serverItem.copyWith(
+        localFilePath: '/media/media-1.jpg',
+      );
+      final freshFromServer = _response(id: 'media-1');
+
+      final merged = merger.mergeFirstPage(
+        [freshFromServer],
+        [oldCacheEntry],
+        ownerType: MediaOwnerType.apiary,
+        ownerIds: const {'apiary-1'},
+        pendingOps: const [],
+      );
+
+      expect(merged.single.localFilePath, '/media/media-1.jpg');
+    });
+
+    test(
+      'a server record for an id with no previously known local path stays untouched',
+      () {
+        final merged = merger.mergeFirstPage(
+          [serverItem],
+          const [],
+          ownerType: MediaOwnerType.apiary,
+          ownerIds: const {'apiary-1'},
+          pendingOps: const [],
+        );
+
+        expect(merged.single.localFilePath, isNull);
+      },
+    );
+
+    test('leaves every other owner\'s cached media completely untouched — '
+        'fetching one apiary\'s gallery must not silently discard another '
+        'apiary\'s (or a hive\'s) already-synced, previously cached photos '
+        'from the single shared "cached_media" blob', () {
+      final otherOwnerSynced = _response(id: 'media-2', ownerId: 'apiary-2');
+      final otherOwnerPending = _response(
+        id: 'local-pending-2',
+        ownerId: 'apiary-2',
+      );
+      final oldCache = [serverItem, otherOwnerSynced, otherOwnerPending];
+
+      final merged = merger.mergeFirstPage(
+        [serverItem],
+        oldCache,
+        ownerType: MediaOwnerType.apiary,
+        ownerIds: const {'apiary-1'},
+        pendingOps: [pendingOp('local-pending-2')],
+      );
+
+      expect(merged.map((response) => response.id).toSet(), {
+        'media-1',
+        'media-2',
+        'local-pending-2',
+      });
+    });
+
+    test('matches a not-yet-synced placeholder still filed under the owner\'s '
+        'old local id even when the caller now asks using the owner\'s newly '
+        'resolved server id — the "owner synced, this photo did not yet" '
+        'window where the two ids briefly coexist for the same owner', () {
+      final placeholderUnderOldOwnerId = _response(
+        id: 'local-pending-1',
+        ownerId: 'local-apiary-1',
+      );
+
+      final merged = merger.mergeFirstPage(
+        const [],
+        [placeholderUnderOldOwnerId],
+        ownerType: MediaOwnerType.apiary,
+        ownerIds: const {'local-apiary-1', 'srv-apiary-1'},
+        pendingOps: [pendingOp('local-pending-1')],
+      );
+
+      expect(merged.single.id, 'local-pending-1');
+      expect(merged.single.ownerId, 'local-apiary-1');
     });
   });
 

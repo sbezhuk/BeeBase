@@ -14,6 +14,7 @@ import 'package:beebase/domain/enum/media_owner_type.dart';
 import 'package:beebase/domain/repositories/repository.dart';
 import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
 import 'package:beebase/presentation/hive/hive_list_refresh_notifier.dart';
+import 'package:beebase/utils/media_file_extension.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 /// Executes a queued `media` operation when the [SyncEngine] drains the
@@ -78,8 +79,17 @@ final class MediaOperationHandler extends Repository
     );
 
     return result.fold(_classify, (response) async {
-      await _reconcileCache(operation.localEntityId, response);
-      await localMediaStore.delete(request.localFilePath);
+      // Adopts (renames) the already-on-disk staged file onto the
+      // deterministic cache path for the server's real id, rather than
+      // deleting it — so this photo stays available offline immediately
+      // after syncing instead of needing a redundant re-download the next
+      // time it's displayed (see `MediaGalleryEmitter.resolveItemDisplayPath`).
+      final cachedPath = await localMediaStore.adopt(
+        request.localFilePath,
+        id: response.id,
+        extension: extensionFromFilename(request.originalFilename),
+      );
+      await _reconcileCache(operation.localEntityId, response, cachedPath);
       _notifyOwnerListChanged(request.ownerType);
       return OperationSuccess(resolvedEntityId: response.id);
     });
@@ -128,12 +138,16 @@ final class MediaOperationHandler extends Repository
   Future<void> _reconcileCache(
     String? localEntityId,
     MediaResponse serverResponse,
+    String? cachedPath,
   ) {
     return localDataSource.modify((current) {
       final withoutPlaceholder = (current ?? const []).where(
         (response) => response.id != localEntityId,
       );
-      return [...withoutPlaceholder, serverResponse];
+      return [
+        ...withoutPlaceholder,
+        serverResponse.copyWith(localFilePath: cachedPath),
+      ];
     });
   }
 }

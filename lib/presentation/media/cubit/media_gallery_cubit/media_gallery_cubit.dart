@@ -10,6 +10,7 @@ import 'package:beebase/domain/enum/media_sync_status.dart';
 import 'package:beebase/domain/repositories/media_reader.dart';
 import 'package:beebase/domain/repositories/media_writer.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_item.dart';
+import 'package:beebase/utils/media_file_extension.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
