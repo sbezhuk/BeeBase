@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:beebase/core/error/error_text.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/core/storage/token_storage.dart';
@@ -22,7 +24,11 @@ final class AuthenticationRepositoryImpl extends Repository implements Authentic
     return on(() async {
       final session = await dataSource.register(email: email, password: password);
       await tokenStorage.saveAccessToken(session.accessToken);
-      await userLocalDataSource.write(session.user);
+      // The local cache is only ever read by restoreSession's offline
+      // fallback — nothing on the post-login navigation path needs it, so
+      // it's written in the background instead of delaying Main from
+      // showing.
+      unawaited(userLocalDataSource.write(session.user).catchError((_) {}));
       return session.user.toEntity();
     });
   }
@@ -32,7 +38,8 @@ final class AuthenticationRepositoryImpl extends Repository implements Authentic
     return on(() async {
       final session = await dataSource.login(email: email, password: password);
       await tokenStorage.saveAccessToken(session.accessToken);
-      await userLocalDataSource.write(session.user);
+      // See comment in register() above.
+      unawaited(userLocalDataSource.write(session.user).catchError((_) {}));
       return session.user.toEntity();
     });
   }
