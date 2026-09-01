@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:beebase/core/location/location_service.dart';
 import 'package:beebase/core/offline/local_id_generator.dart';
 import 'package:beebase/core/offline/offline_operations_change_notifier.dart';
 import 'package:beebase/core/offline/operation_registry.dart';
@@ -46,6 +47,8 @@ class MockHiveDataSource extends Mock implements IHiveDataSource {}
 class MockMediaDataSource extends Mock implements IMediaDataSource {}
 
 class MockConnectivityService extends Mock implements IConnectivityService {}
+
+class MockLocationService extends Mock implements LocationService {}
 
 /// End-to-end coverage for the exact chain the offline-photo-sync feature
 /// promises: an Apiary and a Hive created offline, each with a photo
@@ -153,6 +156,7 @@ void main() {
           localDataSource: apiaryLocalDataSource,
           refreshNotifier: apiaryRefreshNotifier,
           operationQueue: queue,
+          locationService: MockLocationService(),
         ),
         'hive': HiveOperationHandler(
           dataSource: hiveDataSource,
@@ -456,6 +460,7 @@ void main() {
       localDataSource: apiaryLocalDataSource,
       refreshNotifier: apiaryRefreshNotifier,
       operationQueue: queue,
+      locationService: MockLocationService(),
     );
 
     final photoFile = File(

@@ -166,7 +166,13 @@ Future<void> initDi() async {
   di.registerLazySingleton<SqliteOfflineMutationStore>(() => SqliteOfflineMutationStore(database: di(), changeNotifier: di()));
   di.registerLazySingleton<OfflineMutationStore>(() => di<SqliteOfflineMutationStore>());
   di.registerLazySingleton<ApiaryOperationHandler>(
-    () => ApiaryOperationHandler(dataSource: di(), localDataSource: di(), refreshNotifier: di(), operationQueue: di()),
+    () => ApiaryOperationHandler(
+      dataSource: di(),
+      localDataSource: di(),
+      refreshNotifier: di(),
+      operationQueue: di(),
+      locationService: di(),
+    ),
   );
   di.registerLazySingleton<HiveOperationHandler>(
     () => HiveOperationHandler(dataSource: di(), localDataSource: di(), refreshNotifier: di(), operationQueue: di()),

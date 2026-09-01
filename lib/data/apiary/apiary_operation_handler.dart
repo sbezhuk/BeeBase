@@ -1,3 +1,4 @@
+import 'package:beebase/core/location/location_service.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/core/offline/offline_operation.dart';
 import 'package:beebase/core/offline/operation_handler.dart';
@@ -24,12 +25,14 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
     required this.localDataSource,
     required this.refreshNotifier,
     required this.operationQueue,
+    required this.locationService,
   });
 
   final IApiaryDataSource dataSource;
   final LocalDataSource<List<ApiaryResponse>> localDataSource;
   final ApiaryListRefreshNotifier refreshNotifier;
   final OperationQueue operationQueue;
+  final LocationService locationService;
 
   @override
   String get entityType => 'apiary';
@@ -44,15 +47,11 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
   }
 
   Future<OperationResult> _handleCreate(OfflineOperation operation) async {
-    final request = ApiaryRequest.fromJson(operation.payload);
+    final request = await _withResolvedAddress(ApiaryRequest.fromJson(operation.payload));
     final result = await on(() => dataSource.createApiary(request, idempotencyKey: operation.id));
 
     return result.fold(_classify, (response) async {
-      final retargeted = await _checkSupersededAndRetarget(
-        operation,
-        newEntityId: response.id,
-        newType: OperationType.update,
-      );
+      final retargeted = await _checkSupersededAndRetarget(operation, newEntityId: response.id, newType: OperationType.update);
       if (retargeted != null) {
         await _reconcileCache(operation.localEntityId, response, latestPayload: retargeted.payload);
         refreshNotifier.notify();
@@ -69,7 +68,7 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
     if (id == null) {
       return const OperationPermanentFailure('Missing target id for update.');
     }
-    final request = ApiaryRequest.fromJson(operation.payload);
+    final request = await _withResolvedAddress(ApiaryRequest.fromJson(operation.payload));
     final result = await on(() => dataSource.updateApiary(id, request));
 
     return result.fold(_classify, (response) async {
@@ -83,6 +82,22 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
       refreshNotifier.notify();
       return const OperationSuccess();
     });
+  }
+
+  /// Re-resolves [request]'s address from its coordinates before it's sent.
+  /// An apiary created/updated offline has its `location` set to the
+  /// offline placeholder (or, if geocoding failed while online, raw
+  /// coordinates) — by the time this handler runs, the [SyncEngine] has
+  /// connectivity, so this is the point where that placeholder gets
+  /// replaced with the real street/city name. Left untouched when there are
+  /// no coordinates to resolve from.
+  Future<ApiaryRequest> _withResolvedAddress(ApiaryRequest request) async {
+    final lat = request.lat;
+    final lon = request.lon;
+    if (lat == null || lon == null) return request;
+
+    final resolvedLocation = await locationService.resolveAddress(latitude: lat, longitude: lon);
+    return ApiaryRequest(name: request.name, description: request.description, location: resolvedLocation, lat: lat, lon: lon);
   }
 
   Future<OperationResult> _classify(Failure failure) async {

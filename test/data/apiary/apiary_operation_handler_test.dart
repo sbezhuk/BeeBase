@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:beebase/core/error/error_text.dart';
+import 'package:beebase/core/location/location_service.dart';
 import 'package:beebase/core/networking/exceptions/internal_exception.dart';
 import 'package:beebase/core/networking/exceptions/server_exception.dart';
 import 'package:beebase/core/offline/offline_operation.dart';
@@ -23,12 +24,21 @@ class MockApiaryLocalDataSource extends Mock implements LocalDataSource<List<Api
 
 class MockOperationQueue extends Mock implements OperationQueue {}
 
-OfflineOperation _createOp({String id = 'op-1', String localEntityId = 'local-1', int version = 0}) {
+class MockLocationService extends Mock implements LocationService {}
+
+OfflineOperation _createOp({
+  String id = 'op-1',
+  String localEntityId = 'local-1',
+  int version = 0,
+  String? location,
+  double? lat,
+  double? lon,
+}) {
   return OfflineOperation(
     id: id,
     entityType: 'apiary',
     operationType: OperationType.create,
-    payload: const ApiaryRequest(name: 'New Yard', description: 'desc').toJson(),
+    payload: ApiaryRequest(name: 'New Yard', description: 'desc', location: location, lat: lat, lon: lon).toJson(),
     status: OperationStatus.pending,
     createdAt: DateTime(2026),
     updatedAt: DateTime(2026),
@@ -37,12 +47,19 @@ OfflineOperation _createOp({String id = 'op-1', String localEntityId = 'local-1'
   );
 }
 
-OfflineOperation _updateOp({String id = 'op-2', String localEntityId = 'apiary-1', int version = 0}) {
+OfflineOperation _updateOp({
+  String id = 'op-2',
+  String localEntityId = 'apiary-1',
+  int version = 0,
+  String? location,
+  double? lat,
+  double? lon,
+}) {
   return OfflineOperation(
     id: id,
     entityType: 'apiary',
     operationType: OperationType.update,
-    payload: const ApiaryRequest(name: 'Renamed').toJson(),
+    payload: ApiaryRequest(name: 'Renamed', location: location, lat: lat, lon: lon).toJson(),
     status: OperationStatus.pending,
     createdAt: DateTime(2026),
     updatedAt: DateTime(2026),
@@ -56,6 +73,7 @@ void main() {
   late MockApiaryLocalDataSource localDataSource;
   late MockOperationQueue operationQueue;
   late ApiaryListRefreshNotifier refreshNotifier;
+  late MockLocationService locationService;
   late ApiaryOperationHandler handler;
 
   final serverResponse = ApiaryResponse(
@@ -76,11 +94,13 @@ void main() {
     localDataSource = MockApiaryLocalDataSource();
     operationQueue = MockOperationQueue();
     refreshNotifier = ApiaryListRefreshNotifier();
+    locationService = MockLocationService();
     handler = ApiaryOperationHandler(
       dataSource: dataSource,
       localDataSource: localDataSource,
       refreshNotifier: refreshNotifier,
       operationQueue: operationQueue,
+      locationService: locationService,
     );
     when(() => localDataSource.modify(any())).thenAnswer((invocation) async {
       final update = invocation.positionalArguments.single as FutureOr<List<ApiaryResponse>> Function(List<ApiaryResponse>?);
@@ -180,6 +200,34 @@ void main() {
       expect(written.single.id, 'server-42');
       expect(written.single.name, 'Newer Edit');
     });
+
+    test('re-resolves the address from coordinates before sending, replacing the offline placeholder', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => []);
+      when(() => locationService.resolveAddress(latitude: 40.0, longitude: -74.0)).thenAnswer((_) async => 'Main St, Springfield');
+      when(
+        () => dataSource.createApiary(any(), idempotencyKey: any(named: 'idempotencyKey')),
+      ).thenAnswer((_) async => serverResponse);
+
+      await handler.handle(_createOp(location: 'Current location (address unavailable while offline)', lat: 40, lon: -74));
+
+      final sentRequest =
+          verify(() => dataSource.createApiary(captureAny(), idempotencyKey: any(named: 'idempotencyKey'))).captured.single
+              as ApiaryRequest;
+      expect(sentRequest.location, 'Main St, Springfield');
+      expect(sentRequest.lat, 40.0);
+      expect(sentRequest.lon, -74.0);
+    });
+
+    test('does not attempt to resolve an address when no coordinates were saved', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => []);
+      when(
+        () => dataSource.createApiary(any(), idempotencyKey: any(named: 'idempotencyKey')),
+      ).thenAnswer((_) async => serverResponse);
+
+      await handler.handle(_createOp());
+
+      verifyNever(() => locationService.resolveAddress(latitude: any(named: 'latitude'), longitude: any(named: 'longitude')));
+    });
   });
 
   group('update', () {
@@ -250,6 +298,28 @@ void main() {
 
       expect(result, isA<OperationPermanentFailure>());
       verifyNever(() => dataSource.updateApiary(any(), any()));
+    });
+
+    test('re-resolves the address from coordinates before sending, replacing the offline placeholder', () async {
+      final updatedResponse = ApiaryResponse(id: 'apiary-1', name: 'Renamed', createdAt: DateTime(2026), updatedAt: DateTime(2026));
+      when(() => localDataSource.read()).thenAnswer((_) async => []);
+      when(() => locationService.resolveAddress(latitude: 40.0, longitude: -74.0)).thenAnswer((_) async => 'Main St, Springfield');
+      when(() => dataSource.updateApiary('apiary-1', any())).thenAnswer((_) async => updatedResponse);
+
+      await handler.handle(_updateOp(location: 'Current location (address unavailable while offline)', lat: 40, lon: -74));
+
+      final sentRequest = verify(() => dataSource.updateApiary('apiary-1', captureAny())).captured.single as ApiaryRequest;
+      expect(sentRequest.location, 'Main St, Springfield');
+    });
+
+    test('does not attempt to resolve an address when no coordinates were saved', () async {
+      final updatedResponse = ApiaryResponse(id: 'apiary-1', name: 'Renamed', createdAt: DateTime(2026), updatedAt: DateTime(2026));
+      when(() => localDataSource.read()).thenAnswer((_) async => []);
+      when(() => dataSource.updateApiary('apiary-1', any())).thenAnswer((_) async => updatedResponse);
+
+      await handler.handle(_updateOp());
+
+      verifyNever(() => locationService.resolveAddress(latitude: any(named: 'latitude'), longitude: any(named: 'longitude')));
     });
   });
 

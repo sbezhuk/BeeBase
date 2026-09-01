@@ -7,11 +7,11 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
 /// Reads the device's current position and resolves it to a human-readable
-/// address plus its raw coordinates. The address falls back to formatted
-/// coordinates if reverse geocoding doesn't return anything, or to a
-/// localized offline placeholder if the device has no connectivity, since
+/// street + city address plus its raw coordinates. The address falls back to
+/// formatted coordinates if reverse geocoding doesn't return anything, or to
+/// a localized offline placeholder if the device has no connectivity, since
 /// reverse geocoding needs a network call and would otherwise silently
-/// degrade to raw coordinates in place of a city name.
+/// degrade to raw coordinates in place of a street/city name.
 class LocationService {
   LocationService({required this.connectivity});
 
@@ -37,7 +37,7 @@ class LocationService {
       );
       return Right(
         ResolvedLocation(
-          address: await _resolveAddress(position),
+          address: await resolveAddress(latitude: position.latitude, longitude: position.longitude),
           latitude: position.latitude,
           longitude: position.longitude,
         ),
@@ -47,28 +47,34 @@ class LocationService {
     }
   }
 
-  Future<String> _resolveAddress(Position position) async {
+  /// Reverse-geocodes [latitude]/[longitude] into a "street, city, region,
+  /// country" address. Also used to re-resolve the address of an apiary that
+  /// was created/updated offline — its coordinates were saved, but the
+  /// address fell back to the offline placeholder since geocoding needs a
+  /// network call — once connectivity is back and it syncs.
+  Future<String> resolveAddress({required double latitude, required double longitude}) async {
     if (!await connectivity.isOnline) {
       return 'apiary.form.location.offlineAddress'.tr();
     }
 
     try {
-      final placemarks = await _geocoding.placemarkFromCoordinates(position.latitude, position.longitude);
-      if (placemarks.isEmpty) return _formatCoordinates(position);
+      final placemarks = await _geocoding.placemarkFromCoordinates(latitude, longitude);
+      if (placemarks.isEmpty) return _formatCoordinates(latitude, longitude);
 
       final placemark = placemarks.first;
       final parts = [
+        placemark.street,
         placemark.locality,
         placemark.administrativeArea,
         placemark.country,
       ].where((part) => part != null && part.trim().isNotEmpty);
 
-      return parts.isEmpty ? _formatCoordinates(position) : parts.join(', ');
+      return parts.isEmpty ? _formatCoordinates(latitude, longitude) : parts.join(', ');
     } catch (_) {
-      return _formatCoordinates(position);
+      return _formatCoordinates(latitude, longitude);
     }
   }
 
-  String _formatCoordinates(Position position) =>
-      '${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)}';
+  String _formatCoordinates(double latitude, double longitude) =>
+      '${latitude.toStringAsFixed(5)}, ${longitude.toStringAsFixed(5)}';
 }
