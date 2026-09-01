@@ -6,14 +6,13 @@ import 'package:beebase/utils/extensions/theme_text_styles.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
-/// Stands in wherever [ApiaryMapPhoto] has no coordinates to render — the
-/// module's own honeycomb identity ([ApiaryHexagonBadge] over
-/// [HoneycombPattern]) shown full-bleed at the height of the photo it
-/// replaces. Shared by the list, details, and form pages so every apiary
-/// hero photo slot degrades the same way. [titleKey]/[subtitleKey] let a
-/// caller swap the copy (e.g. "unavailable offline, will sync later") while
-/// keeping the same visual identity — never introduce a second placeholder
-/// widget for a different message.
+/// Stands in for an apiary's hero photo — the module's own honeycomb
+/// identity ([ApiaryHexagonBadge] over [HoneycombPattern]) shown full-bleed
+/// at the height of the photo slot it fills. Shared by the list, details,
+/// and form pages so every apiary hero photo slot degrades the same way.
+/// [titleKey]/[subtitleKey] let a caller swap the copy (e.g. "unavailable
+/// offline, will sync later") while keeping the same visual identity — never
+/// introduce a second placeholder widget for a different message.
 final class ApiaryPhotoPlaceholder extends StatelessWidget {
   const ApiaryPhotoPlaceholder({required this.height, this.titleKey = 'apiary.photo_placeholder', this.subtitleKey, super.key});
 

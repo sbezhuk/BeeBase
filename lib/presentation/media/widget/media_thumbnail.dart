@@ -106,9 +106,9 @@ final class _MediaThumbnailState extends State<MediaThumbnail> {
             child: SizedBox(
               width: 20,
               height: 20,
-              child: CircularProgressIndicator(
+              child: CircularProgressIndicator.adaptive(
                 strokeWidth: 2,
-                color: colors.brand.primary,
+                valueColor: AlwaysStoppedAnimation(colors.brand.primary),
               ),
             ),
           );

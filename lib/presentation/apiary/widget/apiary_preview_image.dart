@@ -1,6 +1,5 @@
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/enum/apiary_sync_status.dart';
-import 'package:beebase/presentation/apiary/widget/apiary_map_photo.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_photo_placeholder.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/presentation/media/widget/media_thumbnail.dart';
@@ -8,11 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 /// The hero photo slot shared by the list tile and the details page: the
-/// first attached photo if [apiary] has any, otherwise the existing
-/// map/placeholder fallback. Reads an ambient [MediaGalleryCubit] for
-/// [apiary] rather than creating its own — the caller owns providing that
-/// (once, per CLAUDE.md's "avoid duplicate cubit creation" rule), since the
-/// details page already needs one for its photo gallery section too.
+/// first attached photo if [apiary] has any, otherwise [ApiaryPhotoPlaceholder].
+/// Reads an ambient [MediaGalleryCubit] for [apiary] rather than creating its
+/// own — the caller owns providing that (once, per CLAUDE.md's "avoid
+/// duplicate cubit creation" rule), since the details page already needs one
+/// for its photo gallery section too.
 final class ApiaryPreviewImage extends StatelessWidget {
   const ApiaryPreviewImage({
     required this.apiary,
@@ -35,17 +34,12 @@ final class ApiaryPreviewImage extends StatelessWidget {
       );
     }
 
-    return ApiaryMapPhoto(
-      latitude: apiary.lat,
-      longitude: apiary.lon,
-      height: height,
-      fallback: apiary.syncStatus == ApiarySyncStatus.synced
-          ? ApiaryPhotoPlaceholder(height: height)
-          : ApiaryPhotoPlaceholder(
-              height: height,
-              titleKey: 'apiary.offline_photo_placeholder.title',
-              subtitleKey: 'apiary.offline_photo_placeholder.subtitle',
-            ),
-    );
+    return apiary.syncStatus == ApiarySyncStatus.synced
+        ? ApiaryPhotoPlaceholder(height: height)
+        : ApiaryPhotoPlaceholder(
+            height: height,
+            titleKey: 'apiary.offline_photo_placeholder.title',
+            subtitleKey: 'apiary.offline_photo_placeholder.subtitle',
+          );
   }
 }

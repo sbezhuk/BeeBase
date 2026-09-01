@@ -6,7 +6,11 @@ part of '../apiary_form_page.dart';
 /// between "use" and "update" wording depending on whether an address has
 /// already been resolved.
 final class _ApiaryLocationPrimaryAction extends StatelessWidget {
-  const _ApiaryLocationPrimaryAction({required this.label, required this.isLoading, required this.onPressed});
+  const _ApiaryLocationPrimaryAction({
+    required this.label,
+    required this.isLoading,
+    required this.onPressed,
+  });
 
   final String label;
   final bool isLoading;
@@ -34,7 +38,12 @@ final class _ApiaryLocationPrimaryAction extends StatelessWidget {
                         child: SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: colors.brand.primary),
+                          child: CircularProgressIndicator.adaptive(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation(
+                              colors.brand.primary,
+                            ),
+                          ),
                         ),
                       )
                     : Icon(Icons.my_location, color: colors.brand.primary),
@@ -43,7 +52,10 @@ final class _ApiaryLocationPrimaryAction extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: context.textStyles.body.copyWith(fontFamily: AppFont.bold, color: colors.brand.primaryDark),
+                  style: context.textStyles.body.copyWith(
+                    fontFamily: AppFont.bold,
+                    color: colors.brand.primaryDark,
+                  ),
                 ),
               ),
               Icon(Icons.chevron_right, color: colors.brand.primaryDark),

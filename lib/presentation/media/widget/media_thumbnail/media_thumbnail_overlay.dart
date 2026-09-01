@@ -15,7 +15,10 @@ final class _MediaThumbnailOverlay extends StatelessWidget {
       child: const SizedBox(
         width: 24,
         height: 24,
-        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+        child: CircularProgressIndicator.adaptive(
+          strokeWidth: 2.5,
+          valueColor: AlwaysStoppedAnimation(Colors.white),
+        ),
       ),
     );
   }
