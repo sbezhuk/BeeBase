@@ -63,6 +63,7 @@
       "retry": "Retry",
       "loadMoreError": "Couldn't load more apiaries",
       "hivesCount": "{count} hives",
+      "noHives": "No hives",
       "lastVisit": "Last visit {date}",
       "syncPending": "Needs synchronization",
       "syncFailed": "Sync failed"
@@ -77,7 +78,9 @@
       "deleteConfirmTitle": "Delete apiary?",
       "deleteConfirmMessage": "This will permanently remove this apiary. This action cannot be undone.",
       "deleteRequiresConnection": "This apiary is already saved to the server — connect to the internet to delete it.",
-      "manageHives": "Manage Hives"
+      "manageHives": "Manage Hives",
+      "hivesCount": "{count} hives",
+      "noHives": "No hives"
     },
     "form": {
       "createTitle": "New Apiary",

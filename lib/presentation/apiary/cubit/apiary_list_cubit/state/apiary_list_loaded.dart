@@ -7,6 +7,7 @@ final class ApiaryListLoaded extends ApiaryListState {
     this.hasNext = false,
     this.isLoadingNextPage = false,
     this.loadNextPageFailure,
+    this.hiveCounts = const {},
   });
 
   final List<Apiary> apiaries;
@@ -26,6 +27,12 @@ final class ApiaryListLoaded extends ApiaryListState {
   /// page failed to load.
   final Failure? loadNextPageFailure;
 
+  /// Real hive count per apiary id, fetched once alongside the apiary page
+  /// (see `ApiaryListEmitter._fetchFirstPage`) and kept fresh via
+  /// `HiveListRefreshNotifier`. An apiary id missing from this map has no
+  /// hives.
+  final Map<String, int> hiveCounts;
+
   bool get isEmpty => apiaries.isEmpty;
 
   ApiaryListLoaded copyWith({
@@ -35,6 +42,7 @@ final class ApiaryListLoaded extends ApiaryListState {
     bool? isLoadingNextPage,
     Failure? loadNextPageFailure,
     bool clearLoadNextPageFailure = false,
+    Map<String, int>? hiveCounts,
   }) {
     return ApiaryListLoaded(
       apiaries ?? this.apiaries,
@@ -42,7 +50,16 @@ final class ApiaryListLoaded extends ApiaryListState {
       hasNext: hasNext ?? this.hasNext,
       isLoadingNextPage: isLoadingNextPage ?? this.isLoadingNextPage,
       loadNextPageFailure: clearLoadNextPageFailure ? null : (loadNextPageFailure ?? this.loadNextPageFailure),
+      hiveCounts: hiveCounts ?? this.hiveCounts,
     );
+  }
+
+  bool _hiveCountsEqual(Map<String, int> other) {
+    if (other.length != hiveCounts.length) return false;
+    for (final entry in hiveCounts.entries) {
+      if (other[entry.key] != entry.value) return false;
+    }
+    return true;
   }
 
   @override
@@ -52,7 +69,8 @@ final class ApiaryListLoaded extends ApiaryListState {
     if (other.page != page ||
         other.hasNext != hasNext ||
         other.isLoadingNextPage != isLoadingNextPage ||
-        other.loadNextPageFailure != loadNextPageFailure) {
+        other.loadNextPageFailure != loadNextPageFailure ||
+        !_hiveCountsEqual(other.hiveCounts)) {
       return false;
     }
     if (other.apiaries.length != apiaries.length) return false;
@@ -63,5 +81,8 @@ final class ApiaryListLoaded extends ApiaryListState {
   }
 
   @override
-  int get hashCode => Object.hash(Object.hashAll(apiaries), page, hasNext, isLoadingNextPage, loadNextPageFailure);
+  int get hashCode {
+    final hiveCountsHash = hiveCounts.entries.fold<int>(0, (acc, entry) => acc ^ Object.hash(entry.key, entry.value));
+    return Object.hash(Object.hashAll(apiaries), page, hasNext, isLoadingNextPage, loadNextPageFailure, hiveCountsHash);
+  }
 }

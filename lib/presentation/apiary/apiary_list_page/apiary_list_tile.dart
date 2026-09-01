@@ -4,9 +4,10 @@ part of '../apiary_list_page.dart';
 /// photo placeholder (and eventually a real photo) spans the whole width.
 /// Caption info sits below the photo, not overlaid on it.
 final class _ApiaryListTile extends StatelessWidget {
-  const _ApiaryListTile({required this.apiary, super.key});
+  const _ApiaryListTile({required this.apiary, required this.hiveCount, super.key});
 
   final Apiary apiary;
+  final int hiveCount;
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +55,9 @@ final class _ApiaryListTile extends StatelessWidget {
                     Expanded(
                       child: _ApiaryListStat(
                         icon: Icons.hive_outlined,
-                        text: 'apiary.list.hivesCount'.tr(namedArgs: {'count': '${apiary.mockHiveCount}'}),
+                        text: hiveCount > 0
+                            ? 'apiary.list.hivesCount'.tr(namedArgs: {'count': '$hiveCount'})
+                            : 'apiary.list.noHives'.tr(),
                         color: colors.text.secondary,
                       ),
                     ),

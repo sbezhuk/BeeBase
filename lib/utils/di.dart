@@ -250,7 +250,9 @@ Future<void> initDi() async {
   di.registerLazySingleton<ConnectivityCubit>(() => ConnectivityCubit(connectivity: di()));
   di.registerFactory<LoginCubit>(() => LoginCubit(repository: di(), authenticationCubit: di()));
   di.registerFactory<RegisterCubit>(() => RegisterCubit(repository: di(), authenticationCubit: di()));
-  di.registerFactory<ApiaryListCubit>(() => ApiaryListCubit(reader: di(), refreshNotifier: di()));
+  di.registerFactory<ApiaryListCubit>(
+    () => ApiaryListCubit(reader: di(), hiveReader: di(), refreshNotifier: di(), hiveRefreshNotifier: di()),
+  );
   di.registerFactoryParam<ApiaryFormCubit, Apiary?, void>(
     (initial, _) => ApiaryFormCubit(writer: di(), refreshNotifier: di(), locationService: di(), initial: initial),
   );
@@ -258,7 +260,13 @@ Future<void> initDi() async {
     (apiary, _) => ApiaryDeleteCubit(writer: di(), apiary: apiary, refreshNotifier: di()),
   );
   di.registerFactoryParam<ApiaryDetailsCubit, Apiary, void>(
-    (apiary, _) => ApiaryDetailsCubit(apiary: apiary, reader: di(), refreshNotifier: di()),
+    (apiary, _) => ApiaryDetailsCubit(
+      apiary: apiary,
+      reader: di(),
+      hiveReader: di(),
+      refreshNotifier: di(),
+      hiveRefreshNotifier: di(),
+    ),
   );
   di.registerFactoryParam<HiveListCubit, String, void>(
     (apiaryId, _) => HiveListCubit(reader: di(), apiaryId: apiaryId, refreshNotifier: di()),

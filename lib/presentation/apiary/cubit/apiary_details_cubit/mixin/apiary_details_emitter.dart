@@ -5,8 +5,8 @@ mixin ApiaryDetailsEmitter on Cubit<ApiaryDetailsState> {
   // resolving after `close()` was already called (page popped mid-flight),
   // which would otherwise throw "Cannot emit new states after calling
   // close".
-  void emitLoaded(Apiary apiary) {
+  void emitLoaded(Apiary apiary, {int? hiveCount}) {
     if (isClosed) return;
-    emit(ApiaryDetailsLoaded(apiary));
+    emit(ApiaryDetailsLoaded(apiary, hiveCount: hiveCount ?? state.hiveCount));
   }
 }

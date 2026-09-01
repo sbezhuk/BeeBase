@@ -42,7 +42,7 @@ final class ApiaryDetailsPage extends StatefulWidget implements AutoRouteWrapper
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => di.get<ApiaryDeleteCubit>(param1: apiary)),
-        BlocProvider(create: (_) => di.get<ApiaryDetailsCubit>(param1: apiary)),
+        BlocProvider(create: (_) => di.get<ApiaryDetailsCubit>(param1: apiary)..loadHiveCount()),
         BlocProvider(
           create: (_) => di.get<MediaGalleryCubit>(param1: MediaOwnerType.apiary, param2: apiary.id)..load(),
         ),
@@ -76,7 +76,7 @@ final class _ApiaryDetailsPageState extends State<ApiaryDetailsPage> {
               listener: _handleStateChange,
               builder: (context, state) {
                 _isDeleting = state is ApiaryDeleteLoading;
-                return _ApiaryDetailsBody(apiary: apiary, isDeleting: _isDeleting);
+                return _ApiaryDetailsBody(apiary: apiary, isDeleting: _isDeleting, hiveCount: detailsState.hiveCount);
               },
             ),
           ],

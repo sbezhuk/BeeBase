@@ -1,5 +1,4 @@
 import 'package:beebase/presentation/component/font.dart';
-import 'package:beebase/presentation/component/honey_gradient_background.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold_action.dart';
 import 'package:beebase/presentation/widgets/fading_edge_scroll_view/fading_edge_scroll_view.dart';
 import 'package:beebase/utils/extensions/theme_colors.dart';
@@ -158,14 +157,10 @@ final class IosAppScaffold extends StatelessWidget {
     // sits inside MainPage's own scaffold, which reserves that space itself.
     if (showBackButton) body = SafeArea(top: false, child: body);
 
-    return Material(
-      type: MaterialType.transparency,
-      child: Stack(
-        children: [
-          const Positioned.fill(child: HoneyGradientBackground()),
-          body,
-        ],
-      ),
-    );
+    // No background painted here — AppScaffold paints one shared
+    // HoneyGradientBackground behind this widget, full-bleed and unclipped
+    // by its SafeArea, so it stays a single continuous gradient rather than
+    // a second one computed over this widget's own (safe-area-inset) height.
+    return Material(type: MaterialType.transparency, child: body);
   }
 }

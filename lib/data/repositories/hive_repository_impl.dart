@@ -24,6 +24,7 @@ import 'package:beebase/domain/repositories/hive_writer.dart';
 import 'package:beebase/domain/repositories/repository.dart';
 import 'package:beebase/utils/either.dart';
 import 'package:beebase/utils/pagination/page.dart';
+import 'package:beebase/utils/pagination/pagination_defaults.dart';
 
 const _hiveEntityType = 'hive';
 
@@ -110,6 +111,44 @@ final class HiveRepositoryImpl extends Repository implements IHiveReader, IHiveW
   @override
   Future<Either<Failure, Hive>> getHive(String id) {
     return on(() async => (await dataSource.getHive(id)).toEntity());
+  }
+
+  /// Walks every page of the caller's global hive list once (there's no
+  /// count endpoint and no apiary filter, see [getHives]), merging each page
+  /// into the shared cache exactly like [getHives] does, then tallies the
+  /// fully merged result by apiary id.
+  @override
+  Future<Either<Failure, Map<String, int>>> getHiveCounts() async {
+    final pendingOps = await _hiveOperations();
+    if (!await connectivity.isOnline) {
+      return _cachedCountsOrFailure(pendingOps);
+    }
+
+    final result = await on(() async {
+      var page = PaginationDefaults.firstPage;
+      var hasNext = true;
+      var merged = const <HiveResponse>[];
+      while (hasNext) {
+        final paginated = await dataSource.getHives(PageRequest(page: page, limit: PaginationDefaults.defaultLimit));
+        await localDataSource.modify((current) {
+          final oldCache = page <= 1 ? (current ?? const []) : merged;
+          merged = page <= 1
+              ? cacheMerger.mergeFirstPage(paginated.items, oldCache, pendingOps)
+              : cacheMerger.appendPage(paginated.items, oldCache);
+          return merged;
+        });
+        hasNext = paginated.pagination.hasNext;
+        page++;
+      }
+      return merged;
+    });
+
+    return result.fold((failure) async {
+      if (failure is ServerFailure) {
+        return Left(failure);
+      }
+      return _cachedCountsOrFailure(pendingOps);
+    }, (merged) async => Right(_countsByApiary(cacheMerger.toEntities(merged, pendingOps))));
   }
 
   @override
@@ -378,5 +417,25 @@ final class HiveRepositoryImpl extends Repository implements IHiveReader, IHiveW
     }
     final cached = all.where((response) => response.apiaryId == apiaryId).toList();
     return Right(Page(items: cacheMerger.toEntities(cached, pendingOps), hasNext: false));
+  }
+
+  /// Mirrors [_cachedPageOrFailure]'s emptiness rule: a `null` cache means
+  /// hives have never been fetched (so [failure] stands), whereas a
+  /// populated cache tallies to whatever counts it holds — including an
+  /// apiary with none, which is a confirmed zero, not a failure.
+  Future<Either<Failure, Map<String, int>>> _cachedCountsOrFailure(List<OfflineOperation> pendingOps) async {
+    final all = await localDataSource.read();
+    if (all == null) {
+      return const Left(InternalFailure(ErrorTextKey('core.errors.unexpectedNetworkError')));
+    }
+    return Right(_countsByApiary(cacheMerger.toEntities(all, pendingOps)));
+  }
+
+  Map<String, int> _countsByApiary(List<Hive> hives) {
+    final counts = <String, int>{};
+    for (final hive in hives) {
+      counts.update(hive.apiaryId, (value) => value + 1, ifAbsent: () => 1);
+    }
+    return counts;
   }
 }

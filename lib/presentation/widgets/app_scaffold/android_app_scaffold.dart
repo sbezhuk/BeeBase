@@ -1,4 +1,3 @@
-import 'package:beebase/presentation/component/honey_gradient_background.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold_action.dart';
 import 'package:beebase/presentation/widgets/fading_edge_scroll_view/fading_edge_scroll_view.dart';
 import 'package:flutter/material.dart';
@@ -61,16 +60,17 @@ final class AndroidAppScaffold extends StatelessWidget {
     final body = refresh == null
         ? scrollView
         : RefreshIndicator.adaptive(onRefresh: refresh, child: scrollView);
+    // No background painted here — AppScaffold paints one shared
+    // HoneyGradientBackground behind this widget, full-bleed and unclipped
+    // by its SafeArea, so backgroundColor is transparent to let it show
+    // through rather than painting a second gradient over this widget's own
+    // (safe-area-inset) height.
     return Scaffold(
-      body: Stack(
-        children: [
-          const Positioned.fill(child: HoneyGradientBackground()),
-          // The SliverAppBar already accounts for the top status-bar inset
-          // itself (the same as when it sits directly in a Scaffold.body
-          // with no Scaffold.appBar), so only the bottom needs SafeArea here.
-          SafeArea(top: false, child: body),
-        ],
-      ),
+      backgroundColor: Colors.transparent,
+      // The SliverAppBar already accounts for the top status-bar inset
+      // itself (the same as when it sits directly in a Scaffold.body
+      // with no Scaffold.appBar), so only the bottom needs SafeArea here.
+      body: SafeArea(top: false, child: body),
     );
   }
 }

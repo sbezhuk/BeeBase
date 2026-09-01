@@ -311,6 +311,115 @@ void main() {
     });
   });
 
+  group('getHiveCounts', () {
+    final otherApiaryHive = HiveResponse(
+      id: 'hive-99',
+      apiaryId: 'apiary-2',
+      name: 'Foreign Hive',
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
+
+    test('tallies a single page of hives by apiary id', () async {
+      when(
+        () => dataSource.getHives(any(that: _pageRequest(1))),
+      ).thenAnswer((_) async => _paginated([hiveResponse, otherApiaryHive], hasNext: false));
+
+      final result = await repository.getHiveCounts();
+
+      result.fold((_) => fail('expected Right'), (counts) {
+        expect(counts[apiaryId], 1);
+        expect(counts['apiary-2'], 1);
+      });
+    });
+
+    test('walks every page before tallying, since the endpoint has no apiary filter or total', () async {
+      final second = HiveResponse(
+        id: 'hive-2',
+        apiaryId: apiaryId,
+        name: 'Hive 2',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+      when(
+        () => dataSource.getHives(any(that: _pageRequest(1))),
+      ).thenAnswer((_) async => _paginated([hiveResponse], hasNext: true));
+      when(
+        () => dataSource.getHives(any(that: _pageRequest(2))),
+      ).thenAnswer((_) async => _paginated([second, otherApiaryHive], hasNext: false, page: 2));
+
+      final result = await repository.getHiveCounts();
+
+      result.fold((_) => fail('expected Right'), (counts) {
+        expect(counts[apiaryId], 2);
+        expect(counts['apiary-2'], 1);
+      });
+      verify(() => dataSource.getHives(any(that: _pageRequest(1)))).called(1);
+      verify(() => dataSource.getHives(any(that: _pageRequest(2)))).called(1);
+    });
+
+    test('an apiary with no hives is simply absent from the map, not present with a zero', () async {
+      when(
+        () => dataSource.getHives(any(that: _pageRequest(1))),
+      ).thenAnswer((_) async => _paginated([otherApiaryHive], hasNext: false));
+
+      final result = await repository.getHiveCounts();
+
+      result.fold((_) => fail('expected Right'), (counts) => expect(counts.containsKey(apiaryId), isFalse));
+    });
+
+    test('falls back to the cache when a connectivity failure occurs mid-request', () async {
+      when(() => dataSource.getHives(any())).thenThrow(const InternalException(ErrorTextRaw('no connection')));
+      when(() => localDataSource.read()).thenAnswer((_) async => [hiveResponse, otherApiaryHive]);
+
+      final result = await repository.getHiveCounts();
+
+      result.fold((_) => fail('expected Right'), (counts) {
+        expect(counts[apiaryId], 1);
+        expect(counts['apiary-2'], 1);
+      });
+    });
+
+    test('does not fall back to the cache on a real server failure', () async {
+      when(
+        () => dataSource.getHives(any()),
+      ).thenThrow(const ServerException(statusCode: 403, code: 'forbidden', message: 'not allowed'));
+
+      final result = await repository.getHiveCounts();
+
+      expect(result, isA<Left<Failure, dynamic>>());
+    });
+
+    test('reads straight from the cache without calling the network when offline', () async {
+      when(() => connectivity.isOnline).thenAnswer((_) async => false);
+      when(() => localDataSource.read()).thenAnswer((_) async => [hiveResponse]);
+
+      final result = await repository.getHiveCounts();
+
+      result.fold((_) => fail('expected Right'), (counts) => expect(counts[apiaryId], 1));
+      verifyNever(() => dataSource.getHives(any()));
+    });
+
+    test('returns an empty map when offline with a populated cache holding no hives at all', () async {
+      when(() => connectivity.isOnline).thenAnswer((_) async => false);
+      when(() => localDataSource.read()).thenAnswer((_) async => []);
+
+      final result = await repository.getHiveCounts();
+
+      result.fold((_) => fail('expected Right'), (counts) => expect(counts, isEmpty));
+    });
+
+    test('fails when offline with nothing cached at all', () async {
+      when(() => connectivity.isOnline).thenAnswer((_) async => false);
+      when(() => localDataSource.read()).thenAnswer((_) async => null);
+
+      final result = await repository.getHiveCounts();
+
+      expect(result, isA<Left<Failure, dynamic>>());
+      verifyNever(() => dataSource.getHives(any()));
+    });
+  });
+
   group('getHive', () {
     test('returns the mapped hive on success', () async {
       when(() => dataSource.getHive('hive-1')).thenAnswer((_) async => hiveResponse);

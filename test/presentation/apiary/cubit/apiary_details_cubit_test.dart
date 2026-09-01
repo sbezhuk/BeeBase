@@ -1,16 +1,24 @@
+import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/repositories/apiary_reader.dart';
+import 'package:beebase/domain/repositories/hive_reader.dart';
 import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_details_cubit/apiary_details_cubit.dart';
+import 'package:beebase/presentation/hive/hive_list_refresh_notifier.dart';
+import 'package:beebase/utils/either.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockApiaryReader extends Mock implements IApiaryReader {}
 
+class MockHiveReader extends Mock implements IHiveReader {}
+
 void main() {
   late MockApiaryReader reader;
+  late MockHiveReader hiveReader;
   late ApiaryListRefreshNotifier refreshNotifier;
+  late HiveListRefreshNotifier hiveRefreshNotifier;
 
   final apiary = Apiary(
     id: 'apiary-1',
@@ -31,24 +39,37 @@ void main() {
     updatedAt: DateTime(2026),
   );
 
+  ApiaryDetailsCubit buildCubit({Apiary? seed}) {
+    return ApiaryDetailsCubit(
+      apiary: seed ?? apiary,
+      reader: reader,
+      hiveReader: hiveReader,
+      refreshNotifier: refreshNotifier,
+      hiveRefreshNotifier: hiveRefreshNotifier,
+    );
+  }
+
   setUp(() {
     reader = MockApiaryReader();
+    hiveReader = MockHiveReader();
     refreshNotifier = ApiaryListRefreshNotifier();
+    hiveRefreshNotifier = HiveListRefreshNotifier();
   });
 
   test('starts with the Apiary it was seeded with, without reading anything', () {
-    final cubit = ApiaryDetailsCubit(apiary: apiary, reader: reader, refreshNotifier: refreshNotifier);
+    final cubit = buildCubit();
     addTearDown(cubit.close);
 
     expect(cubit.state.apiary, apiary);
     verifyZeroInteractions(reader);
+    verifyZeroInteractions(hiveReader);
   });
 
   blocTest<ApiaryDetailsCubit, ApiaryDetailsState>(
     'picks up a re-resolved address once the refresh notifier fires after a background sync',
     build: () {
       when(() => reader.getCachedApiary('apiary-1')).thenAnswer((_) async => resolved);
-      return ApiaryDetailsCubit(apiary: apiary, reader: reader, refreshNotifier: refreshNotifier);
+      return buildCubit();
     },
     act: (_) => refreshNotifier.notify(),
     expect: () => [ApiaryDetailsLoaded(resolved)],
@@ -58,7 +79,7 @@ void main() {
     'keeps the current state when the cache no longer has this id (nothing to refresh from)',
     build: () {
       when(() => reader.getCachedApiary('apiary-1')).thenAnswer((_) async => null);
-      return ApiaryDetailsCubit(apiary: apiary, reader: reader, refreshNotifier: refreshNotifier);
+      return buildCubit();
     },
     act: (_) => refreshNotifier.notify(),
     expect: () => <ApiaryDetailsState>[],
@@ -66,7 +87,7 @@ void main() {
 
   blocTest<ApiaryDetailsCubit, ApiaryDetailsState>(
     'setApiary applies an edited Apiary immediately, without waiting for the refresh signal',
-    build: () => ApiaryDetailsCubit(apiary: apiary, reader: reader, refreshNotifier: refreshNotifier),
+    build: buildCubit,
     act: (cubit) => cubit.setApiary(resolved),
     expect: () => [ApiaryDetailsLoaded(resolved)],
     verify: (_) => verifyNever(() => reader.getCachedApiary(any())),
@@ -74,12 +95,65 @@ void main() {
 
   test('stops listening to the refresh notifier once closed', () async {
     when(() => reader.getCachedApiary('apiary-1')).thenAnswer((_) async => resolved);
-    final cubit = ApiaryDetailsCubit(apiary: apiary, reader: reader, refreshNotifier: refreshNotifier);
+    final cubit = buildCubit();
 
     await cubit.close();
     refreshNotifier.notify();
     await Future<void>.delayed(Duration.zero);
 
     expect(cubit.state.apiary, apiary);
+  });
+
+  blocTest<ApiaryDetailsCubit, ApiaryDetailsState>(
+    'loadHiveCount emits the real hive count for this apiary',
+    build: () {
+      when(() => hiveReader.getHiveCounts()).thenAnswer((_) async => const Right({'apiary-1': 4}));
+      return buildCubit();
+    },
+    act: (cubit) => cubit.loadHiveCount(),
+    expect: () => [ApiaryDetailsLoaded(apiary, hiveCount: 4)],
+  );
+
+  blocTest<ApiaryDetailsCubit, ApiaryDetailsState>(
+    'loadHiveCount emits zero when this apiary has no hives, rather than leaving the count unset',
+    build: () {
+      when(() => hiveReader.getHiveCounts()).thenAnswer((_) async => const Right({}));
+      return buildCubit();
+    },
+    act: (cubit) => cubit.loadHiveCount(),
+    expect: () => [ApiaryDetailsLoaded(apiary, hiveCount: 0)],
+  );
+
+  blocTest<ApiaryDetailsCubit, ApiaryDetailsState>(
+    'loadHiveCount leaves the state untouched when the fetch fails',
+    build: () {
+      when(
+        () => hiveReader.getHiveCounts(),
+      ).thenAnswer((_) async => Left(ServerFailure(code: 'server_error', message: 'failed')));
+      return buildCubit();
+    },
+    act: (cubit) => cubit.loadHiveCount(),
+    expect: () => <ApiaryDetailsState>[],
+  );
+
+  blocTest<ApiaryDetailsCubit, ApiaryDetailsState>(
+    'refreshes the hive count automatically when hiveRefreshNotifier signals a change, e.g. after adding a hive',
+    build: () {
+      when(() => hiveReader.getHiveCounts()).thenAnswer((_) async => const Right({'apiary-1': 1}));
+      return buildCubit();
+    },
+    act: (_) => hiveRefreshNotifier.notify(),
+    expect: () => [ApiaryDetailsLoaded(apiary, hiveCount: 1)],
+  );
+
+  test('stops listening to the hive refresh notifier once closed', () async {
+    when(() => hiveReader.getHiveCounts()).thenAnswer((_) async => const Right({'apiary-1': 1}));
+    final cubit = buildCubit();
+
+    await cubit.close();
+    hiveRefreshNotifier.notify();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(cubit.state.hiveCount, isNull);
   });
 }

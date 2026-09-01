@@ -1,10 +1,11 @@
 part of '../apiary_details_page.dart';
 
 final class _ApiaryDetailsBody extends StatelessWidget {
-  const _ApiaryDetailsBody({required this.apiary, required this.isDeleting});
+  const _ApiaryDetailsBody({required this.apiary, required this.isDeleting, required this.hiveCount});
 
   final Apiary apiary;
   final bool isDeleting;
+  final int? hiveCount;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +41,7 @@ final class _ApiaryDetailsBody extends StatelessWidget {
                     text: 'apiary.details.addedOn'.tr(namedArgs: {'date': apiary.createdAt.toApiaryDisplayDate()}),
                   ),
                   sectionDivider(),
-                  _ApiaryDetailsHivesLink(apiary: apiary),
+                  _ApiaryDetailsHivesLink(apiary: apiary, hiveCount: hiveCount),
                   sectionDivider(),
                   const MediaGallerySection(),
                   if (hasLocation) ...[

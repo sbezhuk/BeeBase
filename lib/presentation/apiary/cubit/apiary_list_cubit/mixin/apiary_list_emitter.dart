@@ -8,19 +8,30 @@ mixin ApiaryListEmitter on Cubit<ApiaryListState> {
   /// appending stale data onto the fresh one.
   int _generation = 0;
 
-  Future<void> emitLoadApiaries(IApiaryReader reader) async {
+  Future<void> emitLoadApiaries(IApiaryReader reader, IHiveReader hiveReader) async {
     emit(const ApiaryListLoading());
-    await _fetchFirstPage(reader, ++_generation);
+    await _fetchFirstPage(reader, hiveReader, ++_generation);
   }
 
-  Future<void> emitRefreshApiaries(IApiaryReader reader) => _fetchFirstPage(reader, ++_generation);
+  Future<void> emitRefreshApiaries(IApiaryReader reader, IHiveReader hiveReader) =>
+      _fetchFirstPage(reader, hiveReader, ++_generation);
 
-  Future<void> _fetchFirstPage(IApiaryReader reader, int generation) async {
-    final result = await reader.getApiaries(page: PaginationDefaults.firstPage, limit: PaginationDefaults.defaultLimit);
+  Future<void> _fetchFirstPage(IApiaryReader reader, IHiveReader hiveReader, int generation) async {
+    final apiariesResult = await reader.getApiaries(page: PaginationDefaults.firstPage, limit: PaginationDefaults.defaultLimit);
+    final countsResult = await hiveReader.getHiveCounts();
     if (generation != _generation) return;
-    result.fold(
+    apiariesResult.fold(
       (failure) => emit(ApiaryListError(failure)),
-      (page) => emit(ApiaryListLoaded(page.items, page: PaginationDefaults.firstPage, hasNext: page.hasNext)),
+      (page) => emit(
+        ApiaryListLoaded(
+          page.items,
+          page: PaginationDefaults.firstPage,
+          hasNext: page.hasNext,
+          // A hive-count fetch failure degrades to an empty map rather than
+          // blocking the apiary list itself — counts are a secondary stat.
+          hiveCounts: countsResult.fold((_) => const {}, (counts) => counts),
+        ),
+      ),
     );
   }
 
@@ -38,7 +49,7 @@ mixin ApiaryListEmitter on Cubit<ApiaryListState> {
 
     result.fold(
       (failure) => emit(current.copyWith(isLoadingNextPage: false, loadNextPageFailure: failure)),
-      (page) => emit(ApiaryListLoaded(page.items, page: current.page + 1, hasNext: page.hasNext)),
+      (page) => emit(ApiaryListLoaded(page.items, page: current.page + 1, hasNext: page.hasNext, hiveCounts: current.hiveCounts)),
     );
   }
 }

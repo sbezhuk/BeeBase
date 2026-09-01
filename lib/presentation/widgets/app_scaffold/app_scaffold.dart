@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:beebase/presentation/component/honey_gradient_background.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/android_app_scaffold.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold_action.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/ios_app_scaffold.dart';
@@ -59,9 +60,25 @@ final class AppScaffold extends StatelessWidget {
       ),
     };
 
-    return SafeArea(
-      bottom: false,
-      child: AnnotatedRegion<SystemUiOverlayStyle>(value: SystemUiOverlayStyle.dark, child: body),
+    // HoneyGradientBackground is painted once here, full-bleed and
+    // unclipped by SafeArea, so it's computed over the true screen height
+    // and reaches edge-to-edge behind the status bar. IosAppScaffold and
+    // AndroidAppScaffold are transparent passthroughs (no background of
+    // their own) precisely so this single gradient always shows through
+    // — painting a second, independently-sized gradient inside the
+    // SafeArea-inset `body` would produce a visible seam where the two
+    // gradients (computed over different heights) meet. SafeArea only
+    // insets `body`'s interactive content; GlassAppBar/SliverAppBar still
+    // self-account for the top inset internally, which is a no-op once
+    // SafeArea has already consumed it — see their own doc comments.
+    return Stack(
+      children: [
+        const Positioned.fill(child: HoneyGradientBackground()),
+        SafeArea(
+          bottom: false,
+          child: AnnotatedRegion<SystemUiOverlayStyle>(value: SystemUiOverlayStyle.dark, child: body),
+        ),
+      ],
     );
   }
 }

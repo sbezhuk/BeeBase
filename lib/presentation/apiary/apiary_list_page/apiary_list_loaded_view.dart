@@ -29,7 +29,7 @@ final class _ApiaryListLoadedView extends StatelessWidget {
             // stuck on the stale local id forever and never shows a photo
             // that synced under the real one. A `ValueKey` on the id forces
             // a fresh Element (and cubit) exactly when the id changes.
-            return _ApiaryListTile(key: ValueKey(apiary.id), apiary: apiary);
+            return _ApiaryListTile(key: ValueKey(apiary.id), apiary: apiary, hiveCount: state.hiveCounts[apiary.id] ?? 0);
           }
           if (state.isLoadingNextPage) {
             return const Center(child: CircularProgressIndicator.adaptive());

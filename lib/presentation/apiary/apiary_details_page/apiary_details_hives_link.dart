@@ -4,13 +4,18 @@ part of '../apiary_details_page.dart';
 /// reached from, so a hive is never listed/created/edited outside the
 /// context of the apiary the user picked here.
 final class _ApiaryDetailsHivesLink extends StatelessWidget {
-  const _ApiaryDetailsHivesLink({required this.apiary});
+  const _ApiaryDetailsHivesLink({required this.apiary, required this.hiveCount});
 
   final Apiary apiary;
+
+  /// This apiary's real hive count — `null` while the initial fetch is
+  /// still in flight, in which case no count text is shown yet.
+  final int? hiveCount;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final count = hiveCount;
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () => context.router.root.push(
@@ -28,6 +33,15 @@ final class _ApiaryDetailsHivesLink extends StatelessWidget {
                 style: context.textStyles.body,
               ),
             ),
+            if (count != null) ...[
+              Text(
+                count > 0
+                    ? 'apiary.details.hivesCount'.tr(namedArgs: {'count': '$count'})
+                    : 'apiary.details.noHives'.tr(),
+                style: context.textStyles.label.copyWith(color: colors.text.secondary),
+              ),
+              SizedBox(width: context.spacing.xs),
+            ],
             Icon(Icons.chevron_right, color: colors.text.secondary),
           ],
         ),
