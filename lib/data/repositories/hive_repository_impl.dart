@@ -72,7 +72,7 @@ final class HiveRepositoryImpl extends Repository implements IHiveReader, IHiveW
     if (!await connectivity.isOnline) {
       return _cachedPageOrFailure(
         apiaryId,
-        const InternalFailure(ErrorTextKey('core.errors.unexpectedNetworkError')),
+        const InternalFailure(ErrorTextKey('core.errors.unexpected_network_error')),
         pendingOps,
       );
     }
@@ -187,7 +187,7 @@ final class HiveRepositoryImpl extends Repository implements IHiveReader, IHiveW
       return _updateOffline(apiaryId: apiaryId, id: id, name: name, notes: notes);
     }
     if (LocalIdGenerator.isLocal(id)) {
-      return const Left(InternalFailure(ErrorTextKey('hive.errors.pendingSync')));
+      return const Left(InternalFailure(ErrorTextKey('hive.errors.pending_sync')));
     }
     if (!await connectivity.isOnline) {
       return _updateOffline(apiaryId: apiaryId, id: id, name: name, notes: notes);
@@ -215,7 +215,7 @@ final class HiveRepositoryImpl extends Repository implements IHiveReader, IHiveW
       return _deleteLocalOnly(id);
     }
     if (!await connectivity.isOnline) {
-      return const Left(InternalFailure(ErrorTextKey('hive.errors.deleteRequiresConnection')));
+      return const Left(InternalFailure(ErrorTextKey('hive.errors.delete_requires_connection')));
     }
     return _deleteOnline(id);
   }
@@ -419,7 +419,7 @@ final class HiveRepositoryImpl extends Repository implements IHiveReader, IHiveW
   Future<Either<Failure, Map<String, int>>> _cachedCountsOrFailure(List<OfflineOperation> pendingOps) async {
     final all = await localDataSource.read();
     if (all == null) {
-      return const Left(InternalFailure(ErrorTextKey('core.errors.unexpectedNetworkError')));
+      return const Left(InternalFailure(ErrorTextKey('core.errors.unexpected_network_error')));
     }
     return Right(_countsByApiary(cacheMerger.toEntities(all, pendingOps)));
   }

@@ -34,7 +34,7 @@ final class MainPage extends StatelessWidget {
           onDestinationSelected: tabsRouter.setActiveIndex,
           primaryAction: isApiariesTab
               ? BottomNavPrimaryAction(
-                  label: 'apiary.list.addApiary'.tr(),
+                  label: 'apiary.list.add_apiary'.tr(),
                   materialIcon: Icons.add,
                   cupertinoIcon: CupertinoIcons.add,
                   // ApiaryFormRoute is a root-level route, not nested under

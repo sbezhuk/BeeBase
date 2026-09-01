@@ -57,7 +57,7 @@ final class _MediaGalleryPickerSheet extends StatelessWidget {
                   color: colors.brand.primary,
                 ),
                 title: Text(
-                  'media.gallery.takePhoto'.tr(),
+                  'media.gallery.take_photo'.tr(),
                   style: context.textStyles.body,
                 ),
                 onTap: () {
@@ -71,7 +71,7 @@ final class _MediaGalleryPickerSheet extends StatelessWidget {
                   color: colors.brand.primary,
                 ),
                 title: Text(
-                  'media.gallery.chooseFromGallery'.tr(),
+                  'media.gallery.choose_from_gallery'.tr(),
                   style: context.textStyles.body,
                 ),
                 onTap: () {

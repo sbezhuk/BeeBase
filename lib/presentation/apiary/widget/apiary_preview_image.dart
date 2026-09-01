@@ -43,8 +43,8 @@ final class ApiaryPreviewImage extends StatelessWidget {
           ? ApiaryPhotoPlaceholder(height: height)
           : ApiaryPhotoPlaceholder(
               height: height,
-              titleKey: 'apiary.offlinePhotoPlaceholder.title',
-              subtitleKey: 'apiary.offlinePhotoPlaceholder.subtitle',
+              titleKey: 'apiary.offline_photo_placeholder.title',
+              subtitleKey: 'apiary.offline_photo_placeholder.subtitle',
             ),
     );
   }

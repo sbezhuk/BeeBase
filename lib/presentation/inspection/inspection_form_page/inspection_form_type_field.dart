@@ -25,7 +25,7 @@ final class _InspectionFormTypeField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('inspection.form.typeLabel'.tr(), style: context.textStyles.label),
+        Text('inspection.form.type_label'.tr(), style: context.textStyles.label),
         SizedBox(height: context.spacing.xs),
         InkWell(
           borderRadius: BorderRadius.circular(14),

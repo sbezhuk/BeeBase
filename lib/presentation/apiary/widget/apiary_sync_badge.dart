@@ -26,7 +26,7 @@ final class ApiarySyncBadge extends StatelessWidget {
         Icon(isFailed ? Icons.sync_problem : Icons.sync, size: 14, color: color),
         SizedBox(width: context.spacing.xs),
         Text(
-          isFailed ? 'apiary.list.syncFailed'.tr() : 'apiary.list.syncPending'.tr(),
+          isFailed ? 'apiary.list.sync_failed'.tr() : 'apiary.list.sync_pending'.tr(),
           style: context.textStyles.label.copyWith(color: color),
         ),
       ],

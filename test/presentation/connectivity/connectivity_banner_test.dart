@@ -71,7 +71,7 @@ void main() {
 
   // easy_localization has no EasyLocalization ancestor in this test, so
   // `.tr()` falls back to returning the key itself.
-  const backOnlineKey = 'sync.banner.backOnline';
+  const backOnlineKey = 'sync.banner.back_online';
 
   testWidgets('swaps the persistent offline banner for a "back online" confirmation once connectivity returns', (tester) async {
     await pumpBanner(tester);

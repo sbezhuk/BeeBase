@@ -56,7 +56,7 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
   Future<Either<Failure, Page<Apiary>>> getApiaries({required int page, required int limit}) async {
     final pendingOps = await _apiaryOperations();
     if (!await connectivity.isOnline) {
-      return _cachedPageOrFailure(const InternalFailure(ErrorTextKey('core.errors.unexpectedNetworkError')), pendingOps);
+      return _cachedPageOrFailure(const InternalFailure(ErrorTextKey('core.errors.unexpected_network_error')), pendingOps);
     }
 
     final result = await on(() async {
@@ -156,7 +156,7 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
       return _updateOffline(id: id, name: name, description: description, location: location, lat: lat, lon: lon);
     }
     if (LocalIdGenerator.isLocal(id)) {
-      return const Left(InternalFailure(ErrorTextKey('core.errors.pendingSync')));
+      return const Left(InternalFailure(ErrorTextKey('core.errors.pending_sync')));
     }
     if (!await connectivity.isOnline) {
       return _updateOffline(id: id, name: name, description: description, location: location, lat: lat, lon: lon);
@@ -185,7 +185,7 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
       return _deleteLocalOnly(id);
     }
     if (!await connectivity.isOnline) {
-      return const Left(InternalFailure(ErrorTextKey('core.errors.deleteRequiresConnection')));
+      return const Left(InternalFailure(ErrorTextKey('core.errors.delete_requires_connection')));
     }
     return _deleteOnline(id);
   }

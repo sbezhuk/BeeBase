@@ -21,7 +21,7 @@ final class _ApiaryListLoadMoreError extends StatelessWidget {
             SizedBox(width: context.spacing.sm),
             Flexible(
               child: Text(
-                'apiary.list.loadMoreError'.tr(),
+                'apiary.list.load_more_error'.tr(),
                 style: context.textStyles.body.copyWith(color: colors.status.error),
                 textAlign: TextAlign.center,
               ),

@@ -9,7 +9,7 @@ part of '../hive_details_page.dart';
 /// off. A synced hive requires live connectivity — [HiveRepositoryImpl]
 /// enforces this too, but hiding the link here (via [ConnectivityCubit])
 /// avoids the user hitting the confirm sheet just to see it fail, and
-/// explains why via [hive.details.deleteRequiresConnection].
+/// explains why via [hive.details.delete_requires_connection].
 final class _HiveDeleteLink extends StatelessWidget {
   const _HiveDeleteLink({required this.hive, required this.isDeleting});
 
@@ -26,7 +26,7 @@ final class _HiveDeleteLink extends StatelessWidget {
         if (state is ConnectivityOffline) {
           return Center(
             child: Text(
-              'hive.details.deleteRequiresConnection'.tr(),
+              'hive.details.delete_requires_connection'.tr(),
               textAlign: TextAlign.center,
               style: context.textStyles.label.copyWith(
                 color: context.colors.text.secondary,
@@ -67,8 +67,8 @@ final class _HiveDeleteLink extends StatelessWidget {
     final cubit = context.read<HiveDeleteCubit>();
     showConfirmationSheet(
       context: context,
-      title: 'hive.details.deleteConfirmTitle'.tr(),
-      message: 'hive.details.deleteConfirmMessage'.tr(),
+      title: 'hive.details.delete_confirm_title'.tr(),
+      message: 'hive.details.delete_confirm_message'.tr(),
       confirmLabel: 'hive.details.delete'.tr(),
       cancelLabel: 'hive.details.cancel'.tr(),
       icon: Icons.delete_outline,

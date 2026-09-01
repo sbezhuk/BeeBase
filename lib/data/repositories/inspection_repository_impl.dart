@@ -150,7 +150,7 @@ final class InspectionRepositoryImpl extends Repository implements IInspectionRe
       return _updateOffline(hiveId: hiveId, id: id, date: date, type: type, notes: notes);
     }
     if (LocalIdGenerator.isLocal(id)) {
-      return const Left(InternalFailure(ErrorTextKey('inspection.errors.pendingSync')));
+      return const Left(InternalFailure(ErrorTextKey('inspection.errors.pending_sync')));
     }
     if (!await connectivity.isOnline) {
       return _updateOffline(hiveId: hiveId, id: id, date: date, type: type, notes: notes);
@@ -178,7 +178,7 @@ final class InspectionRepositoryImpl extends Repository implements IInspectionRe
       return _deleteLocalOnly(id);
     }
     if (!await connectivity.isOnline) {
-      return const Left(InternalFailure(ErrorTextKey('inspection.errors.deleteRequiresConnection')));
+      return const Left(InternalFailure(ErrorTextKey('inspection.errors.delete_requires_connection')));
     }
     return _deleteOnline(hiveId: hiveId, id: id);
   }

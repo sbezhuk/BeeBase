@@ -23,7 +23,7 @@ final class _HiveDetailsInspectionsLink extends StatelessWidget {
             Icon(Icons.fact_check_outlined, size: 18, color: colors.text.secondary),
             SizedBox(width: context.spacing.xs),
             Expanded(
-              child: Text('hive.details.manageInspections'.tr(), style: context.textStyles.body),
+              child: Text('hive.details.manage_inspections'.tr(), style: context.textStyles.body),
             ),
             Icon(Icons.chevron_right, color: colors.text.secondary),
           ],

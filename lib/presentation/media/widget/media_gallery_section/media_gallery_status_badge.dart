@@ -21,12 +21,12 @@ final class _MediaGalleryStatusBadge extends StatelessWidget {
       case MediaGalleryItemStatus.pending:
       case MediaGalleryItemStatus.staged:
         return Tooltip(
-          message: 'media.gallery.pendingSync'.tr(),
+          message: 'media.gallery.pending_sync'.tr(),
           child: _badge(colors, icon: Icons.sync),
         );
       case MediaGalleryItemStatus.failed:
         return Tooltip(
-          message: 'media.gallery.uploadFailedRetry'.tr(),
+          message: 'media.gallery.upload_failed_retry'.tr(),
           child: GestureDetector(
             onTap: () => context.read<MediaGalleryCubit>().retry(item.localId),
             child: _badge(

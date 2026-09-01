@@ -24,7 +24,7 @@ final class _HiveListLoadMoreError extends StatelessWidget {
             SizedBox(width: context.spacing.sm),
             Flexible(
               child: Text(
-                'hive.list.loadMoreError'.tr(),
+                'hive.list.load_more_error'.tr(),
                 style: context.textStyles.body.copyWith(
                   color: colors.status.error,
                 ),

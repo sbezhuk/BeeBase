@@ -10,7 +10,7 @@ part of '../inspection_details_page.dart';
 /// — [InspectionRepositoryImpl] enforces this too, but hiding the link here
 /// (via [ConnectivityCubit]) avoids the user hitting the confirm sheet just
 /// to see it fail, and explains why via
-/// [inspection.details.deleteRequiresConnection].
+/// [inspection.details.delete_requires_connection].
 final class _InspectionDeleteLink extends StatelessWidget {
   const _InspectionDeleteLink({required this.inspection, required this.isDeleting});
 
@@ -27,7 +27,7 @@ final class _InspectionDeleteLink extends StatelessWidget {
         if (state is ConnectivityOffline) {
           return Center(
             child: Text(
-              'inspection.details.deleteRequiresConnection'.tr(),
+              'inspection.details.delete_requires_connection'.tr(),
               textAlign: TextAlign.center,
               style: context.textStyles.label.copyWith(color: context.colors.text.secondary),
             ),
@@ -64,8 +64,8 @@ final class _InspectionDeleteLink extends StatelessWidget {
     final cubit = context.read<InspectionDeleteCubit>();
     showConfirmationSheet(
       context: context,
-      title: 'inspection.details.deleteConfirmTitle'.tr(),
-      message: 'inspection.details.deleteConfirmMessage'.tr(),
+      title: 'inspection.details.delete_confirm_title'.tr(),
+      message: 'inspection.details.delete_confirm_message'.tr(),
       confirmLabel: 'inspection.details.delete'.tr(),
       cancelLabel: 'inspection.details.cancel'.tr(),
       icon: Icons.delete_outline,

@@ -15,7 +15,7 @@ import 'package:flutter/material.dart';
 /// keeping the same visual identity — never introduce a second placeholder
 /// widget for a different message.
 final class ApiaryPhotoPlaceholder extends StatelessWidget {
-  const ApiaryPhotoPlaceholder({required this.height, this.titleKey = 'apiary.photoPlaceholder', this.subtitleKey, super.key});
+  const ApiaryPhotoPlaceholder({required this.height, this.titleKey = 'apiary.photo_placeholder', this.subtitleKey, super.key});
 
   final double height;
   final String titleKey;

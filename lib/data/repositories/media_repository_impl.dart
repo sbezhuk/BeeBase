@@ -96,7 +96,7 @@ final class MediaRepositoryImpl extends Repository
         ownerType,
         ownerIds,
         const InternalFailure(
-          ErrorTextKey('core.errors.unexpectedNetworkError'),
+          ErrorTextKey('core.errors.unexpected_network_error'),
         ),
         pendingOps,
       );
@@ -260,7 +260,7 @@ final class MediaRepositoryImpl extends Repository
     }
     if (!await connectivity.isOnline) {
       return const Left(
-        InternalFailure(ErrorTextKey('core.errors.deleteRequiresConnection')),
+        InternalFailure(ErrorTextKey('core.errors.delete_requires_connection')),
       );
     }
     return _deleteOnline(id);

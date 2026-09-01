@@ -77,12 +77,12 @@ class DioClient {
       case DioExceptionType.transformTimeout:
       case DioExceptionType.cancel:
       case DioExceptionType.badCertificate:
-        return const CancellationException(ErrorTextKey('core.errors.requestCancelled'));
+        return const CancellationException(ErrorTextKey('core.errors.request_cancelled'));
       case DioExceptionType.badResponse:
         return _handleBadResponse(e);
       case DioExceptionType.connectionError:
       case DioExceptionType.unknown:
-        return const InternalException(ErrorTextKey('core.errors.unexpectedNetworkError'));
+        return const InternalException(ErrorTextKey('core.errors.unexpected_network_error'));
     }
   }
 
@@ -98,6 +98,6 @@ class DioClient {
         // Falls through: the body didn't match the API's error contract.
       }
     }
-    return const InternalException(ErrorTextKey('core.errors.requestFailed'));
+    return const InternalException(ErrorTextKey('core.errors.request_failed'));
   }
 }

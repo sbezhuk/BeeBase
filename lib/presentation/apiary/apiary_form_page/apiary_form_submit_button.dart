@@ -11,7 +11,7 @@ final class _ApiaryFormSubmitButton extends StatelessWidget {
     return BlocBuilder<ApiaryFormCubit, ApiaryFormState>(
       builder: (context, state) {
         return PrimaryButton(
-          label: isEditing ? 'apiary.form.submitUpdate'.tr() : 'apiary.form.submitCreate'.tr(),
+          label: isEditing ? 'apiary.form.submit_update'.tr() : 'apiary.form.submit_create'.tr(),
           isLoading: state is ApiaryFormLoading,
           onPressed: onPressed,
         );

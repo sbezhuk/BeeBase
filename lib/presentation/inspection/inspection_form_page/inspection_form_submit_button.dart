@@ -12,8 +12,8 @@ final class _InspectionFormSubmitButton extends StatelessWidget {
       builder: (context, state) {
         return PrimaryButton(
           label: isEditing
-              ? 'inspection.form.submitUpdate'.tr()
-              : 'inspection.form.submitCreate'.tr(),
+              ? 'inspection.form.submit_update'.tr()
+              : 'inspection.form.submit_create'.tr(),
           isLoading: state is InspectionFormLoading,
           onPressed: onPressed,
         );

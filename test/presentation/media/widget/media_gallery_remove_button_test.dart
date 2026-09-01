@@ -196,7 +196,7 @@ void main() {
       await tester.tap(find.byIcon(Icons.close));
       await tester.pump(const Duration(milliseconds: 300));
 
-      expect(find.text('media.gallery.deleteConfirmTitle'), findsOneWidget);
+      expect(find.text('media.gallery.delete_confirm_title'), findsOneWidget);
       verifyNever(() => writer.removeMedia(any()));
     });
 
@@ -211,7 +211,7 @@ void main() {
       cancelButton.onTap!();
       await tester.pump(const Duration(milliseconds: 300));
 
-      expect(find.text('media.gallery.deleteConfirmTitle'), findsNothing);
+      expect(find.text('media.gallery.delete_confirm_title'), findsNothing);
       verifyNever(() => writer.removeMedia(any()));
     });
   });

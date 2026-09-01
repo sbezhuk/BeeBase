@@ -25,7 +25,7 @@ final class InspectionSyncBadge extends StatelessWidget {
         Icon(isFailed ? Icons.sync_problem : Icons.sync, size: 14, color: color),
         SizedBox(width: context.spacing.xs),
         Text(
-          isFailed ? 'inspection.list.syncFailed'.tr() : 'inspection.list.syncPending'.tr(),
+          isFailed ? 'inspection.list.sync_failed'.tr() : 'inspection.list.sync_pending'.tr(),
           style: context.textStyles.label.copyWith(color: color),
         ),
       ],

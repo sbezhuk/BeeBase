@@ -46,8 +46,8 @@ final class MediaOperationHandler extends Repository implements OperationHandler
   Future<OperationResult> handle(OfflineOperation operation) {
     return switch (operation.operationType) {
       OperationType.create => _handleCreate(operation),
-      OperationType.update => Future.value(OperationPermanentFailure('media.errors.updateNotSupported'.tr())),
-      OperationType.delete => Future.value(OperationPermanentFailure('media.errors.offlineDeleteNotSupported'.tr())),
+      OperationType.update => Future.value(OperationPermanentFailure('media.errors.update_not_supported'.tr())),
+      OperationType.delete => Future.value(OperationPermanentFailure('media.errors.offline_delete_not_supported'.tr())),
     };
   }
 
@@ -55,7 +55,7 @@ final class MediaOperationHandler extends Repository implements OperationHandler
     final request = MediaUploadRequest.fromJson(operation.payload);
     final ownerId = await _resolveOwnerId(request.ownerId, operation.dependsOnOperationId);
     if (ownerId == null) {
-      return OperationRetryableFailure('media.errors.ownerNotSynced'.tr());
+      return OperationRetryableFailure('media.errors.owner_not_synced'.tr());
     }
 
     final result = await on(

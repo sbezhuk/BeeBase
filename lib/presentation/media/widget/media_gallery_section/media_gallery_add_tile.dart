@@ -10,7 +10,7 @@ final class _MediaGalleryAddTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Tooltip(
-      message: 'media.gallery.addPhoto'.tr(),
+      message: 'media.gallery.add_photo'.tr(),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: isLoading ? null : () => _showMediaPickerSheet(context),

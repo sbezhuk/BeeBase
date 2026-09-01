@@ -25,13 +25,13 @@ final class _InspectionListEmptyView extends StatelessWidget {
             ),
             SizedBox(height: context.spacing.lg),
             Text(
-              'inspection.list.emptyTitle'.tr(),
+              'inspection.list.empty_title'.tr(),
               style: context.textStyles.title,
               textAlign: TextAlign.center,
             ),
             SizedBox(height: context.spacing.sm),
             Text(
-              'inspection.list.emptySubtitle'.tr(),
+              'inspection.list.empty_subtitle'.tr(),
               style: context.textStyles.body.copyWith(color: colors.text.secondary),
               textAlign: TextAlign.center,
             ),

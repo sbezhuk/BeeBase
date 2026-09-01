@@ -9,7 +9,7 @@ final class _PasswordField extends StatelessWidget {
 
   String? _validate(String? value) {
     if (value == null || value.length < 8) {
-      return 'authentication.login.validations.passwordTooShort'.tr();
+      return 'authentication.login.validations.password_too_short'.tr();
     }
     return serverError;
   }
@@ -18,8 +18,8 @@ final class _PasswordField extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppTextField(
       controller: controller,
-      label: 'authentication.login.passwordLabel'.tr(),
-      hintText: 'authentication.login.passwordHint'.tr(),
+      label: 'authentication.login.password_label'.tr(),
+      hintText: 'authentication.login.password_hint'.tr(),
       obscureText: true,
       validator: _validate,
       onChanged: onChanged,

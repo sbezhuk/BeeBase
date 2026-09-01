@@ -5,5 +5,5 @@ final class LocationServiceDisabledFailure extends LocationFailure {
   const LocationServiceDisabledFailure();
 
   @override
-  String get messageKey => 'apiary.form.location.errors.serviceDisabled';
+  String get messageKey => 'apiary.form.location.errors.service_disabled';
 }

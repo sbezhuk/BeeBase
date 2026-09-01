@@ -29,13 +29,13 @@ final class _HiveListEmptyView extends StatelessWidget {
             ),
             SizedBox(height: context.spacing.lg),
             Text(
-              'hive.list.emptyTitle'.tr(),
+              'hive.list.empty_title'.tr(),
               style: context.textStyles.title,
               textAlign: TextAlign.center,
             ),
             SizedBox(height: context.spacing.sm),
             Text(
-              'hive.list.emptySubtitle'.tr(),
+              'hive.list.empty_subtitle'.tr(),
               style: context.textStyles.body.copyWith(
                 color: colors.text.secondary,
               ),

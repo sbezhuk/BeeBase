@@ -29,12 +29,12 @@ final class _InspectionFormContent extends StatelessWidget {
         _InspectionFormTypeField(type: selectedType, onSelect: onSelectType),
         SizedBox(height: context.spacing.md),
         AppTextField(
-          label: 'inspection.form.notesLabel'.tr(),
+          label: 'inspection.form.notes_label'.tr(),
           controller: notesController,
-          hintText: 'inspection.form.notesHint'.tr(),
+          hintText: 'inspection.form.notes_hint'.tr(),
           maxLines: 4,
           validator: (value) => (value == null || value.trim().isEmpty)
-              ? 'inspection.form.validations.notesRequired'.tr()
+              ? 'inspection.form.validations.notes_required'.tr()
               : null,
         ),
         SizedBox(height: context.spacing.xl),

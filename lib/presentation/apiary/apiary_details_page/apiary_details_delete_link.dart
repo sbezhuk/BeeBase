@@ -8,7 +8,7 @@ part of '../apiary_details_page.dart';
 /// or off. A synced apiary requires live connectivity — [ApiaryRepositoryImpl]
 /// enforces this too, but hiding the link here (via [ConnectivityCubit])
 /// avoids the user hitting the confirm sheet just to see it fail, and
-/// explains why via [apiary.details.deleteRequiresConnection].
+/// explains why via [apiary.details.delete_requires_connection].
 final class _ApiaryDeleteLink extends StatelessWidget {
   const _ApiaryDeleteLink({required this.apiary, required this.isDeleting});
 
@@ -25,7 +25,7 @@ final class _ApiaryDeleteLink extends StatelessWidget {
         if (state is ConnectivityOffline) {
           return Center(
             child: Text(
-              'apiary.details.deleteRequiresConnection'.tr(),
+              'apiary.details.delete_requires_connection'.tr(),
               textAlign: TextAlign.center,
               style: context.textStyles.label.copyWith(color: context.colors.text.secondary),
             ),
@@ -59,8 +59,8 @@ final class _ApiaryDeleteLink extends StatelessWidget {
     final cubit = context.read<ApiaryDeleteCubit>();
     showConfirmationSheet(
       context: context,
-      title: 'apiary.details.deleteConfirmTitle'.tr(),
-      message: 'apiary.details.deleteConfirmMessage'.tr(),
+      title: 'apiary.details.delete_confirm_title'.tr(),
+      message: 'apiary.details.delete_confirm_message'.tr(),
       confirmLabel: 'apiary.details.delete'.tr(),
       cancelLabel: 'apiary.details.cancel'.tr(),
       icon: Icons.delete_outline,

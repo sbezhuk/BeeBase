@@ -54,7 +54,7 @@ class LocationService {
   /// network call — once connectivity is back and it syncs.
   Future<String> resolveAddress({required double latitude, required double longitude}) async {
     if (!await connectivity.isOnline) {
-      return 'apiary.form.location.offlineAddress'.tr();
+      return 'apiary.form.location.offline_address'.tr();
     }
 
     try {

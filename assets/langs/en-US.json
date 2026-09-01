@@ -3,38 +3,38 @@
     "login": {
       "title": "Welcome Back, Beekeeper",
       "subtitle": "Return to your hive and keep every colony thriving.",
-      "emailLabel": "Email",
-      "emailHint": "Enter email",
-      "passwordLabel": "Password",
-      "passwordHint": "Password",
+      "email_label": "Email",
+      "email_hint": "Enter email",
+      "password_label": "Password",
+      "password_hint": "Password",
       "submit": "Log In",
-      "createAccountPrompt": "Don't have a hive yet? ",
-      "createAccountAction": "Sign Up",
+      "create_account_prompt": "Don't have a hive yet? ",
+      "create_account_action": "Sign Up",
       "validations": {
-        "emailInvalid": "Enter a valid email",
-        "passwordTooShort": "At least 8 characters"
+        "email_invalid": "Enter a valid email",
+        "password_too_short": "At least 8 characters"
       }
     },
     "register": {
       "title": "Start Your Own Hive",
       "subtitle": "Create your beekeeper account in just a few steps.",
-      "emailLabel": "Email",
-      "emailHint": "Enter email",
-      "passwordLabel": "Password",
-      "passwordHint": "Password",
+      "email_label": "Email",
+      "email_hint": "Enter email",
+      "password_label": "Password",
+      "password_hint": "Password",
       "submit": "Sign Up",
-      "haveAccountPrompt": "Already have a hive? ",
-      "haveAccountAction": "Log In",
-      "termsNotice": {
+      "have_account_prompt": "Already have a hive? ",
+      "have_account_action": "Log In",
+      "terms_notice": {
         "prefix": "By creating an account, you agree to our ",
-        "termsAndConditions": "Terms & Conditions",
+        "terms_and_conditions": "Terms & Conditions",
         "and": " and ",
-        "privacyPolicy": "Privacy Policy",
+        "privacy_policy": "Privacy Policy",
         "suffix": "."
       },
       "validations": {
-        "emailInvalid": "Enter a valid email",
-        "passwordTooShort": "At least 8 characters"
+        "email_invalid": "Enter a valid email",
+        "password_too_short": "At least 8 characters"
       }
     }
   },
@@ -50,140 +50,140 @@
     }
   },
   "apiary": {
-    "photoPlaceholder": "Photo coming soon",
-    "offlinePhotoPlaceholder": {
+    "photo_placeholder": "Photo coming soon",
+    "offline_photo_placeholder": {
       "title": "Location preview unavailable offline",
       "subtitle": "Will appear once this apiary is synced"
     },
     "list": {
       "title": "Apiaries",
-      "addApiary": "Add Apiary",
-      "emptyTitle": "No apiaries yet",
-      "emptySubtitle": "Create your first apiary to start tracking your hives.",
+      "add_apiary": "Add Apiary",
+      "empty_title": "No apiaries yet",
+      "empty_subtitle": "Create your first apiary to start tracking your hives.",
       "retry": "Retry",
-      "loadMoreError": "Couldn't load more apiaries",
-      "hivesCount": "{count} hives",
-      "noHives": "No hives",
-      "lastVisit": "Last visit {date}",
-      "syncPending": "Needs synchronization",
-      "syncFailed": "Sync failed"
+      "load_more_error": "Couldn't load more apiaries",
+      "hives_count": "{count} hives",
+      "no_hives": "No hives",
+      "last_visit": "Last visit {date}",
+      "sync_pending": "Needs synchronization",
+      "sync_failed": "Sync failed"
     },
     "details": {
       "title": "Apiary Details",
-      "sectionLabel": "Apiary",
+      "section_label": "Apiary",
       "edit": "Edit",
       "delete": "Delete",
       "cancel": "Cancel",
-      "addedOn": "Added {date}",
-      "deleteConfirmTitle": "Delete apiary?",
-      "deleteConfirmMessage": "This will permanently remove this apiary. This action cannot be undone.",
-      "deleteRequiresConnection": "This apiary is already saved to the server — connect to the internet to delete it.",
-      "manageHives": "Manage Hives",
-      "hivesCount": "{count} hives",
-      "noHives": "No hives"
+      "added_on": "Added {date}",
+      "delete_confirm_title": "Delete apiary?",
+      "delete_confirm_message": "This will permanently remove this apiary. This action cannot be undone.",
+      "delete_requires_connection": "This apiary is already saved to the server — connect to the internet to delete it.",
+      "manage_hives": "Manage Hives",
+      "hives_count": "{count} hives",
+      "no_hives": "No hives"
     },
     "form": {
-      "createTitle": "New Apiary",
-      "editTitle": "Edit Apiary",
-      "nameLabel": "Name",
-      "nameHint": "e.g. Back Garden Apiary",
-      "descriptionLabel": "Description",
-      "descriptionHint": "Add any notes about this apiary",
-      "locationLabel": "Location",
+      "create_title": "New Apiary",
+      "edit_title": "Edit Apiary",
+      "name_label": "Name",
+      "name_hint": "e.g. Back Garden Apiary",
+      "description_label": "Description",
+      "description_hint": "Add any notes about this apiary",
+      "location_label": "Location",
       "location": {
-        "notSet": "Location not yet set.",
-        "optionalHint": "Optional — you can add it anytime later.",
-        "useCurrentLocation": "Use current location",
-        "updateCurrentLocation": "Update current location",
-        "offlineAddress": "Current location (address unavailable while offline)",
+        "not_set": "Location not yet set.",
+        "optional_hint": "Optional — you can add it anytime later.",
+        "use_current_location": "Use current location",
+        "update_current_location": "Update current location",
+        "offline_address": "Current location (address unavailable while offline)",
         "errors": {
-          "serviceDisabled": "Turn on location services to use your current location.",
-          "permissionDenied": "Location permission is required to use your current location.",
+          "service_disabled": "Turn on location services to use your current location.",
+          "permission_denied": "Location permission is required to use your current location.",
           "unavailable": "We couldn't determine your location. Please try again."
         }
       },
-      "submitCreate": "Create Apiary",
-      "submitUpdate": "Save Changes",
+      "submit_create": "Create Apiary",
+      "submit_update": "Save Changes",
       "validations": {
-        "nameRequired": "Apiary name is required"
+        "name_required": "Apiary name is required"
       }
     }
   },
   "hive": {
     "list": {
-      "addHive": "Add Hive",
-      "emptyTitle": "No hives yet",
-      "emptySubtitle": "Add your first hive to start tracking it.",
+      "add_hive": "Add Hive",
+      "empty_title": "No hives yet",
+      "empty_subtitle": "Add your first hive to start tracking it.",
       "retry": "Retry",
-      "loadMoreError": "Couldn't load more hives",
-      "syncPending": "Needs synchronization",
-      "syncFailed": "Sync failed"
+      "load_more_error": "Couldn't load more hives",
+      "sync_pending": "Needs synchronization",
+      "sync_failed": "Sync failed"
     },
     "details": {
-      "sectionLabel": "Hive",
+      "section_label": "Hive",
       "edit": "Edit",
       "delete": "Delete",
       "cancel": "Cancel",
-      "addedOn": "Added {date}",
-      "deleteConfirmTitle": "Delete hive?",
-      "deleteConfirmMessage": "This will permanently remove this hive. This action cannot be undone.",
-      "deleteRequiresConnection": "This hive is already saved to the server — connect to the internet to delete it.",
-      "manageInspections": "Manage Inspections"
+      "added_on": "Added {date}",
+      "delete_confirm_title": "Delete hive?",
+      "delete_confirm_message": "This will permanently remove this hive. This action cannot be undone.",
+      "delete_requires_connection": "This hive is already saved to the server — connect to the internet to delete it.",
+      "manage_inspections": "Manage Inspections"
     },
     "form": {
-      "createTitle": "New Hive",
-      "editTitle": "Edit Hive",
-      "nameLabel": "Name",
-      "nameHint": "e.g. Hive 1",
-      "descriptionLabel": "Description",
-      "descriptionHint": "Add any notes about this hive",
-      "submitCreate": "Create Hive",
-      "submitUpdate": "Save Changes",
+      "create_title": "New Hive",
+      "edit_title": "Edit Hive",
+      "name_label": "Name",
+      "name_hint": "e.g. Hive 1",
+      "description_label": "Description",
+      "description_hint": "Add any notes about this hive",
+      "submit_create": "Create Hive",
+      "submit_update": "Save Changes",
       "validations": {
-        "nameRequired": "Hive name is required"
+        "name_required": "Hive name is required"
       }
     },
     "errors": {
-      "pendingSync": "This hive hasn't finished syncing yet. Try again once it's synced.",
-      "deleteRequiresConnection": "You need an internet connection to delete this hive."
+      "pending_sync": "This hive hasn't finished syncing yet. Try again once it's synced.",
+      "delete_requires_connection": "You need an internet connection to delete this hive."
     }
   },
   "inspection": {
     "list": {
-      "addInspection": "Add Inspection",
-      "emptyTitle": "No inspections yet",
-      "emptySubtitle": "Record your first inspection to start tracking this hive.",
+      "add_inspection": "Add Inspection",
+      "empty_title": "No inspections yet",
+      "empty_subtitle": "Record your first inspection to start tracking this hive.",
       "retry": "Retry",
-      "loadMoreError": "Couldn't load more inspections",
-      "syncPending": "Needs synchronization",
-      "syncFailed": "Sync failed"
+      "load_more_error": "Couldn't load more inspections",
+      "sync_pending": "Needs synchronization",
+      "sync_failed": "Sync failed"
     },
     "details": {
-      "sectionLabel": "Inspection",
+      "section_label": "Inspection",
       "edit": "Edit",
       "delete": "Delete",
       "cancel": "Cancel",
-      "addedOn": "Added {date}",
-      "deleteConfirmTitle": "Delete inspection?",
-      "deleteConfirmMessage": "This will permanently remove this inspection. This action cannot be undone.",
-      "deleteRequiresConnection": "This inspection is already saved to the server — connect to the internet to delete it."
+      "added_on": "Added {date}",
+      "delete_confirm_title": "Delete inspection?",
+      "delete_confirm_message": "This will permanently remove this inspection. This action cannot be undone.",
+      "delete_requires_connection": "This inspection is already saved to the server — connect to the internet to delete it."
     },
     "form": {
-      "createTitle": "New Inspection",
-      "editTitle": "Edit Inspection",
-      "dateLabel": "Date",
-      "notesLabel": "Notes",
-      "notesHint": "Add any notes about this inspection",
+      "create_title": "New Inspection",
+      "edit_title": "Edit Inspection",
+      "date_label": "Date",
+      "notes_label": "Notes",
+      "notes_hint": "Add any notes about this inspection",
       "validations": {
-        "notesRequired": "Notes are required"
+        "notes_required": "Notes are required"
       },
-      "submitCreate": "Create Inspection",
-      "submitUpdate": "Save Changes",
-      "typeLabel": "Type"
+      "submit_create": "Create Inspection",
+      "submit_update": "Save Changes",
+      "type_label": "Type"
     },
     "errors": {
-      "pendingSync": "This inspection hasn't finished syncing yet. Try again once it's synced.",
-      "deleteRequiresConnection": "You need an internet connection to delete this inspection."
+      "pending_sync": "This inspection hasn't finished syncing yet. Try again once it's synced.",
+      "delete_requires_connection": "You need an internet connection to delete this inspection."
     },
     "types": {
       "routine": "Routine",
@@ -197,22 +197,22 @@
   "media": {
     "gallery": {
       "title": "Photos",
-      "addPhoto": "Add photo",
-      "takePhoto": "Take photo",
-      "chooseFromGallery": "Choose from gallery",
+      "add_photo": "Add photo",
+      "take_photo": "Take photo",
+      "choose_from_gallery": "Choose from gallery",
       "remove": "Remove photo",
-      "deleteConfirmTitle": "Delete photo?",
-      "deleteConfirmMessage": "This will permanently remove this photo. This action cannot be undone.",
+      "delete_confirm_title": "Delete photo?",
+      "delete_confirm_message": "This will permanently remove this photo. This action cannot be undone.",
       "delete": "Delete",
       "cancel": "Cancel",
       "uploading": "Uploading…",
-      "pendingSync": "Needs synchronization",
-      "uploadFailedRetry": "Upload failed — tap to retry"
+      "pending_sync": "Needs synchronization",
+      "upload_failed_retry": "Upload failed — tap to retry"
     },
     "errors": {
-      "updateNotSupported": "Media cannot be updated.",
-      "offlineDeleteNotSupported": "Offline delete is not supported yet.",
-      "ownerNotSynced": "The parent apiary/hive has not synced yet."
+      "update_not_supported": "Media cannot be updated.",
+      "offline_delete_not_supported": "Offline delete is not supported yet.",
+      "owner_not_synced": "The parent apiary/hive has not synced yet."
     }
   },
   "profile": {
@@ -222,7 +222,7 @@
       "sync": {
         "title": "Offline data",
         "pending": "There is data to synchronize.",
-        "upToDate": "There is no data to synchronize."
+        "up_to_date": "There is no data to synchronize."
       }
     }
   },
@@ -231,12 +231,12 @@
       "back": "Back"
     },
     "errors": {
-      "requestCancelled": "The request was cancelled. Please try again.",
-      "unexpectedNetworkError": "Something went wrong. Please check your connection and try again.",
-      "requestFailed": "Something went wrong. Please try again.",
-      "noActiveSession": "No active session. Please log in again.",
-      "pendingSync": "This apiary hasn't finished syncing yet. Try again once it's synced.",
-      "deleteRequiresConnection": "You need an internet connection to delete this apiary."
+      "request_cancelled": "The request was cancelled. Please try again.",
+      "unexpected_network_error": "Something went wrong. Please check your connection and try again.",
+      "request_failed": "Something went wrong. Please try again.",
+      "no_active_session": "No active session. Please log in again.",
+      "pending_sync": "This apiary hasn't finished syncing yet. Try again once it's synced.",
+      "delete_requires_connection": "You need an internet connection to delete this apiary."
     },
     "snackbar": {
       "dismiss": "Dismiss"
@@ -248,7 +248,7 @@
       "action": "Sync now",
       "syncing": "Syncing offline data…",
       "offline": "You're offline. Changes will sync once you're back online.",
-      "backOnline": "You're back online."
+      "back_online": "You're back online."
     }
   },
   "server": {

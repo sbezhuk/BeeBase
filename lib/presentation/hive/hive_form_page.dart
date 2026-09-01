@@ -83,7 +83,7 @@ final class _HiveFormPageState extends State<HiveFormPage> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: _isEditing ? 'hive.form.editTitle'.tr() : 'hive.form.createTitle'.tr(),
+      title: _isEditing ? 'hive.form.edit_title'.tr() : 'hive.form.create_title'.tr(),
       fadeEdges: true,
       slivers: [
         BlocListener<HiveFormCubit, HiveFormState>(

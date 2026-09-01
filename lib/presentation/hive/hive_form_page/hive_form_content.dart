@@ -19,16 +19,16 @@ final class _HiveFormContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         AppTextField(
-          label: 'hive.form.nameLabel'.tr(),
+          label: 'hive.form.name_label'.tr(),
           controller: nameController,
-          hintText: 'hive.form.nameHint'.tr(),
-          validator: (value) => (value == null || value.trim().isEmpty) ? 'hive.form.validations.nameRequired'.tr() : null,
+          hintText: 'hive.form.name_hint'.tr(),
+          validator: (value) => (value == null || value.trim().isEmpty) ? 'hive.form.validations.name_required'.tr() : null,
         ),
         SizedBox(height: context.spacing.md),
         AppTextField(
-          label: 'hive.form.descriptionLabel'.tr(),
+          label: 'hive.form.description_label'.tr(),
           controller: descriptionController,
-          hintText: 'hive.form.descriptionHint'.tr(),
+          hintText: 'hive.form.description_hint'.tr(),
           maxLines: 4,
         ),
         SizedBox(height: context.spacing.md),

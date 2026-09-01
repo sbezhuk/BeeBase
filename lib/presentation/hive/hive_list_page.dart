@@ -92,7 +92,7 @@ final class _HiveListPageState extends State<HiveListPage> {
       onRefresh: cubit.refresh,
       fadeEdges: true,
       trailingAction: AppScaffoldAction(
-        label: 'hive.list.addHive'.tr(),
+        label: 'hive.list.add_hive'.tr(),
         materialIcon: Icons.add,
         cupertinoIcon: CupertinoIcons.add,
         onPressed: _createHive,

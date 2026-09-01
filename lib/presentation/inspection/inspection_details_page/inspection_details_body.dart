@@ -30,7 +30,7 @@ final class _InspectionDetailsBody extends StatelessWidget {
             ),
             SizedBox(height: context.spacing.md),
             Text(
-              'inspection.details.sectionLabel'.tr(),
+              'inspection.details.section_label'.tr(),
               style: context.textStyles.label.copyWith(color: colors.honey.muted),
             ),
             SizedBox(height: context.spacing.xs),
@@ -44,14 +44,14 @@ final class _InspectionDetailsBody extends StatelessWidget {
             SizedBox(height: context.spacing.xs),
             _InspectionDetailsDetailRow(
               icon: Icons.calendar_today_outlined,
-              text: 'inspection.details.addedOn'.tr(
+              text: 'inspection.details.added_on'.tr(
                 namedArgs: {'date': inspection.createdAt.toInspectionDisplayDate()},
               ),
             ),
             if (hasNotes) ...[
               sectionDivider(),
               _InspectionDetailsInfoSection(
-                label: 'inspection.form.notesLabel'.tr(),
+                label: 'inspection.form.notes_label'.tr(),
                 child: Text(inspection.notes!, style: context.textStyles.body),
               ),
             ],

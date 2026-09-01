@@ -28,9 +28,9 @@ final class _CreateAccountPromptState extends State<_CreateAccountPrompt> {
       TextSpan(
         style: context.textStyles.authMuted,
         children: [
-          TextSpan(text: 'authentication.login.createAccountPrompt'.tr()),
+          TextSpan(text: 'authentication.login.create_account_prompt'.tr()),
           TextSpan(
-            text: 'authentication.login.createAccountAction'.tr(),
+            text: 'authentication.login.create_account_action'.tr(),
             style: context.textStyles.authLink,
             recognizer: _recognizer,
           ),

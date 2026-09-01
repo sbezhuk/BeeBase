@@ -24,7 +24,7 @@ final class _HiveDetailsBody extends StatelessWidget {
               child: Icon(Icons.hive_outlined, size: 36, color: colors.brand.primary),
             ),
             SizedBox(height: context.spacing.md),
-            Text('hive.details.sectionLabel'.tr(), style: context.textStyles.label.copyWith(color: colors.honey.muted)),
+            Text('hive.details.section_label'.tr(), style: context.textStyles.label.copyWith(color: colors.honey.muted)),
             SizedBox(height: context.spacing.xs),
             Text(hive.name, style: context.textStyles.title),
             if (hive.syncStatus != HiveSyncStatus.synced) ...[
@@ -34,7 +34,7 @@ final class _HiveDetailsBody extends StatelessWidget {
             SizedBox(height: context.spacing.sm),
             _HiveDetailsDetailRow(
               icon: Icons.calendar_today_outlined,
-              text: 'hive.details.addedOn'.tr(namedArgs: {'date': hive.createdAt.toHiveDisplayDate()}),
+              text: 'hive.details.added_on'.tr(namedArgs: {'date': hive.createdAt.toHiveDisplayDate()}),
             ),
             sectionDivider(),
             _HiveDetailsInspectionsLink(hive: hive),
@@ -43,7 +43,7 @@ final class _HiveDetailsBody extends StatelessWidget {
             if (hasDescription) ...[
               sectionDivider(),
               _HiveDetailsInfoSection(
-                label: 'hive.form.descriptionLabel'.tr(),
+                label: 'hive.form.description_label'.tr(),
                 child: Text(hive.notes!, style: context.textStyles.body),
               ),
             ],

@@ -5,5 +5,5 @@ final class LocationPermissionDeniedFailure extends LocationFailure {
   const LocationPermissionDeniedFailure();
 
   @override
-  String get messageKey => 'apiary.form.location.errors.permissionDenied';
+  String get messageKey => 'apiary.form.location.errors.permission_denied';
 }

@@ -70,7 +70,7 @@ final class _ConnectivityBannerState extends State<ConnectivityBanner> {
     AppSnackBar.hide(_tag);
     if (_wasOffline) {
       _wasOffline = false;
-      AppSnackBar.show(context, variant: AppSnackBarVariant.success, message: 'sync.banner.backOnline'.tr());
+      AppSnackBar.show(context, variant: AppSnackBarVariant.success, message: 'sync.banner.back_online'.tr());
     }
   }
 }

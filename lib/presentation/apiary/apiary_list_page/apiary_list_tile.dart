@@ -56,8 +56,8 @@ final class _ApiaryListTile extends StatelessWidget {
                       child: _ApiaryListStat(
                         icon: Icons.hive_outlined,
                         text: hiveCount > 0
-                            ? 'apiary.list.hivesCount'.tr(namedArgs: {'count': '$hiveCount'})
-                            : 'apiary.list.noHives'.tr(),
+                            ? 'apiary.list.hives_count'.tr(namedArgs: {'count': '$hiveCount'})
+                            : 'apiary.list.no_hives'.tr(),
                         color: colors.text.secondary,
                       ),
                     ),
@@ -67,7 +67,7 @@ final class _ApiaryListTile extends StatelessWidget {
                         alignment: Alignment.centerRight,
                         child: _ApiaryListStat(
                           icon: Icons.calendar_today_outlined,
-                          text: 'apiary.list.lastVisit'.tr(namedArgs: {'date': apiary.updatedAt.toApiaryDisplayDate()}),
+                          text: 'apiary.list.last_visit'.tr(namedArgs: {'date': apiary.updatedAt.toApiaryDisplayDate()}),
                           color: colors.text.secondary,
                         ),
                       ),

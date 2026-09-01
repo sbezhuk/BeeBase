@@ -21,7 +21,7 @@ final class _InspectionListLoadMoreError extends StatelessWidget {
             SizedBox(width: context.spacing.sm),
             Flexible(
               child: Text(
-                'inspection.list.loadMoreError'.tr(),
+                'inspection.list.load_more_error'.tr(),
                 style: context.textStyles.body.copyWith(color: colors.status.error),
                 textAlign: TextAlign.center,
               ),

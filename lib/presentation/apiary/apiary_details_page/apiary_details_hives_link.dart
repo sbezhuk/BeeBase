@@ -29,15 +29,15 @@ final class _ApiaryDetailsHivesLink extends StatelessWidget {
             SizedBox(width: context.spacing.xs),
             Expanded(
               child: Text(
-                'apiary.details.manageHives'.tr(),
+                'apiary.details.manage_hives'.tr(),
                 style: context.textStyles.body,
               ),
             ),
             if (count != null) ...[
               Text(
                 count > 0
-                    ? 'apiary.details.hivesCount'.tr(namedArgs: {'count': '$count'})
-                    : 'apiary.details.noHives'.tr(),
+                    ? 'apiary.details.hives_count'.tr(namedArgs: {'count': '$count'})
+                    : 'apiary.details.no_hives'.tr(),
                 style: context.textStyles.label.copyWith(color: colors.text.secondary),
               ),
               SizedBox(width: context.spacing.xs),

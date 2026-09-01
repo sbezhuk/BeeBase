@@ -32,7 +32,7 @@ final class AuthenticationInterceptor extends QueuedInterceptorsWrapper {
     if (token == null) {
       sessionService.notifySessionExpired();
       handler.reject(
-        DioException(requestOptions: options, error: 'core.errors.noActiveSession'.tr(), type: DioExceptionType.cancel),
+        DioException(requestOptions: options, error: 'core.errors.no_active_session'.tr(), type: DioExceptionType.cancel),
       );
       return;
     }

@@ -24,10 +24,10 @@ final class _ApiaryListEmptyView extends StatelessWidget {
               ),
             ),
             SizedBox(height: context.spacing.lg),
-            Text('apiary.list.emptyTitle'.tr(), style: context.textStyles.title, textAlign: TextAlign.center),
+            Text('apiary.list.empty_title'.tr(), style: context.textStyles.title, textAlign: TextAlign.center),
             SizedBox(height: context.spacing.sm),
             Text(
-              'apiary.list.emptySubtitle'.tr(),
+              'apiary.list.empty_subtitle'.tr(),
               style: context.textStyles.body.copyWith(color: colors.text.secondary),
               textAlign: TextAlign.center,
             ),

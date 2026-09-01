@@ -70,8 +70,8 @@ final class _MediaGalleryRemoveButton extends StatelessWidget {
     final cubit = context.read<MediaGalleryCubit>();
     showConfirmationSheet(
       context: context,
-      title: 'media.gallery.deleteConfirmTitle'.tr(),
-      message: 'media.gallery.deleteConfirmMessage'.tr(),
+      title: 'media.gallery.delete_confirm_title'.tr(),
+      message: 'media.gallery.delete_confirm_message'.tr(),
       confirmLabel: 'media.gallery.delete'.tr(),
       cancelLabel: 'media.gallery.cancel'.tr(),
       icon: Icons.delete_outline,

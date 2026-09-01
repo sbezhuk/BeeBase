@@ -28,7 +28,7 @@ final class _ApiaryDetailsBody extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('apiary.details.sectionLabel'.tr(), style: context.textStyles.label.copyWith(color: colors.honey.muted)),
+                  Text('apiary.details.section_label'.tr(), style: context.textStyles.label.copyWith(color: colors.honey.muted)),
                   SizedBox(height: context.spacing.xs),
                   Text(apiary.name, style: context.textStyles.title),
                   if (apiary.syncStatus != ApiarySyncStatus.synced) ...[
@@ -38,7 +38,7 @@ final class _ApiaryDetailsBody extends StatelessWidget {
                   SizedBox(height: context.spacing.sm),
                   _ApiaryDetailsDetailRow(
                     icon: Icons.calendar_today_outlined,
-                    text: 'apiary.details.addedOn'.tr(namedArgs: {'date': apiary.createdAt.toApiaryDisplayDate()}),
+                    text: 'apiary.details.added_on'.tr(namedArgs: {'date': apiary.createdAt.toApiaryDisplayDate()}),
                   ),
                   sectionDivider(),
                   _ApiaryDetailsHivesLink(apiary: apiary, hiveCount: hiveCount),
@@ -47,7 +47,7 @@ final class _ApiaryDetailsBody extends StatelessWidget {
                   if (hasLocation) ...[
                     sectionDivider(),
                     _ApiaryDetailsInfoSection(
-                      label: 'apiary.form.locationLabel'.tr(),
+                      label: 'apiary.form.location_label'.tr(),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -66,7 +66,7 @@ final class _ApiaryDetailsBody extends StatelessWidget {
                   if (hasDescription) ...[
                     sectionDivider(),
                     _ApiaryDetailsInfoSection(
-                      label: 'apiary.form.descriptionLabel'.tr(),
+                      label: 'apiary.form.description_label'.tr(),
                       child: Text(apiary.description!, style: context.textStyles.body),
                     ),
                   ],

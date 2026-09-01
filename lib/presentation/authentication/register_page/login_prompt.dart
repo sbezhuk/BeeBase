@@ -28,9 +28,9 @@ final class _LoginPromptState extends State<_LoginPrompt> {
       TextSpan(
         style: context.textStyles.authMuted,
         children: [
-          TextSpan(text: 'authentication.register.haveAccountPrompt'.tr()),
+          TextSpan(text: 'authentication.register.have_account_prompt'.tr()),
           TextSpan(
-            text: 'authentication.register.haveAccountAction'.tr(),
+            text: 'authentication.register.have_account_action'.tr(),
             style: context.textStyles.authLink,
             recognizer: _recognizer,
           ),

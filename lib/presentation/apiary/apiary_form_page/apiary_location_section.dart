@@ -28,7 +28,7 @@ final class _ApiaryLocationSection extends StatelessWidget {
     final lat = latitude;
     final lon = longitude;
     return ApiarySectionCard(
-      label: 'apiary.form.locationLabel'.tr(),
+      label: 'apiary.form.location_label'.tr(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -43,20 +43,20 @@ final class _ApiaryLocationSection extends StatelessWidget {
             ],
           ] else ...[
             Text(
-              'apiary.form.location.notSet'.tr(),
+              'apiary.form.location.not_set'.tr(),
               style: context.textStyles.body.copyWith(color: colors.text.secondary),
             ),
             SizedBox(height: context.spacing.xs),
             Text(
-              'apiary.form.location.optionalHint'.tr(),
+              'apiary.form.location.optional_hint'.tr(),
               style: context.textStyles.label.copyWith(color: colors.honey.muted),
             ),
           ],
           SizedBox(height: context.spacing.md),
           _ApiaryLocationPrimaryAction(
             label: _hasAddress
-                ? 'apiary.form.location.updateCurrentLocation'.tr()
-                : 'apiary.form.location.useCurrentLocation'.tr(),
+                ? 'apiary.form.location.update_current_location'.tr()
+                : 'apiary.form.location.use_current_location'.tr(),
             isLoading: isFetchingLocation,
             onPressed: onUseCurrentLocation,
           ),

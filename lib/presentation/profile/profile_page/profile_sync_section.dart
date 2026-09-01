@@ -35,7 +35,7 @@ final class _ProfileSyncSection extends StatelessWidget {
                 ),
                 SizedBox(height: context.spacing.xs),
                 Text(
-                  hasPending ? 'profile.page.sync.pending'.tr() : 'profile.page.sync.upToDate'.tr(),
+                  hasPending ? 'profile.page.sync.pending'.tr() : 'profile.page.sync.up_to_date'.tr(),
                   style: context.textStyles.body,
                 ),
                 SizedBox(height: context.spacing.sm),

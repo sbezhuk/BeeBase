@@ -15,8 +15,8 @@ final class _HiveFormSubmitButton extends StatelessWidget {
       builder: (context, state) {
         return PrimaryButton(
           label: isEditing
-              ? 'hive.form.submitUpdate'.tr()
-              : 'hive.form.submitCreate'.tr(),
+              ? 'hive.form.submit_update'.tr()
+              : 'hive.form.submit_create'.tr(),
           isLoading: state is HiveFormLoading,
           onPressed: onPressed,
         );

@@ -98,7 +98,7 @@ final class _InspectionFormPageState extends State<InspectionFormPage> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: _isEditing ? 'inspection.form.editTitle'.tr() : 'inspection.form.createTitle'.tr(),
+      title: _isEditing ? 'inspection.form.edit_title'.tr() : 'inspection.form.create_title'.tr(),
       fadeEdges: true,
       slivers: [
         BlocListener<InspectionFormCubit, InspectionFormState>(

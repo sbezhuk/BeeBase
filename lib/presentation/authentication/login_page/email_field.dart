@@ -9,7 +9,7 @@ final class _EmailField extends StatelessWidget {
 
   String? _validate(String? value) {
     if (value == null || !value.contains('@')) {
-      return 'authentication.login.validations.emailInvalid'.tr();
+      return 'authentication.login.validations.email_invalid'.tr();
     }
     return serverError;
   }
@@ -18,8 +18,8 @@ final class _EmailField extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppTextField(
       controller: controller,
-      label: 'authentication.login.emailLabel'.tr(),
-      hintText: 'authentication.login.emailHint'.tr(),
+      label: 'authentication.login.email_label'.tr(),
+      hintText: 'authentication.login.email_hint'.tr(),
       keyboardType: TextInputType.emailAddress,
       validator: _validate,
       onChanged: onChanged,

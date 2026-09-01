@@ -29,7 +29,7 @@ final class HiveSyncBadge extends StatelessWidget {
         ),
         SizedBox(width: context.spacing.xs),
         Text(
-          isFailed ? 'hive.list.syncFailed'.tr() : 'hive.list.syncPending'.tr(),
+          isFailed ? 'hive.list.sync_failed'.tr() : 'hive.list.sync_pending'.tr(),
           style: context.textStyles.label.copyWith(color: color),
         ),
       ],

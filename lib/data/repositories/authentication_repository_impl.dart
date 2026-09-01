@@ -62,7 +62,7 @@ final class AuthenticationRepositoryImpl extends Repository implements Authentic
   Future<Either<Failure, User>> restoreSession() async {
     final hasSession = await tokenStorage.hasAccessToken();
     if (!hasSession) {
-      return const Left(InternalFailure(ErrorTextKey('core.errors.noActiveSession')));
+      return const Left(InternalFailure(ErrorTextKey('core.errors.no_active_session')));
     }
 
     final result = await getCurrentUser();

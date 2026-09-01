@@ -93,7 +93,7 @@ final class _InspectionListPageState extends State<InspectionListPage> {
       onRefresh: cubit.refresh,
       fadeEdges: true,
       trailingAction: AppScaffoldAction(
-        label: 'inspection.list.addInspection'.tr(),
+        label: 'inspection.list.add_inspection'.tr(),
         materialIcon: Icons.add,
         cupertinoIcon: CupertinoIcons.add,
         onPressed: _createInspection,
