@@ -16,28 +16,18 @@ final class _ApiaryDetailsHivesLink extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final count = hiveCount;
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: () => context.router.root.push(
-        HiveListRoute(apiaryId: apiary.id, apiaryName: apiary.name),
-      ),
+    return GestureDetector(
+      onTap: () => context.router.root.push(HiveListRoute(apiaryId: apiary.id, apiaryName: apiary.name)),
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: context.spacing.xs),
         child: Row(
           children: [
             Icon(Icons.hive_outlined, size: 18, color: colors.text.secondary),
             SizedBox(width: context.spacing.xs),
-            Expanded(
-              child: Text(
-                'apiary.details.manage_hives'.tr(),
-                style: context.textStyles.body,
-              ),
-            ),
+            Expanded(child: Text('apiary.details.manage_hives'.tr(), style: context.textStyles.body)),
             if (count != null) ...[
               Text(
-                count > 0
-                    ? 'apiary.details.hives_count'.tr(namedArgs: {'count': '$count'})
-                    : 'apiary.details.no_hives'.tr(),
+                count > 0 ? 'apiary.details.hives_count'.tr(namedArgs: {'count': '$count'}) : 'apiary.details.no_hives'.tr(),
                 style: context.textStyles.label.copyWith(color: colors.text.secondary),
               ),
               SizedBox(width: context.spacing.xs),

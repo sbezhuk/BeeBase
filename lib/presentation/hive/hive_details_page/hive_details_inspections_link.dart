@@ -12,19 +12,15 @@ final class _HiveDetailsInspectionsLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: () =>
-          context.router.root.push(InspectionListRoute(hiveId: hive.id, hiveName: hive.name)),
+    return GestureDetector(
+      onTap: () => context.router.root.push(InspectionListRoute(hiveId: hive.id, hiveName: hive.name)),
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: context.spacing.xs),
         child: Row(
           children: [
             Icon(Icons.fact_check_outlined, size: 18, color: colors.text.secondary),
             SizedBox(width: context.spacing.xs),
-            Expanded(
-              child: Text('hive.details.manage_inspections'.tr(), style: context.textStyles.body),
-            ),
+            Expanded(child: Text('hive.details.manage_inspections'.tr(), style: context.textStyles.body)),
             Icon(Icons.chevron_right, color: colors.text.secondary),
           ],
         ),
