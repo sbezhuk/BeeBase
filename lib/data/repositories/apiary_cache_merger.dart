@@ -2,6 +2,7 @@ import 'package:beebase/core/offline/offline_operation.dart';
 import 'package:beebase/core/offline/operation_status.dart';
 import 'package:beebase/data/models/apiary_response.dart';
 import 'package:beebase/data/models/extensions/apiary_extension.dart';
+import 'package:beebase/data/repositories/owner_operation_status.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/enum/local/apiary_sync_status.dart';
 
@@ -49,15 +50,15 @@ final class ApiaryCacheMerger {
     return responses.map((response) => response.toEntity().copyWith(syncStatus: _statusFor(response.id, pendingOps))).toList();
   }
 
+  /// Reflects the apiary's own not-yet-synced create/update, if any, and —
+  /// via [combinedOperationStatus] — any not-yet-synced photo attached to it,
+  /// so a photo added while offline marks the tile "needs sync" even when
+  /// nothing about the apiary itself has changed.
   ApiarySyncStatus _statusFor(String id, List<OfflineOperation> pendingOps) {
-    final matches = pendingOps.where((operation) => operation.localEntityId == id);
-    if (matches.isEmpty) {
-      return ApiarySyncStatus.synced;
-    }
-    return switch (matches.last.status) {
+    return switch (combinedOperationStatus(entityId: id, operations: pendingOps)) {
+      null || OperationStatus.synced => ApiarySyncStatus.synced,
       OperationStatus.pending || OperationStatus.inProgress => ApiarySyncStatus.pending,
       OperationStatus.failed => ApiarySyncStatus.failed,
-      OperationStatus.synced => ApiarySyncStatus.synced,
     };
   }
 }

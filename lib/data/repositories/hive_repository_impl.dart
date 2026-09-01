@@ -14,6 +14,7 @@ import 'package:beebase/data/models/hive_request.dart';
 import 'package:beebase/data/models/hive_response.dart';
 import 'package:beebase/data/models/page_request.dart';
 import 'package:beebase/data/repositories/hive_cache_merger.dart';
+import 'package:beebase/data/repositories/owner_operation_status.dart';
 import 'package:beebase/domain/entity/hive.dart';
 import 'package:beebase/domain/enum/local/hive_sync_status.dart';
 import 'package:beebase/domain/repositories/hive_reader.dart';
@@ -232,11 +233,7 @@ final class HiveRepositoryImpl extends Repository implements IHiveReader, IHiveW
   /// so this is treated as a successful delete rather than a failure — see
   /// [on]'s `ignoreStatusCode`.
   Future<Either<Failure, void>> _deleteOnline(String id) async {
-    final result = await on(
-      () => dataSource.deleteHive(id),
-      ignoreStatusCode: 404,
-      onIgnoredStatusCode: () {},
-    );
+    final result = await on(() => dataSource.deleteHive(id), ignoreStatusCode: 404, onIgnoredStatusCode: () {});
 
     return result.fold((failure) async => Left(failure), (_) async {
       await _purgeLocal(id);
@@ -372,8 +369,15 @@ final class HiveRepositoryImpl extends Repository implements IHiveReader, IHiveW
     return Right(updatedResponse!.toEntity().copyWith(syncStatus: HiveSyncStatus.pending));
   }
 
+  /// Includes both this hive's own operations and every queued photo
+  /// (`media`) operation, regardless of owner — [HiveCacheMerger] is the one
+  /// that cross-references a photo operation's owner id against a given hive
+  /// id (see [combinedOperationStatus]), so a photo added offline marks its
+  /// owning hive's tile "needs sync" too.
   Future<List<OfflineOperation>> _hiveOperations() async {
-    return (await operationQueue.all()).where((operation) => operation.entityType == _hiveEntityType).toList();
+    return (await operationQueue.all())
+        .where((operation) => operation.entityType == _hiveEntityType || operation.entityType == mediaOperationEntityType)
+        .toList();
   }
 
   /// The current non-synced operation for [id] (a pending `CREATE` if [id]

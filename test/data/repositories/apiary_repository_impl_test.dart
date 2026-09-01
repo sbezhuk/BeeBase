@@ -437,6 +437,28 @@ void main() {
       expect(result?.syncStatus, ApiarySyncStatus.pending);
     });
 
+    test('reflects a pending sync status when only a photo attached to it is unsynced', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => [apiaryResponse]);
+      when(() => operationQueue.all()).thenAnswer(
+        (_) async => [
+          OfflineOperation(
+            id: 'photo-op-1',
+            entityType: 'media',
+            operationType: OperationType.create,
+            payload: {'owner_id': 'apiary-1'},
+            status: OperationStatus.pending,
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+            localEntityId: 'local-photo-1',
+          ),
+        ],
+      );
+
+      final result = await repository.getCachedApiary('apiary-1');
+
+      expect(result?.syncStatus, ApiarySyncStatus.pending);
+    });
+
     test('returns null when the id is not cached', () async {
       when(() => localDataSource.read()).thenAnswer((_) async => [apiaryResponse]);
 

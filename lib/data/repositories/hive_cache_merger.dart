@@ -2,6 +2,7 @@ import 'package:beebase/core/offline/offline_operation.dart';
 import 'package:beebase/core/offline/operation_status.dart';
 import 'package:beebase/data/models/extensions/hive_extension.dart';
 import 'package:beebase/data/models/hive_response.dart';
+import 'package:beebase/data/repositories/owner_operation_status.dart';
 import 'package:beebase/domain/entity/hive.dart';
 import 'package:beebase/domain/enum/local/hive_sync_status.dart';
 
@@ -27,20 +28,12 @@ final class HiveCacheMerger {
     List<OfflineOperation> pendingOps,
   ) {
     final unsyncedLocalIds = pendingOps
-        .where(
-          (operation) =>
-              operation.status != OperationStatus.synced &&
-              operation.localEntityId != null,
-        )
+        .where((operation) => operation.status != OperationStatus.synced && operation.localEntityId != null)
         .map((operation) => operation.localEntityId)
         .toSet();
     final oldById = {for (final response in oldCache) response.id: response};
-    final serverFiltered = serverPage.where(
-      (response) => !unsyncedLocalIds.contains(response.id),
-    );
-    final stillPending = unsyncedLocalIds
-        .map((id) => oldById[id])
-        .whereType<HiveResponse>();
+    final serverFiltered = serverPage.where((response) => !unsyncedLocalIds.contains(response.id));
+    final stillPending = unsyncedLocalIds.map((id) => oldById[id]).whereType<HiveResponse>();
     return [...serverFiltered, ...stillPending];
   }
 
@@ -49,42 +42,24 @@ final class HiveCacheMerger {
   /// [oldCache] from the page-1 fetch. Dedupes by id defensively: page-offset
   /// pagination over a collection that can change server-side between two
   /// page fetches can otherwise return the same row twice.
-  List<HiveResponse> appendPage(
-    List<HiveResponse> serverPage,
-    List<HiveResponse> oldCache,
-  ) {
+  List<HiveResponse> appendPage(List<HiveResponse> serverPage, List<HiveResponse> oldCache) {
     final existingIds = oldCache.map((response) => response.id).toSet();
-    return [
-      ...oldCache,
-      ...serverPage.where((response) => !existingIds.contains(response.id)),
-    ];
+    return [...oldCache, ...serverPage.where((response) => !existingIds.contains(response.id))];
   }
 
-  List<Hive> toEntities(
-    List<HiveResponse> responses,
-    List<OfflineOperation> pendingOps,
-  ) {
-    return responses
-        .map(
-          (response) => response.toEntity().copyWith(
-            syncStatus: _statusFor(response.id, pendingOps),
-          ),
-        )
-        .toList();
+  List<Hive> toEntities(List<HiveResponse> responses, List<OfflineOperation> pendingOps) {
+    return responses.map((response) => response.toEntity().copyWith(syncStatus: _statusFor(response.id, pendingOps))).toList();
   }
 
+  /// Reflects the hive's own not-yet-synced create/update, if any, and — via
+  /// [combinedOperationStatus] — any not-yet-synced photo attached to it, so
+  /// a photo added while offline marks the tile "needs sync" even when
+  /// nothing about the hive itself has changed.
   HiveSyncStatus _statusFor(String id, List<OfflineOperation> pendingOps) {
-    final matches = pendingOps.where(
-      (operation) => operation.localEntityId == id,
-    );
-    if (matches.isEmpty) {
-      return HiveSyncStatus.synced;
-    }
-    return switch (matches.last.status) {
-      OperationStatus.pending ||
-      OperationStatus.inProgress => HiveSyncStatus.pending,
+    return switch (combinedOperationStatus(entityId: id, operations: pendingOps)) {
+      null || OperationStatus.synced => HiveSyncStatus.synced,
+      OperationStatus.pending || OperationStatus.inProgress => HiveSyncStatus.pending,
       OperationStatus.failed => HiveSyncStatus.failed,
-      OperationStatus.synced => HiveSyncStatus.synced,
     };
   }
 }

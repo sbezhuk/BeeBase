@@ -11,6 +11,7 @@ import 'package:beebase/data/data_source/interface/local_data_source.dart';
 import 'package:beebase/data/data_source/interface/media_data_source.dart';
 import 'package:beebase/data/models/media_response.dart';
 import 'package:beebase/data/models/media_upload_request.dart';
+import 'package:beebase/data/repositories/owner_operation_status.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/domain/repositories/repository.dart';
 import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
@@ -40,7 +41,7 @@ final class MediaOperationHandler extends Repository implements OperationHandler
   final HiveListRefreshNotifier hiveRefreshNotifier;
 
   @override
-  String get entityType => 'media';
+  String get entityType => mediaOperationEntityType;
 
   @override
   Future<OperationResult> handle(OfflineOperation operation) {

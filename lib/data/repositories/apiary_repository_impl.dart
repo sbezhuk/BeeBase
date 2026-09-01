@@ -14,6 +14,7 @@ import 'package:beebase/data/models/apiary_response.dart';
 import 'package:beebase/data/models/extensions/apiary_extension.dart';
 import 'package:beebase/data/models/page_request.dart';
 import 'package:beebase/data/repositories/apiary_cache_merger.dart';
+import 'package:beebase/data/repositories/owner_operation_status.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/enum/local/apiary_sync_status.dart';
 import 'package:beebase/domain/repositories/apiary_reader.dart';
@@ -342,8 +343,15 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
     return Right(updatedResponse!.toEntity().copyWith(syncStatus: ApiarySyncStatus.pending));
   }
 
+  /// Includes both this apiary's own operations and every queued photo
+  /// (`media`) operation, regardless of owner — [ApiaryCacheMerger] is the
+  /// one that cross-references a photo operation's owner id against a given
+  /// apiary id (see [combinedOperationStatus]), so a photo added offline
+  /// marks its owning apiary's tile "needs sync" too.
   Future<List<OfflineOperation>> _apiaryOperations() async {
-    return (await operationQueue.all()).where((operation) => operation.entityType == _apiaryEntityType).toList();
+    return (await operationQueue.all())
+        .where((operation) => operation.entityType == _apiaryEntityType || operation.entityType == mediaOperationEntityType)
+        .toList();
   }
 
   /// The current non-synced operation for [id] (a pending `CREATE` if [id]

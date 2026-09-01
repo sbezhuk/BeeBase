@@ -309,6 +309,31 @@ void main() {
         expect(pending.syncStatus, HiveSyncStatus.pending);
       });
     });
+
+    test('reflects a pending sync status when only a photo attached to the hive is unsynced', () async {
+      when(() => connectivity.isOnline).thenAnswer((_) async => false);
+      when(() => localDataSource.read()).thenAnswer((_) async => [hiveResponse]);
+      when(() => operationQueue.all()).thenAnswer(
+        (_) async => [
+          OfflineOperation(
+            id: 'photo-op-1',
+            entityType: 'media',
+            operationType: OperationType.create,
+            payload: {'owner_id': 'hive-1'},
+            status: OperationStatus.pending,
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+            localEntityId: 'local-photo-1',
+          ),
+        ],
+      );
+
+      final result = await repository.getHives(apiaryId: apiaryId, page: 1, limit: 20);
+
+      result.fold((_) => fail('expected Right'), (page) {
+        expect(page.items.single.syncStatus, HiveSyncStatus.pending);
+      });
+    });
   });
 
   group('getHiveCounts', () {

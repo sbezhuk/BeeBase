@@ -24,10 +24,7 @@ void main() {
     updatedAt: DateTime(2026),
   );
 
-  OfflineOperation pendingOp(
-    String localEntityId, {
-    OperationStatus status = OperationStatus.pending,
-  }) {
+  OfflineOperation pendingOp(String localEntityId, {OperationStatus status = OperationStatus.pending}) {
     return OfflineOperation(
       id: 'op-1',
       entityType: 'hive',
@@ -37,6 +34,19 @@ void main() {
       createdAt: DateTime(2026),
       updatedAt: DateTime(2026),
       localEntityId: localEntityId,
+    );
+  }
+
+  OfflineOperation mediaOp(String ownerId, {String id = 'media-op-1', OperationStatus status = OperationStatus.pending}) {
+    return OfflineOperation(
+      id: id,
+      entityType: 'media',
+      operationType: OperationType.create,
+      payload: {'owner_id': ownerId},
+      status: status,
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+      localEntityId: 'local-photo-$id',
     );
   }
 
@@ -53,18 +63,10 @@ void main() {
       expect(merged.map((response) => response.id), ['hive-1']);
     });
 
-    test(
-      'keeps a not-yet-synced local placeholder alongside the fresh server page',
-      () {
-        final merged = merger.mergeFirstPage([serverItem], [pendingLocal], [
-          pendingOp('local-pending-1'),
-        ]);
-        expect(merged.map((response) => response.id), [
-          'hive-1',
-          'local-pending-1',
-        ]);
-      },
-    );
+    test('keeps a not-yet-synced local placeholder alongside the fresh server page', () {
+      final merged = merger.mergeFirstPage([serverItem], [pendingLocal], [pendingOp('local-pending-1')]);
+      expect(merged.map((response) => response.id), ['hive-1', 'local-pending-1']);
+    });
 
     test('drops a local placeholder once its operation is synced', () {
       final merged = merger.mergeFirstPage([serverItem], [pendingLocal], [
@@ -73,88 +75,88 @@ void main() {
       expect(merged.map((response) => response.id), ['hive-1']);
     });
 
-    test(
-      'a pending UPDATE on a synced id is not duplicated against the stale server copy',
-      () {
-        final editedLocally = HiveResponse(
-          id: 'hive-1',
-          apiaryId: 'apiary-1',
-          name: 'Renamed Locally',
-          createdAt: DateTime(2026),
-          updatedAt: DateTime(2026),
-        );
-        final updateOp = OfflineOperation(
-          id: 'op-2',
-          entityType: 'hive',
-          operationType: OperationType.update,
-          payload: const {},
-          status: OperationStatus.pending,
-          createdAt: DateTime(2026),
-          updatedAt: DateTime(2026),
-          localEntityId: 'hive-1',
-        );
+    test('a pending UPDATE on a synced id is not duplicated against the stale server copy', () {
+      final editedLocally = HiveResponse(
+        id: 'hive-1',
+        apiaryId: 'apiary-1',
+        name: 'Renamed Locally',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+      final updateOp = OfflineOperation(
+        id: 'op-2',
+        entityType: 'hive',
+        operationType: OperationType.update,
+        payload: const {},
+        status: OperationStatus.pending,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+        localEntityId: 'hive-1',
+      );
 
-        final merged = merger.mergeFirstPage([serverItem], [editedLocally], [
-          updateOp,
-        ]);
+      final merged = merger.mergeFirstPage([serverItem], [editedLocally], [updateOp]);
 
-        expect(merged.length, 1);
-        expect(merged.single.name, 'Renamed Locally');
-      },
-    );
+      expect(merged.length, 1);
+      expect(merged.single.name, 'Renamed Locally');
+    });
   });
 
   group('appendPage', () {
-    test(
-      'appends the fresh page after the existing cache, preserving order',
-      () {
-        final second = HiveResponse(
-          id: 'hive-2',
-          apiaryId: 'apiary-1',
-          name: 'Hive 2',
-          createdAt: DateTime(2026),
-          updatedAt: DateTime(2026),
-        );
-        final merged = merger.appendPage([second], [serverItem]);
-        expect(merged.map((response) => response.id), ['hive-1', 'hive-2']);
-      },
-    );
+    test('appends the fresh page after the existing cache, preserving order', () {
+      final second = HiveResponse(
+        id: 'hive-2',
+        apiaryId: 'apiary-1',
+        name: 'Hive 2',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+      final merged = merger.appendPage([second], [serverItem]);
+      expect(merged.map((response) => response.id), ['hive-1', 'hive-2']);
+    });
 
-    test(
-      'dedupes an item that appears in both the old cache and the fresh page',
-      () {
-        final merged = merger.appendPage([serverItem], [serverItem]);
-        expect(merged.map((response) => response.id), ['hive-1']);
-      },
-    );
+    test('dedupes an item that appears in both the old cache and the fresh page', () {
+      final merged = merger.appendPage([serverItem], [serverItem]);
+      expect(merged.map((response) => response.id), ['hive-1']);
+    });
 
-    test(
-      'never re-adds a pending placeholder — it stays wherever it already was in the cache',
-      () {
-        final merged = merger.appendPage([serverItem], [pendingLocal]);
-        expect(merged.map((response) => response.id), [
-          'local-pending-1',
-          'hive-1',
-        ]);
-      },
-    );
+    test('never re-adds a pending placeholder — it stays wherever it already was in the cache', () {
+      final merged = merger.appendPage([serverItem], [pendingLocal]);
+      expect(merged.map((response) => response.id), ['local-pending-1', 'hive-1']);
+    });
   });
 
   group('toEntities', () {
-    test(
-      'tags a pending id as HiveSyncStatus.pending and everything else as synced',
-      () {
-        final entities = merger.toEntities(
-          [serverItem, pendingLocal],
-          [pendingOp('local-pending-1')],
-        );
-        final synced = entities.firstWhere((hive) => hive.id == 'hive-1');
-        final pending = entities.firstWhere(
-          (hive) => hive.id == 'local-pending-1',
-        );
-        expect(synced.syncStatus, HiveSyncStatus.synced);
-        expect(pending.syncStatus, HiveSyncStatus.pending);
-      },
-    );
+    test('tags a pending id as HiveSyncStatus.pending and everything else as synced', () {
+      final entities = merger.toEntities([serverItem, pendingLocal], [pendingOp('local-pending-1')]);
+      final synced = entities.firstWhere((hive) => hive.id == 'hive-1');
+      final pending = entities.firstWhere((hive) => hive.id == 'local-pending-1');
+      expect(synced.syncStatus, HiveSyncStatus.synced);
+      expect(pending.syncStatus, HiveSyncStatus.pending);
+    });
+
+    test('tags a hive as pending when only a photo attached to it is unsynced, no hive op at all', () {
+      final entities = merger.toEntities([serverItem], [mediaOp('hive-1')]);
+      expect(entities.single.syncStatus, HiveSyncStatus.pending);
+    });
+
+    test('tags a hive as failed when a photo attached to it failed to sync', () {
+      final entities = merger.toEntities([serverItem], [mediaOp('hive-1', status: OperationStatus.failed)]);
+      expect(entities.single.syncStatus, HiveSyncStatus.failed);
+    });
+
+    test('leaves a hive synced once its photo operation itself is synced', () {
+      final entities = merger.toEntities([serverItem], [mediaOp('hive-1', status: OperationStatus.synced)]);
+      expect(entities.single.syncStatus, HiveSyncStatus.synced);
+    });
+
+    test('a photo queued for a different hive does not mark this one as pending', () {
+      final entities = merger.toEntities([serverItem], [mediaOp('some-other-hive')]);
+      expect(entities.single.syncStatus, HiveSyncStatus.synced);
+    });
+
+    test('a hive with its own synced create but an unsynced photo still shows pending', () {
+      final entities = merger.toEntities([serverItem], [pendingOp('hive-1', status: OperationStatus.synced), mediaOp('hive-1')]);
+      expect(entities.single.syncStatus, HiveSyncStatus.pending);
+    });
   });
 }

@@ -18,6 +18,7 @@ import 'package:beebase/data/models/media_response.dart';
 import 'package:beebase/data/models/media_upload_request.dart';
 import 'package:beebase/data/models/page_request.dart';
 import 'package:beebase/data/repositories/media_cache_merger.dart';
+import 'package:beebase/data/repositories/owner_operation_status.dart';
 import 'package:beebase/domain/entity/media_attachment.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/domain/enum/local/media_sync_status.dart';
@@ -27,16 +28,13 @@ import 'package:beebase/domain/repositories/repository.dart';
 import 'package:beebase/utils/either.dart';
 import 'package:beebase/utils/pagination/page.dart';
 
-const _mediaEntityType = 'media';
-
 /// Cache key both this repository and its DI registration of
 /// `LocalDataSource<List<MediaResponse>>` agree on. One global cache holds
 /// media across every owner — see [MediaCacheMerger]/[getMedia] for how
 /// reads are filtered back down to a single `(ownerType, ownerId)`.
 const mediaCacheKey = 'cached_media';
 
-final class MediaRepositoryImpl extends Repository
-    implements IMediaReader, IMediaWriter {
+final class MediaRepositoryImpl extends Repository implements IMediaReader, IMediaWriter {
   MediaRepositoryImpl({
     required this.dataSource,
     required this.localDataSource,
@@ -81,9 +79,7 @@ final class MediaRepositoryImpl extends Repository
     required int limit,
   }) async {
     final pendingOps = await _mediaOperations();
-    final resolvedOwnerId = LocalIdGenerator.isLocal(ownerId)
-        ? await _resolvedOwnerIdIfSynced(ownerType, ownerId)
-        : null;
+    final resolvedOwnerId = LocalIdGenerator.isLocal(ownerId) ? await _resolvedOwnerIdIfSynced(ownerType, ownerId) : null;
     final effectiveOwnerId = resolvedOwnerId ?? ownerId;
     final ownerIds = {ownerId, ?resolvedOwnerId};
 
@@ -95,9 +91,7 @@ final class MediaRepositoryImpl extends Repository
       return _cachedPageOrFailure(
         ownerType,
         ownerIds,
-        const InternalFailure(
-          ErrorTextKey('core.errors.unexpected_network_error'),
-        ),
+        const InternalFailure(ErrorTextKey('core.errors.unexpected_network_error')),
         pendingOps,
       );
     }
@@ -135,18 +129,9 @@ final class MediaRepositoryImpl extends Repository
       (data) async {
         final (merged, hasNext) = data;
         final forOwner = merged
-            .where(
-              (response) =>
-                  response.ownerType == ownerType &&
-                  ownerIds.contains(response.ownerId),
-            )
+            .where((response) => response.ownerType == ownerType && ownerIds.contains(response.ownerId))
             .toList();
-        return Right(
-          Page(
-            items: cacheMerger.toEntities(forOwner, pendingOps),
-            hasNext: hasNext,
-          ),
-        );
+        return Right(Page(items: cacheMerger.toEntities(forOwner, pendingOps), hasNext: hasNext));
       },
     );
   }
@@ -162,10 +147,7 @@ final class MediaRepositoryImpl extends Repository
       final list = current ?? const <MediaResponse>[];
       return [
         for (final response in list)
-          if (response.id == id)
-            response.copyWith(localFilePath: localFilePath)
-          else
-            response,
+          if (response.id == id) response.copyWith(localFilePath: localFilePath) else response,
       ];
     });
   }
@@ -189,13 +171,10 @@ final class MediaRepositoryImpl extends Repository
     required String contentType,
     void Function(double progress)? onProgress,
   }) async {
-    final resolvedOwnerId = LocalIdGenerator.isLocal(ownerId)
-        ? await _resolvedOwnerIdIfSynced(ownerType, ownerId)
-        : null;
+    final resolvedOwnerId = LocalIdGenerator.isLocal(ownerId) ? await _resolvedOwnerIdIfSynced(ownerType, ownerId) : null;
     final effectiveOwnerId = resolvedOwnerId ?? ownerId;
 
-    if (!await connectivity.isOnline ||
-        LocalIdGenerator.isLocal(effectiveOwnerId)) {
+    if (!await connectivity.isOnline || LocalIdGenerator.isLocal(effectiveOwnerId)) {
       return _attachOffline(
         ownerType: ownerType,
         ownerId: ownerId,
@@ -212,9 +191,7 @@ final class MediaRepositoryImpl extends Repository
         filePath: localFilePath,
         originalFilename: originalFilename,
         contentType: contentType,
-        onSendProgress: onProgress == null
-            ? null
-            : (sent, total) => onProgress(total <= 0 ? 0 : sent / total),
+        onSendProgress: onProgress == null ? null : (sent, total) => onProgress(total <= 0 ? 0 : sent / total),
       );
       final withLocalCopy = MediaResponse(
         id: response.id,
@@ -227,9 +204,7 @@ final class MediaRepositoryImpl extends Repository
         updatedAt: response.updatedAt,
         localFilePath: localFilePath,
       );
-      await localDataSource.modify(
-        (current) => [...(current ?? const []), withLocalCopy],
-      );
+      await localDataSource.modify((current) => [...(current ?? const []), withLocalCopy]);
       return withLocalCopy;
     });
 
@@ -259,9 +234,7 @@ final class MediaRepositoryImpl extends Repository
       return _deleteLocalOnly(id);
     }
     if (!await connectivity.isOnline) {
-      return const Left(
-        InternalFailure(ErrorTextKey('core.errors.delete_requires_connection')),
-      );
+      return const Left(InternalFailure(ErrorTextKey('core.errors.delete_requires_connection')));
     }
     return _deleteOnline(id);
   }
@@ -275,11 +248,7 @@ final class MediaRepositoryImpl extends Repository
   /// as an already-completed delete, matching `ApiaryRepositoryImpl`'s policy
   /// for the same case. See [on]'s `ignoreStatusCode`.
   Future<Either<Failure, void>> _deleteOnline(String id) async {
-    final result = await on(
-      () => dataSource.deleteMedia(id),
-      ignoreStatusCode: 404,
-      onIgnoredStatusCode: () {},
-    );
+    final result = await on(() => dataSource.deleteMedia(id), ignoreStatusCode: 404, onIgnoredStatusCode: () {});
 
     return result.fold((failure) async => Left(failure), (_) async {
       await _purgeLocal(id);
@@ -347,12 +316,10 @@ final class MediaRepositoryImpl extends Repository
       cacheKey: mediaCacheKey,
       mutate: (current) => [...(current ?? const []), placeholder],
       toJson: (list) => list.map((response) => response.toJson()).toList(),
-      fromJson: (json) => (json as List<dynamic>)
-          .map((item) => MediaResponse.fromJson(item as Map<String, dynamic>))
-          .toList(),
+      fromJson: (json) => (json as List<dynamic>).map((item) => MediaResponse.fromJson(item as Map<String, dynamic>)).toList(),
       operation: OfflineOperation(
         id: LocalIdGenerator.generate(),
-        entityType: _mediaEntityType,
+        entityType: mediaOperationEntityType,
         operationType: OperationType.create,
         payload: MediaUploadRequest(
           ownerType: ownerType,
@@ -369,22 +336,15 @@ final class MediaRepositoryImpl extends Repository
         dependsOnOperationId: dependsOnOperationId,
       ),
     );
-    return Right(
-      placeholder.toEntity().copyWith(syncStatus: MediaSyncStatus.pending),
-    );
+    return Right(placeholder.toEntity().copyWith(syncStatus: MediaSyncStatus.pending));
   }
 
   /// The apiary/hive `create` operation for the owner identified by the
   /// local id [ownerId] — synced or not, `null` if none is found. Both
   /// [_pendingOwnerCreateOperationId] and [_resolvedOwnerIdIfSynced] are
   /// just different projections of this same lookup.
-  Future<OfflineOperation?> _ownerCreateOperation(
-    MediaOwnerType ownerType,
-    String ownerId,
-  ) async {
-    final expectedEntityType = ownerType == MediaOwnerType.apiary
-        ? 'apiary'
-        : 'hive';
+  Future<OfflineOperation?> _ownerCreateOperation(MediaOwnerType ownerType, String ownerId) async {
+    final expectedEntityType = ownerType == MediaOwnerType.apiary ? 'apiary' : 'hive';
     final operations = await operationQueue.all();
     for (final operation in operations) {
       if (operation.entityType == expectedEntityType &&
@@ -401,10 +361,7 @@ final class MediaRepositoryImpl extends Repository
   /// [ownerId] — `null` if none is found. Generalizes
   /// `HiveRepositoryImpl._pendingApiaryCreateOperationId` to either owner
   /// entity type.
-  Future<String?> _pendingOwnerCreateOperationId(
-    MediaOwnerType ownerType,
-    String ownerId,
-  ) async {
+  Future<String?> _pendingOwnerCreateOperationId(MediaOwnerType ownerType, String ownerId) async {
     return (await _ownerCreateOperation(ownerType, ownerId))?.id;
   }
 
@@ -415,27 +372,18 @@ final class MediaRepositoryImpl extends Repository
   /// bound once at construction time, never rebuilt just because its owner
   /// synced) transparently starts talking to the server under the right id
   /// the moment that id exists, without needing to know it changed.
-  Future<String?> _resolvedOwnerIdIfSynced(
-    MediaOwnerType ownerType,
-    String ownerId,
-  ) async {
+  Future<String?> _resolvedOwnerIdIfSynced(MediaOwnerType ownerType, String ownerId) async {
     final operation = await _ownerCreateOperation(ownerType, ownerId);
-    return operation?.status == OperationStatus.synced
-        ? operation?.resolvedEntityId
-        : null;
+    return operation?.status == OperationStatus.synced ? operation?.resolvedEntityId : null;
   }
 
   Future<List<OfflineOperation>> _mediaOperations() async {
-    return (await operationQueue.all())
-        .where((operation) => operation.entityType == _mediaEntityType)
-        .toList();
+    return (await operationQueue.all()).where((operation) => operation.entityType == mediaOperationEntityType).toList();
   }
 
   Future<OfflineOperation?> _pendingOperationFor(String id) async {
     final matches = (await _mediaOperations()).where(
-      (operation) =>
-          operation.localEntityId == id &&
-          operation.status != OperationStatus.synced,
+      (operation) => operation.localEntityId == id && operation.status != OperationStatus.synced,
     );
     if (matches.isEmpty) {
       return null;
@@ -453,9 +401,7 @@ final class MediaRepositoryImpl extends Repository
     if (cached.isEmpty) {
       return Left(failure);
     }
-    return Right(
-      Page(items: cacheMerger.toEntities(cached, pendingOps), hasNext: false),
-    );
+    return Right(Page(items: cacheMerger.toEntities(cached, pendingOps), hasNext: false));
   }
 
   /// Same cache lookup as [_cachedPageOrFailure], but for an owner that is
@@ -469,21 +415,12 @@ final class MediaRepositoryImpl extends Repository
     List<OfflineOperation> pendingOps,
   ) async {
     final cached = await _cachedFor(ownerType, ownerIds);
-    return Right(
-      Page(items: cacheMerger.toEntities(cached, pendingOps), hasNext: false),
-    );
+    return Right(Page(items: cacheMerger.toEntities(cached, pendingOps), hasNext: false));
   }
 
-  Future<List<MediaResponse>> _cachedFor(
-    MediaOwnerType ownerType,
-    Set<String> ownerIds,
-  ) async {
+  Future<List<MediaResponse>> _cachedFor(MediaOwnerType ownerType, Set<String> ownerIds) async {
     return ((await localDataSource.read()) ?? const [])
-        .where(
-          (response) =>
-              response.ownerType == ownerType &&
-              ownerIds.contains(response.ownerId),
-        )
+        .where((response) => response.ownerType == ownerType && ownerIds.contains(response.ownerId))
         .toList();
   }
 }

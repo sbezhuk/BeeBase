@@ -30,6 +30,19 @@ void main() {
     );
   }
 
+  OfflineOperation mediaOp(String ownerId, {String id = 'media-op-1', OperationStatus status = OperationStatus.pending}) {
+    return OfflineOperation(
+      id: id,
+      entityType: 'media',
+      operationType: OperationType.create,
+      payload: {'owner_id': ownerId},
+      status: status,
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+      localEntityId: 'local-photo-$id',
+    );
+  }
+
   group('mergeFirstPage', () {
     test('replaces the old cache with the fresh server page', () {
       final stale = ApiaryResponse(id: 'stale', name: 'Stale', createdAt: DateTime(2026), updatedAt: DateTime(2026));
@@ -50,7 +63,12 @@ void main() {
     });
 
     test('a pending UPDATE on a synced id is not duplicated against the stale server copy', () {
-      final editedLocally = ApiaryResponse(id: 'apiary-1', name: 'Renamed Locally', createdAt: DateTime(2026), updatedAt: DateTime(2026));
+      final editedLocally = ApiaryResponse(
+        id: 'apiary-1',
+        name: 'Renamed Locally',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
       final updateOp = OfflineOperation(
         id: 'op-2',
         entityType: 'apiary',
@@ -94,6 +112,34 @@ void main() {
       final pending = entities.firstWhere((apiary) => apiary.id == 'local-pending-1');
       expect(synced.syncStatus, ApiarySyncStatus.synced);
       expect(pending.syncStatus, ApiarySyncStatus.pending);
+    });
+
+    test('tags an apiary as pending when only a photo attached to it is unsynced, no apiary op at all', () {
+      final entities = merger.toEntities([serverItem], [mediaOp('apiary-1')]);
+      expect(entities.single.syncStatus, ApiarySyncStatus.pending);
+    });
+
+    test('tags an apiary as failed when a photo attached to it failed to sync', () {
+      final entities = merger.toEntities([serverItem], [mediaOp('apiary-1', status: OperationStatus.failed)]);
+      expect(entities.single.syncStatus, ApiarySyncStatus.failed);
+    });
+
+    test('leaves an apiary synced once its photo operation itself is synced', () {
+      final entities = merger.toEntities([serverItem], [mediaOp('apiary-1', status: OperationStatus.synced)]);
+      expect(entities.single.syncStatus, ApiarySyncStatus.synced);
+    });
+
+    test('a photo queued for a different apiary does not mark this one as pending', () {
+      final entities = merger.toEntities([serverItem], [mediaOp('some-other-apiary')]);
+      expect(entities.single.syncStatus, ApiarySyncStatus.synced);
+    });
+
+    test('an apiary with its own synced create but an unsynced photo still shows pending', () {
+      final entities = merger.toEntities(
+        [serverItem],
+        [pendingOp('apiary-1', status: OperationStatus.synced), mediaOp('apiary-1')],
+      );
+      expect(entities.single.syncStatus, ApiarySyncStatus.pending);
     });
   });
 }
