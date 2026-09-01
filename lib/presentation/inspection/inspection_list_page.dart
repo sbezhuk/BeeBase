@@ -9,6 +9,7 @@ import 'package:beebase/presentation/inspection/widget/inspection_sync_badge.dar
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold_action.dart';
+import 'package:beebase/presentation/widgets/loading_overlay/loading_overlay.dart';
 import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
@@ -88,17 +89,25 @@ final class _InspectionListPageState extends State<InspectionListPage> {
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<InspectionListCubit>();
-    return AppScaffold(
-      title: widget.hiveName,
-      onRefresh: cubit.refresh,
-      fadeEdges: true,
-      trailingAction: AppScaffoldAction(
-        label: 'inspection.list.add_inspection'.tr(),
-        materialIcon: Icons.add,
-        cupertinoIcon: CupertinoIcons.add,
-        onPressed: _createInspection,
-      ),
-      slivers: const [_InspectionListBody()],
+    return BlocSelector<InspectionListCubit, InspectionListState, bool>(
+      selector: (state) => state is InspectionListLoading || (state is InspectionListLoaded && state.isRefreshing),
+      builder: (context, isLoading) {
+        return LoadingOverlay(
+          isLoading: isLoading,
+          child: AppScaffold(
+            title: widget.hiveName,
+            onRefresh: cubit.refresh,
+            fadeEdges: true,
+            trailingAction: AppScaffoldAction(
+              label: 'inspection.list.add_inspection'.tr(),
+              materialIcon: Icons.add,
+              cupertinoIcon: CupertinoIcons.add,
+              onPressed: _createInspection,
+            ),
+            slivers: const [_InspectionListBody()],
+          ),
+        );
+      },
     );
   }
 }

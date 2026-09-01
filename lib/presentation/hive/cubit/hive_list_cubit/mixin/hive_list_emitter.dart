@@ -13,8 +13,11 @@ mixin HiveListEmitter on Cubit<HiveListState> {
     await _fetchFirstPage(reader, apiaryId, ++_generation);
   }
 
-  Future<void> emitRefreshHives(IHiveReader reader, String apiaryId) =>
-      _fetchFirstPage(reader, apiaryId, ++_generation);
+  Future<void> emitRefreshHives(IHiveReader reader, String apiaryId) {
+    final current = state;
+    if (current is HiveListLoaded) emit(current.copyWith(isRefreshing: true));
+    return _fetchFirstPage(reader, apiaryId, ++_generation);
+  }
 
   Future<void> _fetchFirstPage(
     IHiveReader reader,

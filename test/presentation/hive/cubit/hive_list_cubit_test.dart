@@ -111,6 +111,34 @@ void main() {
   );
 
   blocTest<HiveListCubit, HiveListState>(
+    'refresh from an already-loaded list marks isRefreshing true while in flight, then false once resolved',
+    build: () {
+      when(
+        () => reader.getHives(
+          apiaryId: apiaryId,
+          page: any(named: 'page'),
+          limit: any(named: 'limit'),
+        ),
+      ).thenAnswer((_) async => Right(Page(items: [hive], hasNext: false)));
+      return HiveListCubit(
+        reader: reader,
+        apiaryId: apiaryId,
+        refreshNotifier: refreshNotifier,
+      );
+    },
+    act: (cubit) async {
+      await cubit.loadHives();
+      await cubit.refresh();
+    },
+    expect: () => [
+      const HiveListLoading(),
+      HiveListLoaded([hive], page: 1, hasNext: false),
+      HiveListLoaded([hive], page: 1, hasNext: false, isRefreshing: true),
+      HiveListLoaded([hive], page: 1, hasNext: false),
+    ],
+  );
+
+  blocTest<HiveListCubit, HiveListState>(
     'refreshes automatically when refreshNotifier signals a change',
     build: () {
       when(

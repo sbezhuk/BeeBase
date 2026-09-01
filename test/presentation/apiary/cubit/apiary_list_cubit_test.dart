@@ -23,8 +23,18 @@ void main() {
   late ApiaryListRefreshNotifier refreshNotifier;
   late HiveListRefreshNotifier hiveRefreshNotifier;
 
-  final apiary = Apiary(id: 'apiary-1', name: 'Back Garden', createdAt: DateTime(2026), updatedAt: DateTime(2026));
-  final apiaryPage2 = Apiary(id: 'apiary-2', name: 'Meadow', createdAt: DateTime(2026), updatedAt: DateTime(2026));
+  final apiary = Apiary(
+    id: 'apiary-1',
+    name: 'Back Garden',
+    createdAt: DateTime(2026),
+    updatedAt: DateTime(2026),
+  );
+  final apiaryPage2 = Apiary(
+    id: 'apiary-2',
+    name: 'Meadow',
+    createdAt: DateTime(2026),
+    updatedAt: DateTime(2026),
+  );
 
   ApiaryListCubit buildCubit() {
     return ApiaryListCubit(
@@ -40,7 +50,9 @@ void main() {
     hiveReader = MockHiveReader();
     refreshNotifier = ApiaryListRefreshNotifier();
     hiveRefreshNotifier = HiveListRefreshNotifier();
-    when(() => hiveReader.getHiveCounts()).thenAnswer((_) async => const Right(<String, int>{}));
+    when(
+      () => hiveReader.getHiveCounts(),
+    ).thenAnswer((_) async => const Right(<String, int>{}));
   });
 
   blocTest<ApiaryListCubit, ApiaryListState>(
@@ -69,11 +81,17 @@ void main() {
           page: any(named: 'page'),
           limit: any(named: 'limit'),
         ),
-      ).thenAnswer((_) async => Left(ServerFailure(code: 'server_error', message: 'failed')));
+      ).thenAnswer(
+        (_) async =>
+            Left(ServerFailure(code: 'server_error', message: 'failed')),
+      );
       return buildCubit();
     },
     act: (cubit) => cubit.loadApiaries(),
-    expect: () => [const ApiaryListLoading(), ApiaryListError(ServerFailure(code: 'server_error', message: 'failed'))],
+    expect: () => [
+      const ApiaryListLoading(),
+      ApiaryListError(ServerFailure(code: 'server_error', message: 'failed')),
+    ],
   );
 
   blocTest<ApiaryListCubit, ApiaryListState>(
@@ -88,8 +106,12 @@ void main() {
       return buildCubit();
     },
     act: (cubit) => cubit.loadApiaries(),
-    expect: () => [const ApiaryListLoading(), const ApiaryListLoaded([], page: 1, hasNext: false)],
-    verify: (cubit) => expect((cubit.state as ApiaryListLoaded).isEmpty, isTrue),
+    expect: () => [
+      const ApiaryListLoading(),
+      const ApiaryListLoaded([], page: 1, hasNext: false),
+    ],
+    verify: (cubit) =>
+        expect((cubit.state as ApiaryListLoaded).isEmpty, isTrue),
   );
 
   blocTest<ApiaryListCubit, ApiaryListState>(
@@ -134,7 +156,9 @@ void main() {
       ).thenAnswer((_) async => Right(Page(items: [apiary], hasNext: true)));
       when(
         () => reader.getApiaries(page: 2, limit: any(named: 'limit')),
-      ).thenAnswer((_) async => Right(Page(items: [apiary, apiaryPage2], hasNext: false)));
+      ).thenAnswer(
+        (_) async => Right(Page(items: [apiary, apiaryPage2], hasNext: false)),
+      );
       return buildCubit();
     },
     act: (cubit) async {
@@ -144,7 +168,12 @@ void main() {
     expect: () => [
       const ApiaryListLoading(),
       ApiaryListLoaded([apiary], page: 1, hasNext: true),
-      ApiaryListLoaded([apiary], page: 1, hasNext: true, isLoadingNextPage: true),
+      ApiaryListLoaded(
+        [apiary],
+        page: 1,
+        hasNext: true,
+        isLoadingNextPage: true,
+      ),
       ApiaryListLoaded([apiary, apiaryPage2], page: 2, hasNext: false),
     ],
   );
@@ -168,7 +197,9 @@ void main() {
       const ApiaryListLoading(),
       ApiaryListLoaded([apiary], page: 1, hasNext: false),
     ],
-    verify: (_) => verify(() => reader.getApiaries(page: 1, limit: any(named: 'limit'))).called(1),
+    verify: (_) => verify(
+      () => reader.getApiaries(page: 1, limit: any(named: 'limit')),
+    ).called(1),
   );
 
   final duplicateRequestCompleter = Completer<Either<Failure, Page<Apiary>>>();
@@ -178,20 +209,30 @@ void main() {
       when(
         () => reader.getApiaries(page: 1, limit: any(named: 'limit')),
       ).thenAnswer((_) async => Right(Page(items: [apiary], hasNext: true)));
-      when(() => reader.getApiaries(page: 2, limit: any(named: 'limit'))).thenAnswer((_) => duplicateRequestCompleter.future);
+      when(
+        () => reader.getApiaries(page: 2, limit: any(named: 'limit')),
+      ).thenAnswer((_) => duplicateRequestCompleter.future);
       return buildCubit();
     },
     act: (cubit) async {
       await cubit.loadApiaries();
       unawaited(cubit.loadNextPage());
-      await cubit.loadNextPage(); // second call while the first is still in flight
+      await cubit
+          .loadNextPage(); // second call while the first is still in flight
     },
     expect: () => [
       const ApiaryListLoading(),
       ApiaryListLoaded([apiary], page: 1, hasNext: true),
-      ApiaryListLoaded([apiary], page: 1, hasNext: true, isLoadingNextPage: true),
+      ApiaryListLoaded(
+        [apiary],
+        page: 1,
+        hasNext: true,
+        isLoadingNextPage: true,
+      ),
     ],
-    verify: (_) => verify(() => reader.getApiaries(page: 2, limit: any(named: 'limit'))).called(1),
+    verify: (_) => verify(
+      () => reader.getApiaries(page: 2, limit: any(named: 'limit')),
+    ).called(1),
     // Deliberately left uncompleted: the cubit closes before this in-flight
     // request would resolve, and completing it afterwards would try to emit
     // on a closed cubit. A bare unresolved Future (no Timer) doesn't trip
@@ -205,7 +246,9 @@ void main() {
       when(
         () => reader.getApiaries(page: 1, limit: any(named: 'limit')),
       ).thenAnswer((_) async => Right(Page(items: [apiary], hasNext: true)));
-      when(() => reader.getApiaries(page: 2, limit: any(named: 'limit'))).thenAnswer((_) async => Left(failure));
+      when(
+        () => reader.getApiaries(page: 2, limit: any(named: 'limit')),
+      ).thenAnswer((_) async => Left(failure));
       return buildCubit();
     },
     act: (cubit) async {
@@ -215,12 +258,20 @@ void main() {
     expect: () => [
       const ApiaryListLoading(),
       ApiaryListLoaded([apiary], page: 1, hasNext: true),
-      ApiaryListLoaded([apiary], page: 1, hasNext: true, isLoadingNextPage: true),
       ApiaryListLoaded(
         [apiary],
         page: 1,
         hasNext: true,
-        loadNextPageFailure: ServerFailure(code: 'server_error', message: 'failed'),
+        isLoadingNextPage: true,
+      ),
+      ApiaryListLoaded(
+        [apiary],
+        page: 1,
+        hasNext: true,
+        loadNextPageFailure: ServerFailure(
+          code: 'server_error',
+          message: 'failed',
+        ),
       ),
     ],
   );
@@ -233,7 +284,9 @@ void main() {
         () => reader.getApiaries(page: 1, limit: any(named: 'limit')),
       ).thenAnswer((_) async => Right(Page(items: [apiary], hasNext: true)));
       var callCount = 0;
-      when(() => reader.getApiaries(page: 2, limit: any(named: 'limit'))).thenAnswer((_) async {
+      when(
+        () => reader.getApiaries(page: 2, limit: any(named: 'limit')),
+      ).thenAnswer((_) async {
         callCount++;
         if (callCount == 1) return Left(failure);
         return Right(Page(items: [apiary, apiaryPage2], hasNext: false));
@@ -248,17 +301,32 @@ void main() {
     expect: () => [
       const ApiaryListLoading(),
       ApiaryListLoaded([apiary], page: 1, hasNext: true),
-      ApiaryListLoaded([apiary], page: 1, hasNext: true, isLoadingNextPage: true),
       ApiaryListLoaded(
         [apiary],
         page: 1,
         hasNext: true,
-        loadNextPageFailure: ServerFailure(code: 'server_error', message: 'failed'),
+        isLoadingNextPage: true,
       ),
-      ApiaryListLoaded([apiary], page: 1, hasNext: true, isLoadingNextPage: true),
+      ApiaryListLoaded(
+        [apiary],
+        page: 1,
+        hasNext: true,
+        loadNextPageFailure: ServerFailure(
+          code: 'server_error',
+          message: 'failed',
+        ),
+      ),
+      ApiaryListLoaded(
+        [apiary],
+        page: 1,
+        hasNext: true,
+        isLoadingNextPage: true,
+      ),
       ApiaryListLoaded([apiary, apiaryPage2], page: 2, hasNext: false),
     ],
-    verify: (_) => verify(() => reader.getApiaries(page: 2, limit: any(named: 'limit'))).called(2),
+    verify: (_) => verify(
+      () => reader.getApiaries(page: 2, limit: any(named: 'limit')),
+    ).called(2),
   );
 
   blocTest<ApiaryListCubit, ApiaryListState>(
@@ -269,7 +337,9 @@ void main() {
       ).thenAnswer((_) async => Right(Page(items: [apiary], hasNext: true)));
       when(
         () => reader.getApiaries(page: 2, limit: any(named: 'limit')),
-      ).thenAnswer((_) async => Right(Page(items: [apiary, apiaryPage2], hasNext: false)));
+      ).thenAnswer(
+        (_) async => Right(Page(items: [apiary, apiaryPage2], hasNext: false)),
+      );
       return buildCubit();
     },
     act: (cubit) async {
@@ -280,40 +350,68 @@ void main() {
     expect: () => [
       const ApiaryListLoading(),
       ApiaryListLoaded([apiary], page: 1, hasNext: true),
-      ApiaryListLoaded([apiary], page: 1, hasNext: true, isLoadingNextPage: true),
+      ApiaryListLoaded(
+        [apiary],
+        page: 1,
+        hasNext: true,
+        isLoadingNextPage: true,
+      ),
       ApiaryListLoaded([apiary, apiaryPage2], page: 2, hasNext: false),
+      ApiaryListLoaded(
+        [apiary, apiaryPage2],
+        page: 2,
+        hasNext: false,
+        isRefreshing: true,
+      ),
       ApiaryListLoaded([apiary], page: 1, hasNext: true),
     ],
   );
 
-  test('a stale load-more response is discarded once a concurrent refresh has already reset the list', () async {
-    final refreshedApiary = Apiary(id: 'apiary-3', name: 'After Refresh', createdAt: DateTime(2026), updatedAt: DateTime(2026));
-    final stalePageCompleter = Completer<Either<Failure, Page<Apiary>>>();
-    var page1CallCount = 0;
-    when(() => reader.getApiaries(page: 1, limit: any(named: 'limit'))).thenAnswer((_) async {
-      page1CallCount++;
-      // First call: the initial load. Second call: the refresh that races
-      // the still-pending page-2 request below.
-      return page1CallCount == 1
-          ? Right(Page(items: [apiary], hasNext: true))
-          : Right(Page(items: [refreshedApiary], hasNext: false));
-    });
-    when(() => reader.getApiaries(page: 2, limit: any(named: 'limit'))).thenAnswer((_) => stalePageCompleter.future);
+  test(
+    'a stale load-more response is discarded once a concurrent refresh has already reset the list',
+    () async {
+      final refreshedApiary = Apiary(
+        id: 'apiary-3',
+        name: 'After Refresh',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+      final stalePageCompleter = Completer<Either<Failure, Page<Apiary>>>();
+      var page1CallCount = 0;
+      when(
+        () => reader.getApiaries(page: 1, limit: any(named: 'limit')),
+      ).thenAnswer((_) async {
+        page1CallCount++;
+        // First call: the initial load. Second call: the refresh that races
+        // the still-pending page-2 request below.
+        return page1CallCount == 1
+            ? Right(Page(items: [apiary], hasNext: true))
+            : Right(Page(items: [refreshedApiary], hasNext: false));
+      });
+      when(
+        () => reader.getApiaries(page: 2, limit: any(named: 'limit')),
+      ).thenAnswer((_) => stalePageCompleter.future);
 
-    final cubit = buildCubit();
-    addTearDown(cubit.close);
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
 
-    await cubit.loadApiaries();
-    final loadMoreFuture = cubit.loadNextPage();
-    await cubit.refresh();
+      await cubit.loadApiaries();
+      final loadMoreFuture = cubit.loadNextPage();
+      await cubit.refresh();
 
-    // The stale page-2 response now lands — it must be discarded, not appended
-    // onto the freshly refreshed list.
-    stalePageCompleter.complete(Right(Page(items: [apiary, apiaryPage2], hasNext: false)));
-    await loadMoreFuture;
+      // The stale page-2 response now lands — it must be discarded, not appended
+      // onto the freshly refreshed list.
+      stalePageCompleter.complete(
+        Right(Page(items: [apiary, apiaryPage2], hasNext: false)),
+      );
+      await loadMoreFuture;
 
-    expect(cubit.state, ApiaryListLoaded([refreshedApiary], page: 1, hasNext: false));
-  });
+      expect(
+        cubit.state,
+        ApiaryListLoaded([refreshedApiary], page: 1, hasNext: false),
+      );
+    },
+  );
 
   blocTest<ApiaryListCubit, ApiaryListState>(
     'loadApiaries emits the real hive counts fetched alongside the apiary page',
@@ -324,13 +422,20 @@ void main() {
           limit: any(named: 'limit'),
         ),
       ).thenAnswer((_) async => Right(Page(items: [apiary], hasNext: false)));
-      when(() => hiveReader.getHiveCounts()).thenAnswer((_) async => const Right({'apiary-1': 3}));
+      when(
+        () => hiveReader.getHiveCounts(),
+      ).thenAnswer((_) async => const Right({'apiary-1': 3}));
       return buildCubit();
     },
     act: (cubit) => cubit.loadApiaries(),
     expect: () => [
       const ApiaryListLoading(),
-      ApiaryListLoaded([apiary], page: 1, hasNext: false, hiveCounts: const {'apiary-1': 3}),
+      ApiaryListLoaded(
+        [apiary],
+        page: 1,
+        hasNext: false,
+        hiveCounts: const {'apiary-1': 3},
+      ),
     ],
   );
 
@@ -343,9 +448,10 @@ void main() {
           limit: any(named: 'limit'),
         ),
       ).thenAnswer((_) async => Right(Page(items: [apiary], hasNext: false)));
-      when(
-        () => hiveReader.getHiveCounts(),
-      ).thenAnswer((_) async => Left(ServerFailure(code: 'server_error', message: 'failed')));
+      when(() => hiveReader.getHiveCounts()).thenAnswer(
+        (_) async =>
+            Left(ServerFailure(code: 'server_error', message: 'failed')),
+      );
       return buildCubit();
     },
     act: (cubit) => cubit.loadApiaries(),
@@ -364,12 +470,19 @@ void main() {
           limit: any(named: 'limit'),
         ),
       ).thenAnswer((_) async => Right(Page(items: [apiary], hasNext: false)));
-      when(() => hiveReader.getHiveCounts()).thenAnswer((_) async => const Right({'apiary-1': 1}));
+      when(
+        () => hiveReader.getHiveCounts(),
+      ).thenAnswer((_) async => const Right({'apiary-1': 1}));
       return buildCubit();
     },
     act: (cubit) => hiveRefreshNotifier.notify(),
     expect: () => [
-      ApiaryListLoaded([apiary], page: 1, hasNext: false, hiveCounts: const {'apiary-1': 1}),
+      ApiaryListLoaded(
+        [apiary],
+        page: 1,
+        hasNext: false,
+        hiveCounts: const {'apiary-1': 1},
+      ),
     ],
   );
 }

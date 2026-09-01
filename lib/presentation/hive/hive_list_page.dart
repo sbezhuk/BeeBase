@@ -8,6 +8,7 @@ import 'package:beebase/presentation/hive/widget/hive_sync_badge.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold_action.dart';
+import 'package:beebase/presentation/widgets/loading_overlay/loading_overlay.dart';
 import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
@@ -87,17 +88,25 @@ final class _HiveListPageState extends State<HiveListPage> {
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<HiveListCubit>();
-    return AppScaffold(
-      title: widget.apiaryName,
-      onRefresh: cubit.refresh,
-      fadeEdges: true,
-      trailingAction: AppScaffoldAction(
-        label: 'hive.list.add_hive'.tr(),
-        materialIcon: Icons.add,
-        cupertinoIcon: CupertinoIcons.add,
-        onPressed: _createHive,
-      ),
-      slivers: const [_HiveListBody()],
+    return BlocSelector<HiveListCubit, HiveListState, bool>(
+      selector: (state) => state is HiveListLoading || (state is HiveListLoaded && state.isRefreshing),
+      builder: (context, isLoading) {
+        return LoadingOverlay(
+          isLoading: isLoading,
+          child: AppScaffold(
+            title: widget.apiaryName,
+            onRefresh: cubit.refresh,
+            fadeEdges: true,
+            trailingAction: AppScaffoldAction(
+              label: 'hive.list.add_hive'.tr(),
+              materialIcon: Icons.add,
+              cupertinoIcon: CupertinoIcons.add,
+              onPressed: _createHive,
+            ),
+            slivers: const [_HiveListBody()],
+          ),
+        );
+      },
     );
   }
 }

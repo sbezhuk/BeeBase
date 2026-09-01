@@ -13,8 +13,11 @@ mixin ApiaryListEmitter on Cubit<ApiaryListState> {
     await _fetchFirstPage(reader, hiveReader, ++_generation);
   }
 
-  Future<void> emitRefreshApiaries(IApiaryReader reader, IHiveReader hiveReader) =>
-      _fetchFirstPage(reader, hiveReader, ++_generation);
+  Future<void> emitRefreshApiaries(IApiaryReader reader, IHiveReader hiveReader) {
+    final current = state;
+    if (current is ApiaryListLoaded) emit(current.copyWith(isRefreshing: true));
+    return _fetchFirstPage(reader, hiveReader, ++_generation);
+  }
 
   Future<void> _fetchFirstPage(IApiaryReader reader, IHiveReader hiveReader, int generation) async {
     final apiariesResult = await reader.getApiaries(page: PaginationDefaults.firstPage, limit: PaginationDefaults.defaultLimit);

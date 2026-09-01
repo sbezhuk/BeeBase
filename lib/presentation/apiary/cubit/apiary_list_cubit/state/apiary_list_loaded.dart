@@ -8,6 +8,7 @@ final class ApiaryListLoaded extends ApiaryListState {
     this.isLoadingNextPage = false,
     this.loadNextPageFailure,
     this.hiveCounts = const {},
+    this.isRefreshing = false,
   });
 
   final List<Apiary> apiaries;
@@ -33,6 +34,11 @@ final class ApiaryListLoaded extends ApiaryListState {
   /// hives.
   final Map<String, int> hiveCounts;
 
+  /// True while a pull-to-refresh (or a refresh triggered by a sibling
+  /// list's `RefreshNotifier`) is in flight — drives `LoadingOverlay` so the
+  /// refetch is visible even when nothing pulled the list down by hand.
+  final bool isRefreshing;
+
   bool get isEmpty => apiaries.isEmpty;
 
   ApiaryListLoaded copyWith({
@@ -43,6 +49,7 @@ final class ApiaryListLoaded extends ApiaryListState {
     Failure? loadNextPageFailure,
     bool clearLoadNextPageFailure = false,
     Map<String, int>? hiveCounts,
+    bool? isRefreshing,
   }) {
     return ApiaryListLoaded(
       apiaries ?? this.apiaries,
@@ -51,6 +58,7 @@ final class ApiaryListLoaded extends ApiaryListState {
       isLoadingNextPage: isLoadingNextPage ?? this.isLoadingNextPage,
       loadNextPageFailure: clearLoadNextPageFailure ? null : (loadNextPageFailure ?? this.loadNextPageFailure),
       hiveCounts: hiveCounts ?? this.hiveCounts,
+      isRefreshing: isRefreshing ?? this.isRefreshing,
     );
   }
 
@@ -70,6 +78,7 @@ final class ApiaryListLoaded extends ApiaryListState {
         other.hasNext != hasNext ||
         other.isLoadingNextPage != isLoadingNextPage ||
         other.loadNextPageFailure != loadNextPageFailure ||
+        other.isRefreshing != isRefreshing ||
         !_hiveCountsEqual(other.hiveCounts)) {
       return false;
     }
@@ -83,6 +92,14 @@ final class ApiaryListLoaded extends ApiaryListState {
   @override
   int get hashCode {
     final hiveCountsHash = hiveCounts.entries.fold<int>(0, (acc, entry) => acc ^ Object.hash(entry.key, entry.value));
-    return Object.hash(Object.hashAll(apiaries), page, hasNext, isLoadingNextPage, loadNextPageFailure, hiveCountsHash);
+    return Object.hash(
+      Object.hashAll(apiaries),
+      page,
+      hasNext,
+      isLoadingNextPage,
+      loadNextPageFailure,
+      hiveCountsHash,
+      isRefreshing,
+    );
   }
 }

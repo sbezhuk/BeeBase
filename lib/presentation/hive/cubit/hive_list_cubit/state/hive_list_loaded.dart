@@ -7,6 +7,7 @@ final class HiveListLoaded extends HiveListState {
     this.hasNext = false,
     this.isLoadingNextPage = false,
     this.loadNextPageFailure,
+    this.isRefreshing = false,
   });
 
   final List<Hive> hives;
@@ -26,6 +27,11 @@ final class HiveListLoaded extends HiveListState {
   /// page failed to load.
   final Failure? loadNextPageFailure;
 
+  /// True while a pull-to-refresh (or a refresh triggered by a sibling
+  /// list's `RefreshNotifier`) is in flight — drives `LoadingOverlay` so the
+  /// refetch is visible even when nothing pulled the list down by hand.
+  final bool isRefreshing;
+
   bool get isEmpty => hives.isEmpty;
 
   HiveListLoaded copyWith({
@@ -35,6 +41,7 @@ final class HiveListLoaded extends HiveListState {
     bool? isLoadingNextPage,
     Failure? loadNextPageFailure,
     bool clearLoadNextPageFailure = false,
+    bool? isRefreshing,
   }) {
     return HiveListLoaded(
       hives ?? this.hives,
@@ -44,6 +51,7 @@ final class HiveListLoaded extends HiveListState {
       loadNextPageFailure: clearLoadNextPageFailure
           ? null
           : (loadNextPageFailure ?? this.loadNextPageFailure),
+      isRefreshing: isRefreshing ?? this.isRefreshing,
     );
   }
 
@@ -54,7 +62,8 @@ final class HiveListLoaded extends HiveListState {
     if (other.page != page ||
         other.hasNext != hasNext ||
         other.isLoadingNextPage != isLoadingNextPage ||
-        other.loadNextPageFailure != loadNextPageFailure) {
+        other.loadNextPageFailure != loadNextPageFailure ||
+        other.isRefreshing != isRefreshing) {
       return false;
     }
     if (other.hives.length != hives.length) return false;
@@ -71,5 +80,6 @@ final class HiveListLoaded extends HiveListState {
     hasNext,
     isLoadingNextPage,
     loadNextPageFailure,
+    isRefreshing,
   );
 }

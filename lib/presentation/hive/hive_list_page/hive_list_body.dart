@@ -8,10 +8,9 @@ final class _HiveListBody extends StatelessWidget {
     return BlocBuilder<HiveListCubit, HiveListState>(
       builder: (context, state) {
         return switch (state) {
-          HiveListLoading() => const SliverFillRemaining(
-            hasScrollBody: false,
-            child: Center(child: CircularProgressIndicator.adaptive()),
-          ),
+          // No content to render yet — the spinner itself comes from
+          // `LoadingOverlay` in `HiveListPage.build`, not this sliver.
+          HiveListLoading() => const SliverFillRemaining(hasScrollBody: false, child: SizedBox.shrink()),
           HiveListError(:final failure) => SliverFillRemaining(hasScrollBody: false, child: _HiveListErrorView(failure: failure)),
           final HiveListLoaded loaded => _HiveListLoadedView(state: loaded),
         };

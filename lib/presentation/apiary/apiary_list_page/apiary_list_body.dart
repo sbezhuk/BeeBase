@@ -8,10 +8,9 @@ final class _ApiaryListBody extends StatelessWidget {
     return BlocBuilder<ApiaryListCubit, ApiaryListState>(
       builder: (context, state) {
         return switch (state) {
-          ApiaryListLoading() => const SliverFillRemaining(
-            hasScrollBody: false,
-            child: Center(child: CircularProgressIndicator.adaptive()),
-          ),
+          // No content to render yet — the spinner itself comes from
+          // `LoadingOverlay` in `ApiaryListPage.build`, not this sliver.
+          ApiaryListLoading() => const SliverFillRemaining(hasScrollBody: false, child: SizedBox.shrink()),
           ApiaryListError(:final failure) => SliverFillRemaining(
             hasScrollBody: false,
             child: _ApiaryListErrorView(failure: failure),

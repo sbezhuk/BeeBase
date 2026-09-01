@@ -51,8 +51,14 @@ void main() {
           page: any(named: 'page'),
           limit: any(named: 'limit'),
         ),
-      ).thenAnswer((_) async => Right(Page(items: [inspection], hasNext: false)));
-      return InspectionListCubit(reader: reader, hiveId: hiveId, refreshNotifier: refreshNotifier);
+      ).thenAnswer(
+        (_) async => Right(Page(items: [inspection], hasNext: false)),
+      );
+      return InspectionListCubit(
+        reader: reader,
+        hiveId: hiveId,
+        refreshNotifier: refreshNotifier,
+      );
     },
     act: (cubit) => cubit.loadInspections(),
     expect: () => [
@@ -70,13 +76,22 @@ void main() {
           page: any(named: 'page'),
           limit: any(named: 'limit'),
         ),
-      ).thenAnswer((_) async => Left(ServerFailure(code: 'server_error', message: 'failed')));
-      return InspectionListCubit(reader: reader, hiveId: hiveId, refreshNotifier: refreshNotifier);
+      ).thenAnswer(
+        (_) async =>
+            Left(ServerFailure(code: 'server_error', message: 'failed')),
+      );
+      return InspectionListCubit(
+        reader: reader,
+        hiveId: hiveId,
+        refreshNotifier: refreshNotifier,
+      );
     },
     act: (cubit) => cubit.loadInspections(),
     expect: () => [
       const InspectionListLoading(),
-      InspectionListError(ServerFailure(code: 'server_error', message: 'failed')),
+      InspectionListError(
+        ServerFailure(code: 'server_error', message: 'failed'),
+      ),
     ],
   );
 
@@ -89,11 +104,52 @@ void main() {
           page: any(named: 'page'),
           limit: any(named: 'limit'),
         ),
-      ).thenAnswer((_) async => Right(Page(items: [inspection], hasNext: false)));
-      return InspectionListCubit(reader: reader, hiveId: hiveId, refreshNotifier: refreshNotifier);
+      ).thenAnswer(
+        (_) async => Right(Page(items: [inspection], hasNext: false)),
+      );
+      return InspectionListCubit(
+        reader: reader,
+        hiveId: hiveId,
+        refreshNotifier: refreshNotifier,
+      );
     },
     act: (cubit) => cubit.refresh(),
     expect: () => [
+      InspectionListLoaded([inspection], page: 1, hasNext: false),
+    ],
+  );
+
+  blocTest<InspectionListCubit, InspectionListState>(
+    'refresh from an already-loaded list marks isRefreshing true while in flight, then false once resolved',
+    build: () {
+      when(
+        () => reader.getInspections(
+          hiveId: hiveId,
+          page: any(named: 'page'),
+          limit: any(named: 'limit'),
+        ),
+      ).thenAnswer(
+        (_) async => Right(Page(items: [inspection], hasNext: false)),
+      );
+      return InspectionListCubit(
+        reader: reader,
+        hiveId: hiveId,
+        refreshNotifier: refreshNotifier,
+      );
+    },
+    act: (cubit) async {
+      await cubit.loadInspections();
+      await cubit.refresh();
+    },
+    expect: () => [
+      const InspectionListLoading(),
+      InspectionListLoaded([inspection], page: 1, hasNext: false),
+      InspectionListLoaded(
+        [inspection],
+        page: 1,
+        hasNext: false,
+        isRefreshing: true,
+      ),
       InspectionListLoaded([inspection], page: 1, hasNext: false),
     ],
   );
@@ -107,8 +163,14 @@ void main() {
           page: any(named: 'page'),
           limit: any(named: 'limit'),
         ),
-      ).thenAnswer((_) async => Right(Page(items: [inspection], hasNext: false)));
-      return InspectionListCubit(reader: reader, hiveId: hiveId, refreshNotifier: refreshNotifier);
+      ).thenAnswer(
+        (_) async => Right(Page(items: [inspection], hasNext: false)),
+      );
+      return InspectionListCubit(
+        reader: reader,
+        hiveId: hiveId,
+        refreshNotifier: refreshNotifier,
+      );
     },
     act: (cubit) => refreshNotifier.notify(),
     expect: () => [
@@ -125,15 +187,24 @@ void main() {
           page: 1,
           limit: any(named: 'limit'),
         ),
-      ).thenAnswer((_) async => Right(Page(items: [inspection], hasNext: true)));
+      ).thenAnswer(
+        (_) async => Right(Page(items: [inspection], hasNext: true)),
+      );
       when(
         () => reader.getInspections(
           hiveId: hiveId,
           page: 2,
           limit: any(named: 'limit'),
         ),
-      ).thenAnswer((_) async => Right(Page(items: [inspection, inspectionPage2], hasNext: false)));
-      return InspectionListCubit(reader: reader, hiveId: hiveId, refreshNotifier: refreshNotifier);
+      ).thenAnswer(
+        (_) async =>
+            Right(Page(items: [inspection, inspectionPage2], hasNext: false)),
+      );
+      return InspectionListCubit(
+        reader: reader,
+        hiveId: hiveId,
+        refreshNotifier: refreshNotifier,
+      );
     },
     act: (cubit) async {
       await cubit.loadInspections();
@@ -142,8 +213,17 @@ void main() {
     expect: () => [
       const InspectionListLoading(),
       InspectionListLoaded([inspection], page: 1, hasNext: true),
-      InspectionListLoaded([inspection], page: 1, hasNext: true, isLoadingNextPage: true),
-      InspectionListLoaded([inspection, inspectionPage2], page: 2, hasNext: false),
+      InspectionListLoaded(
+        [inspection],
+        page: 1,
+        hasNext: true,
+        isLoadingNextPage: true,
+      ),
+      InspectionListLoaded(
+        [inspection, inspectionPage2],
+        page: 2,
+        hasNext: false,
+      ),
     ],
   );
 
@@ -156,8 +236,14 @@ void main() {
           page: any(named: 'page'),
           limit: any(named: 'limit'),
         ),
-      ).thenAnswer((_) async => Right(Page(items: [inspection], hasNext: false)));
-      return InspectionListCubit(reader: reader, hiveId: hiveId, refreshNotifier: refreshNotifier);
+      ).thenAnswer(
+        (_) async => Right(Page(items: [inspection], hasNext: false)),
+      );
+      return InspectionListCubit(
+        reader: reader,
+        hiveId: hiveId,
+        refreshNotifier: refreshNotifier,
+      );
     },
     act: (cubit) async {
       await cubit.loadInspections();
@@ -186,7 +272,9 @@ void main() {
           page: 1,
           limit: any(named: 'limit'),
         ),
-      ).thenAnswer((_) async => Right(Page(items: [inspection], hasNext: true)));
+      ).thenAnswer(
+        (_) async => Right(Page(items: [inspection], hasNext: true)),
+      );
       when(
         () => reader.getInspections(
           hiveId: hiveId,
@@ -194,7 +282,11 @@ void main() {
           limit: any(named: 'limit'),
         ),
       ).thenAnswer((_) async => Left(failure));
-      return InspectionListCubit(reader: reader, hiveId: hiveId, refreshNotifier: refreshNotifier);
+      return InspectionListCubit(
+        reader: reader,
+        hiveId: hiveId,
+        refreshNotifier: refreshNotifier,
+      );
     },
     act: (cubit) async {
       await cubit.loadInspections();
@@ -203,12 +295,20 @@ void main() {
     expect: () => [
       const InspectionListLoading(),
       InspectionListLoaded([inspection], page: 1, hasNext: true),
-      InspectionListLoaded([inspection], page: 1, hasNext: true, isLoadingNextPage: true),
       InspectionListLoaded(
         [inspection],
         page: 1,
         hasNext: true,
-        loadNextPageFailure: ServerFailure(code: 'server_error', message: 'failed'),
+        isLoadingNextPage: true,
+      ),
+      InspectionListLoaded(
+        [inspection],
+        page: 1,
+        hasNext: true,
+        loadNextPageFailure: ServerFailure(
+          code: 'server_error',
+          message: 'failed',
+        ),
       ),
     ],
   );

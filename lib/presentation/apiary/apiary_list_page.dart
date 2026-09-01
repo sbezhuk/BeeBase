@@ -12,6 +12,7 @@ import 'package:beebase/presentation/component/honeycomb_pattern.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold.dart';
+import 'package:beebase/presentation/widgets/loading_overlay/loading_overlay.dart';
 import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
@@ -83,13 +84,21 @@ final class _ApiaryListPageState extends State<ApiaryListPage> {
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<ApiaryListCubit>();
-    return AppScaffold(
-      title: 'apiary.list.title'.tr(),
-      showBackButton: false,
-      onRefresh: cubit.refresh,
-      fadeEdges: true,
-      controller: _scrollController,
-      slivers: const [_ApiaryListBody()],
+    return BlocSelector<ApiaryListCubit, ApiaryListState, bool>(
+      selector: (state) => state is ApiaryListLoading || (state is ApiaryListLoaded && state.isRefreshing),
+      builder: (context, isLoading) {
+        return LoadingOverlay(
+          isLoading: isLoading,
+          child: AppScaffold(
+            title: 'apiary.list.title'.tr(),
+            showBackButton: false,
+            onRefresh: cubit.refresh,
+            fadeEdges: true,
+            controller: _scrollController,
+            slivers: const [_ApiaryListBody()],
+          ),
+        );
+      },
     );
   }
 }

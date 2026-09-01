@@ -13,8 +13,11 @@ mixin InspectionListEmitter on Cubit<InspectionListState> {
     await _fetchFirstPage(reader, hiveId, ++_generation);
   }
 
-  Future<void> emitRefreshInspections(IInspectionReader reader, String hiveId) =>
-      _fetchFirstPage(reader, hiveId, ++_generation);
+  Future<void> emitRefreshInspections(IInspectionReader reader, String hiveId) {
+    final current = state;
+    if (current is InspectionListLoaded) emit(current.copyWith(isRefreshing: true));
+    return _fetchFirstPage(reader, hiveId, ++_generation);
+  }
 
   Future<void> _fetchFirstPage(IInspectionReader reader, String hiveId, int generation) async {
     final result = await reader.getInspections(
