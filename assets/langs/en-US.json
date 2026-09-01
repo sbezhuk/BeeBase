@@ -104,6 +104,7 @@
       },
       "submit_create": "Create Apiary",
       "submit_update": "Save Changes",
+      "untitled_name": "Untitled Apiary",
       "validations": {
         "name_required": "Apiary name is required"
       }
@@ -139,6 +140,7 @@
       "description_hint": "Add any notes about this hive",
       "submit_create": "Create Hive",
       "submit_update": "Save Changes",
+      "untitled_name": "Untitled Hive",
       "validations": {
         "name_required": "Hive name is required"
       }

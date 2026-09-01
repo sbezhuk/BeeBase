@@ -117,7 +117,15 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
     );
   }
 
-  Future<void> emitPick(
+  /// Returns the owner id the picked photo ended up (attempting to be)
+  /// uploaded against — `ownerId` unchanged if it was already non-null,
+  /// whatever [ensureOwnerId] resolved to if it wasn't, or `null` if the
+  /// pick was cancelled or no owner could be materialized yet (the photo
+  /// stays `staged` in that case, to be flushed by [emitAttachStaged] once
+  /// the form is submitted). The caller is responsible for remembering a
+  /// non-null result so later picks in the same session skip straight to
+  /// live mode.
+  Future<String?> emitPick(
     ImagePicker picker,
     LocalMediaStore localMediaStore,
     IMediaWriter writer,
@@ -125,13 +133,14 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
     String? ownerId,
     ImageSource source,
     VoidCallback? notifyOwnerListChanged,
+    Future<String?> Function()? ensureOwnerId,
   ) async {
     final picked = await picker.pickImage(
       source: source,
       maxWidth: 1600,
       imageQuality: 85,
     );
-    if (picked == null) return;
+    if (picked == null) return null;
 
     final bytes = await picked.readAsBytes();
     final localId = LocalIdGenerator.generate();
@@ -152,8 +161,17 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
     );
     _addItem(staged);
 
-    if (ownerId == null) return;
-    await _upload(writer, ownerType, ownerId, staged, notifyOwnerListChanged);
+    final resolvedOwnerId = ownerId ?? await ensureOwnerId?.call();
+    if (resolvedOwnerId == null) return null;
+
+    await _upload(
+      writer,
+      ownerType,
+      resolvedOwnerId,
+      staged,
+      notifyOwnerListChanged,
+    );
+    return resolvedOwnerId;
   }
 
   /// No [notifyOwnerListChanged] of its own — called right after a

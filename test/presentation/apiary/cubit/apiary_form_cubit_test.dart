@@ -243,6 +243,85 @@ void main() {
       await mediaGalleryCubit.close();
     });
 
+    test(
+      'ensureDraft creates the apiary once and reuses it on a second call',
+      () async {
+        when(
+          () => writer.createApiary(
+            name: any(named: 'name'),
+            description: any(named: 'description'),
+            location: any(named: 'location'),
+          ),
+        ).thenAnswer((_) async => Right(apiary));
+        final cubit = ApiaryFormCubit(writer: writer, refreshNotifier: refreshNotifier, locationService: locationService);
+
+        final first = await cubit.ensureDraft(name: 'Back Garden');
+        final second = await cubit.ensureDraft(name: 'Back Garden');
+
+        expect(first, apiary.id);
+        expect(second, apiary.id);
+        verify(
+          () => writer.createApiary(
+            name: any(named: 'name'),
+            description: any(named: 'description'),
+            location: any(named: 'location'),
+          ),
+        ).called(1);
+      },
+    );
+
+    test('ensureDraft returns null on failure, without throwing', () async {
+      when(
+        () => writer.createApiary(
+          name: any(named: 'name'),
+          description: any(named: 'description'),
+          location: any(named: 'location'),
+        ),
+      ).thenAnswer((_) async => Left(ServerFailure(code: 'unexpected', message: 'boom')));
+      final cubit = ApiaryFormCubit(writer: writer, refreshNotifier: refreshNotifier, locationService: locationService);
+
+      final result = await cubit.ensureDraft(name: 'Back Garden');
+
+      expect(result, isNull);
+    });
+
+    blocTest<ApiaryFormCubit, ApiaryFormState>(
+      'submit() after a successful ensureDraft updates that draft instead of creating a second apiary',
+      build: () {
+        when(
+          () => writer.createApiary(
+            name: any(named: 'name'),
+            description: any(named: 'description'),
+            location: any(named: 'location'),
+          ),
+        ).thenAnswer((_) async => Right(apiary));
+        when(
+          () => writer.updateApiary(
+            id: any(named: 'id'),
+            name: any(named: 'name'),
+            description: any(named: 'description'),
+            location: any(named: 'location'),
+          ),
+        ).thenAnswer((_) async => Right(apiary));
+        return ApiaryFormCubit(writer: writer, refreshNotifier: refreshNotifier, locationService: locationService);
+      },
+      act: (cubit) async {
+        await cubit.ensureDraft(name: 'Untitled Apiary');
+        await cubit.submit(name: 'Back Garden');
+      },
+      expect: () => [const ApiaryFormLoading(), ApiaryFormSuccess(apiary)],
+      verify: (_) {
+        verify(
+          () => writer.createApiary(
+            name: any(named: 'name'),
+            description: any(named: 'description'),
+            location: any(named: 'location'),
+          ),
+        ).called(1);
+        verify(() => writer.updateApiary(id: apiary.id, name: 'Back Garden', description: null, location: null)).called(1);
+      },
+    );
+
     test('does nothing extra when no gallery cubit is passed at all', () async {
       when(
         () => writer.createApiary(

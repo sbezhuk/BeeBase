@@ -36,7 +36,10 @@ final class ApiaryFormPage extends StatefulWidget implements AutoRouteWrapper {
       providers: [
         BlocProvider(create: (_) => di.get<ApiaryFormCubit>(param1: apiary)),
         BlocProvider(
-          create: (_) => di.get<MediaGalleryCubit>(param1: MediaOwnerType.apiary, param2: apiary?.id)..load(),
+          create: (_) => di.get<MediaGalleryCubit>(
+            param1: MediaOwnerType.apiary,
+            param2: apiary?.id,
+          )..load(),
         ),
       ],
       child: this,
@@ -50,7 +53,9 @@ final class ApiaryFormPage extends StatefulWidget implements AutoRouteWrapper {
 final class _ApiaryFormPageState extends State<ApiaryFormPage> {
   final _formKey = GlobalKey<FormState>();
   late final _nameController = TextEditingController(text: widget.apiary?.name);
-  late final _descriptionController = TextEditingController(text: widget.apiary?.description);
+  late final _descriptionController = TextEditingController(
+    text: widget.apiary?.description,
+  );
   bool _isFetchingLocation = false;
 
   /// The resolved address and coordinates, geolocation-only — there's no
@@ -68,6 +73,22 @@ final class _ApiaryFormPageState extends State<ApiaryFormPage> {
     _locationAddress = widget.apiary?.location;
     _latitude = widget.apiary?.lat;
     _longitude = widget.apiary?.lon;
+    if (!_isEditing) {
+      // Lets the first photo picked materialize this apiary as a draft and
+      // upload against it immediately, instead of waiting for Save — see
+      // `ApiaryFormCubit.ensureDraft`.
+      context.read<MediaGalleryCubit>().configureDraftCreation(() {
+        final name = _nameController.text.trim();
+        final description = _descriptionController.text.trim();
+        return context.read<ApiaryFormCubit>().ensureDraft(
+          name: name.isEmpty ? 'apiary.form.untitled_name'.tr() : name,
+          description: description.isEmpty ? null : description,
+          location: _locationAddress,
+          lat: _latitude,
+          lon: _longitude,
+        );
+      });
+    }
   }
 
   @override
@@ -98,13 +119,18 @@ final class _ApiaryFormPageState extends State<ApiaryFormPage> {
     final result = await cubit.resolveCurrentLocation();
     if (!mounted) return;
 
-    result.fold((failure) => AppSnackBar.show(context, message: failure.messageKey.tr(), variant: AppSnackBarVariant.error), (
-      location,
-    ) {
-      _locationAddress = location.address;
-      _latitude = location.latitude;
-      _longitude = location.longitude;
-    });
+    result.fold(
+      (failure) => AppSnackBar.show(
+        context,
+        message: failure.messageKey.tr(),
+        variant: AppSnackBarVariant.error,
+      ),
+      (location) {
+        _locationAddress = location.address;
+        _latitude = location.latitude;
+        _longitude = location.longitude;
+      },
+    );
     setState(() => _isFetchingLocation = false);
   }
 
@@ -112,14 +138,20 @@ final class _ApiaryFormPageState extends State<ApiaryFormPage> {
     if (state is ApiaryFormSuccess) {
       context.router.pop(state.apiary);
     } else if (state is ApiaryFormError) {
-      AppSnackBar.show(context, message: state.failure.message.resolve(), variant: AppSnackBarVariant.error);
+      AppSnackBar.show(
+        context,
+        message: state.failure.message.resolve(),
+        variant: AppSnackBarVariant.error,
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: _isEditing ? 'apiary.form.edit_title'.tr() : 'apiary.form.create_title'.tr(),
+      title: _isEditing
+          ? 'apiary.form.edit_title'.tr()
+          : 'apiary.form.create_title'.tr(),
       fadeEdges: true,
       slivers: [
         BlocListener<ApiaryFormCubit, ApiaryFormState>(

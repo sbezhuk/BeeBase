@@ -36,7 +36,10 @@ final class HiveFormPage extends StatefulWidget implements AutoRouteWrapper {
           create: (_) => di.get<HiveFormCubit>(param1: apiaryId, param2: hive),
         ),
         BlocProvider(
-          create: (_) => di.get<MediaGalleryCubit>(param1: MediaOwnerType.hive, param2: hive?.id)..load(),
+          create: (_) => di.get<MediaGalleryCubit>(
+            param1: MediaOwnerType.hive,
+            param2: hive?.id,
+          )..load(),
         ),
       ],
       child: this,
@@ -50,9 +53,29 @@ final class HiveFormPage extends StatefulWidget implements AutoRouteWrapper {
 final class _HiveFormPageState extends State<HiveFormPage> {
   final _formKey = GlobalKey<FormState>();
   late final _nameController = TextEditingController(text: widget.hive?.name);
-  late final _descriptionController = TextEditingController(text: widget.hive?.notes);
+  late final _descriptionController = TextEditingController(
+    text: widget.hive?.notes,
+  );
 
   bool get _isEditing => widget.hive != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_isEditing) {
+      // Lets the first photo picked materialize this hive as a draft and
+      // upload against it immediately, instead of waiting for Save — see
+      // `HiveFormCubit.ensureDraft`.
+      context.read<MediaGalleryCubit>().configureDraftCreation(() {
+        final name = _nameController.text.trim();
+        final description = _descriptionController.text.trim();
+        return context.read<HiveFormCubit>().ensureDraft(
+          name: name.isEmpty ? 'hive.form.untitled_name'.tr() : name,
+          notes: description.isEmpty ? null : description,
+        );
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -76,14 +99,20 @@ final class _HiveFormPageState extends State<HiveFormPage> {
     if (state is HiveFormSuccess) {
       context.router.pop(state.hive);
     } else if (state is HiveFormError) {
-      AppSnackBar.show(context, message: state.failure.message.resolve(), variant: AppSnackBarVariant.error);
+      AppSnackBar.show(
+        context,
+        message: state.failure.message.resolve(),
+        variant: AppSnackBarVariant.error,
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: _isEditing ? 'hive.form.edit_title'.tr() : 'hive.form.create_title'.tr(),
+      title: _isEditing
+          ? 'hive.form.edit_title'.tr()
+          : 'hive.form.create_title'.tr(),
       fadeEdges: true,
       slivers: [
         BlocListener<HiveFormCubit, HiveFormState>(

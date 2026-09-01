@@ -236,6 +236,100 @@ void main() {
     );
   });
 
+  group('draft creation (configureDraftCreation)', () {
+    test(
+      'a pick resolves the owner id via the configured callback and uploads immediately, instead of staying staged',
+      () async {
+        stubPick();
+        stubAttach(Right(attachment));
+        final cubit = buildCubit();
+        cubit.configureDraftCreation(() async => 'apiary-1');
+
+        await cubit.pickFromGallery();
+
+        final state = cubit.state as MediaGalleryLoaded;
+        expect(state.items.single.status, MediaGalleryItemStatus.synced);
+        verify(
+          () => writer.attachMedia(
+            ownerType: MediaOwnerType.apiary,
+            ownerId: 'apiary-1',
+            localFilePath: any(named: 'localFilePath'),
+            originalFilename: any(named: 'originalFilename'),
+            contentType: any(named: 'contentType'),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).called(1);
+        await cubit.close();
+      },
+    );
+
+    test(
+      'a second pick reuses the owner id resolved by the first instead of calling the draft callback again',
+      () async {
+        stubPick();
+        stubAttach(Right(attachment));
+        final cubit = buildCubit();
+        var draftCalls = 0;
+        cubit.configureDraftCreation(() async {
+          draftCalls++;
+          return 'apiary-1';
+        });
+
+        await cubit.pickFromGallery();
+        await cubit.pickFromGallery();
+
+        expect(draftCalls, 1);
+        expect((cubit.state as MediaGalleryLoaded).items, hasLength(2));
+        await cubit.close();
+      },
+    );
+
+    test(
+      'a draft callback that fails to resolve an owner id leaves the photo staged, not failed',
+      () async {
+        stubPick();
+        final cubit = buildCubit();
+        cubit.configureDraftCreation(() async => null);
+
+        await cubit.pickFromGallery();
+
+        final state = cubit.state as MediaGalleryLoaded;
+        expect(state.items.single.status, MediaGalleryItemStatus.staged);
+        expect(cubit.hasStagedPhotos, isTrue);
+        verifyNever(
+          () => writer.attachMedia(
+            ownerType: any(named: 'ownerType'),
+            ownerId: any(named: 'ownerId'),
+            localFilePath: any(named: 'localFilePath'),
+            originalFilename: any(named: 'originalFilename'),
+            contentType: any(named: 'contentType'),
+            onProgress: any(named: 'onProgress'),
+          ),
+        );
+        await cubit.close();
+      },
+    );
+
+    test(
+      'a live-mode cubit (ownerId already set) never calls the draft callback even if one is configured',
+      () async {
+        stubPick();
+        stubAttach(Right(attachment));
+        final cubit = buildCubit(ownerId: 'apiary-1');
+        var draftCalls = 0;
+        cubit.configureDraftCreation(() async {
+          draftCalls++;
+          return 'should-not-be-used';
+        });
+
+        await cubit.pickFromGallery();
+
+        expect(draftCalls, 0);
+        await cubit.close();
+      },
+    );
+  });
+
   group('live mode (ownerId != null)', () {
     blocTest<MediaGalleryCubit, MediaGalleryState>(
       'load() fetches already-attached photos and maps their sync status',

@@ -22,10 +22,14 @@ part 'state/media_gallery_error.dart';
 part 'mixin/media_gallery_emitter.dart';
 
 /// Reusable photo-attachment cubit shared by the Apiary and Hive create/edit
-/// flows. [ownerId] switches between two modes at construction:
+/// flows. [ownerId] switches between two modes at construction, though a
+/// create form transitions from the first into the second the moment a
+/// photo is picked (see [configureDraftCreation]):
 ///  - `null` — staging mode, used by a create form before the parent entity
-///    exists. Picks are held locally with no network/queue call at all until
-///    [attachTo] is called once the parent has a real (or local-offline) id.
+///    exists. A pick uploads immediately once [configureDraftCreation]'s
+///    callback resolves an owner id (materializing the parent as a draft if
+///    needed); it's only held locally, pending [attachTo] on submit, if that
+///    callback is unset or fails to resolve one.
 ///  - non-null — live mode, used by the edit form and the details page.
 ///    Picks upload/attach immediately.
 final class MediaGalleryCubit extends Cubit<MediaGalleryState>
@@ -70,6 +74,14 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
 
   String? _ownerId;
 
+  /// Lets a create-mode form page supply a way to materialize the parent
+  /// Apiary/Hive — as a real or local-offline id — the first time a photo
+  /// is picked, so the upload can start immediately instead of waiting for
+  /// staged photos to be flushed via [attachTo] on submit. Configured after
+  /// construction (see `configureDraftCreation`) because the page's form
+  /// field values it reads aren't available yet when this cubit is built.
+  Future<String?> Function()? _ensureOwnerId;
+
   bool get isStaging => _ownerId == null;
 
   bool get hasStagedPhotos {
@@ -84,25 +96,27 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
   /// fetch of already-attached photos in live mode.
   Future<void> load() => emitLoad(reader, ownerType, _ownerId);
 
-  Future<void> pickFromGallery() => emitPick(
-    _picker,
-    localMediaStore,
-    writer,
-    ownerType,
-    _ownerId,
-    ImageSource.gallery,
-    _notifyOwnerListChanged,
-  );
+  void configureDraftCreation(Future<String?> Function() ensureOwnerId) {
+    _ensureOwnerId = ensureOwnerId;
+  }
 
-  Future<void> takePhoto() => emitPick(
-    _picker,
-    localMediaStore,
-    writer,
-    ownerType,
-    _ownerId,
-    ImageSource.camera,
-    _notifyOwnerListChanged,
-  );
+  Future<void> pickFromGallery() => _pick(ImageSource.gallery);
+
+  Future<void> takePhoto() => _pick(ImageSource.camera);
+
+  Future<void> _pick(ImageSource source) async {
+    final resolvedOwnerId = await emitPick(
+      _picker,
+      localMediaStore,
+      writer,
+      ownerType,
+      _ownerId,
+      source,
+      _notifyOwnerListChanged,
+      _ensureOwnerId,
+    );
+    if (resolvedOwnerId != null) _ownerId = resolvedOwnerId;
+  }
 
   /// Flushes every staged file through [IMediaWriter.attachMedia] once the
   /// parent Apiary/Hive this gallery belongs to has a real (or

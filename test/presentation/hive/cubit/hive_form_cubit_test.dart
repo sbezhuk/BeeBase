@@ -236,4 +236,85 @@ void main() {
       await mediaGalleryCubit.close();
     });
   });
+
+  group('draft creation (ensureDraft)', () {
+    test(
+      'ensureDraft creates the hive once and reuses it on a second call',
+      () async {
+        when(
+          () => writer.createHive(
+            apiaryId: apiaryId,
+            name: any(named: 'name'),
+            notes: any(named: 'notes'),
+          ),
+        ).thenAnswer((_) async => Right(hive));
+        final cubit = HiveFormCubit(writer: writer, apiaryId: apiaryId, refreshNotifier: refreshNotifier);
+
+        final first = await cubit.ensureDraft(name: 'Hive 1');
+        final second = await cubit.ensureDraft(name: 'Hive 1');
+
+        expect(first, hive.id);
+        expect(second, hive.id);
+        verify(
+          () => writer.createHive(
+            apiaryId: apiaryId,
+            name: any(named: 'name'),
+            notes: any(named: 'notes'),
+          ),
+        ).called(1);
+      },
+    );
+
+    test('ensureDraft returns null on failure, without throwing', () async {
+      when(
+        () => writer.createHive(
+          apiaryId: apiaryId,
+          name: any(named: 'name'),
+          notes: any(named: 'notes'),
+        ),
+      ).thenAnswer((_) async => Left(ServerFailure(code: 'unexpected', message: 'boom')));
+      final cubit = HiveFormCubit(writer: writer, apiaryId: apiaryId, refreshNotifier: refreshNotifier);
+
+      final result = await cubit.ensureDraft(name: 'Hive 1');
+
+      expect(result, isNull);
+    });
+
+    blocTest<HiveFormCubit, HiveFormState>(
+      'submit() after a successful ensureDraft updates that draft instead of creating a second hive',
+      build: () {
+        when(
+          () => writer.createHive(
+            apiaryId: apiaryId,
+            name: any(named: 'name'),
+            notes: any(named: 'notes'),
+          ),
+        ).thenAnswer((_) async => Right(hive));
+        when(
+          () => writer.updateHive(
+            apiaryId: apiaryId,
+            id: any(named: 'id'),
+            name: any(named: 'name'),
+            notes: any(named: 'notes'),
+          ),
+        ).thenAnswer((_) async => Right(hive));
+        return HiveFormCubit(writer: writer, apiaryId: apiaryId, refreshNotifier: refreshNotifier);
+      },
+      act: (cubit) async {
+        await cubit.ensureDraft(name: 'Untitled Hive');
+        await cubit.submit(name: 'Hive 1');
+      },
+      expect: () => [const HiveFormLoading(), HiveFormSuccess(hive)],
+      verify: (_) {
+        verify(
+          () => writer.createHive(
+            apiaryId: apiaryId,
+            name: any(named: 'name'),
+            notes: any(named: 'notes'),
+          ),
+        ).called(1);
+        verify(() => writer.updateHive(apiaryId: apiaryId, id: hive.id, name: 'Hive 1', notes: null)).called(1);
+      },
+    );
+  });
 }
