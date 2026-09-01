@@ -90,6 +90,7 @@ final class _HiveListPageState extends State<HiveListPage> {
     return AppScaffold(
       title: widget.apiaryName,
       onRefresh: cubit.refresh,
+      fadeEdges: true,
       trailingAction: AppScaffoldAction(
         label: 'hive.list.addHive'.tr(),
         materialIcon: Icons.add,

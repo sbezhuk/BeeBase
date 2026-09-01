@@ -65,6 +65,7 @@ final class _ApiaryDetailsPageState extends State<ApiaryDetailsPage> {
         final apiary = detailsState.apiary;
         return AppScaffold(
           title: apiary.name,
+          fadeEdges: true,
           trailingAction: AppScaffoldAction(
             label: 'apiary.details.edit'.tr(),
             materialIcon: Icons.edit_outlined,

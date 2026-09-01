@@ -59,6 +59,7 @@ final class _HiveDetailsPageState extends State<HiveDetailsPage> {
   Widget build(BuildContext context) {
     return AppScaffold(
       title: _hive.name,
+      fadeEdges: true,
       trailingAction: AppScaffoldAction(
         label: 'hive.details.edit'.tr(),
         materialIcon: Icons.edit_outlined,

@@ -18,11 +18,23 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 /// Page shell for iOS: a Liquid Glass navigation bar with a compact glass
 /// back button (per the design brief, never the standard Material chevron
-/// here) over a soft honey-tinted backdrop. The app bar is always the first
-/// item of one [CustomScrollView] together with [slivers], so it scrolls
-/// away with the rest of the content instead of staying pinned — [GlassAppBar]
-/// is used directly as a plain sliver child rather than through
-/// [GlassScaffold], which would pin it to the top of a Stack.
+/// here) over a soft honey-tinted backdrop.
+///
+/// By default the app bar is the first item of one [CustomScrollView]
+/// together with [slivers], so it scrolls away with the rest of the content
+/// instead of staying pinned — [GlassAppBar] is used directly as a plain
+/// sliver child rather than through [GlassScaffold], which would pin it to
+/// the top of a Stack. The one exception is when [fadeEdges] is combined
+/// with [showBackButton]: [FadingEdgeScrollView]'s `ShaderMask` forces its
+/// entire child subtree onto an offscreen layer, which corrupts
+/// `BackdropFilter`-based Liquid Glass rendering for anything nested inside
+/// it — unconditionally, regardless of the mask's alpha at that pixel, so
+/// even sitting at rest with no fade visually active is enough to corrupt
+/// it. [GlassAppBar]'s `GlassButton`s can never be a `ShaderMask`
+/// descendant, so in that combination the app bar is pulled out of the
+/// scroll view and pinned as a fixed header above it instead — still safe
+/// to build (no `BackdropFilter` involved) when [showBackButton] is
+/// `false`, since that branch renders a plain title, not a [GlassAppBar].
 ///
 /// Used two different ways, which need two different top-level wraps:
 ///
@@ -75,72 +87,70 @@ final class IosAppScaffold extends StatelessWidget {
     // font, which reads as generic rather than branded.
     final titleStyle = TextStyle(fontFamily: AppFont.titleBold, fontSize: 19, color: colors.text.primary);
 
-    final Widget appBarSliver;
+    final Widget appBarContent;
     if (!showBackButton) {
-      appBarSliver = SliverToBoxAdapter(
-        child: SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(context.spacing.md, context.spacing.sm, context.spacing.md, context.spacing.sm),
-            child: Text(
-              title,
-              style: titleStyle.copyWith(fontSize: 30, height: 1.1),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+      appBarContent = SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(context.spacing.md, context.spacing.sm, context.spacing.md, context.spacing.sm),
+          child: Text(title, style: titleStyle.copyWith(fontSize: 30, height: 1.1), maxLines: 1, overflow: TextOverflow.ellipsis),
         ),
       );
     } else {
       final action = trailingAction;
-      appBarSliver = SliverToBoxAdapter(
-        child: GlassAppBar(
-          title: Padding(
-            padding: EdgeInsets.symmetric(horizontal: context.spacing.md),
-            child: Text(title, style: titleStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
-          ),
-          // iconColor is set explicitly on both nav buttons rather than left
-          // to GlassButton's brightness-based default (plain black/white) —
-          // the brand's honey-gold accent on the glass surface is the
-          // signature visual cue tying navigation back to the beekeeping
-          // identity.
-          leading: Semantics(
-            button: true,
-            label: 'core.common.back'.tr(),
-            child: GlassButton(
-              icon: const Icon(CupertinoIcons.back),
-              iconColor: colors.brand.primary,
-              onTap: onBack,
-              width: 36,
-              height: 36,
-              iconSize: 18,
-            ),
-          ),
-          actions: action == null
-              ? null
-              : [
-                  Semantics(
-                    button: true,
-                    label: action.label,
-                    child: GlassButton(
-                      icon: Icon(action.cupertinoIcon),
-                      iconColor: colors.brand.primary,
-                      onTap: action.onPressed,
-                      width: 36,
-                      height: 36,
-                      iconSize: 18,
-                    ),
-                  ),
-                ],
+      appBarContent = GlassAppBar(
+        title: Padding(
+          padding: EdgeInsets.symmetric(horizontal: context.spacing.md),
+          child: Text(title, style: titleStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
         ),
+        // iconColor is set explicitly on both nav buttons rather than left
+        // to GlassButton's brightness-based default (plain black/white) —
+        // the brand's honey-gold accent on the glass surface is the
+        // signature visual cue tying navigation back to the beekeeping
+        // identity.
+        leading: Semantics(
+          button: true,
+          label: 'core.common.back'.tr(),
+          child: GlassButton(
+            icon: const Icon(CupertinoIcons.back),
+            iconColor: colors.brand.primary,
+            onTap: onBack,
+            width: 36,
+            height: 36,
+            iconSize: 18,
+          ),
+        ),
+        actions: action == null
+            ? null
+            : [
+                Semantics(
+                  button: true,
+                  label: action.label,
+                  child: GlassButton(
+                    icon: Icon(action.cupertinoIcon),
+                    iconColor: colors.brand.primary,
+                    onTap: action.onPressed,
+                    width: 36,
+                    height: 36,
+                    iconSize: 18,
+                  ),
+                ),
+              ],
       );
     }
+
+    // ShaderMask (via FadingEdgeScrollView) corrupts a GlassButton nested
+    // anywhere inside it, unconditionally — see the class doc comment. Only
+    // the showBackButton branch above ever builds a GlassAppBar/GlassButton,
+    // so pinning is only needed there; the plain-title branch has no
+    // BackdropFilter involved and stays a normal scrolling sliver either way.
+    final pinAppBar = showBackButton && fadeEdges;
 
     Widget scrollView = CustomScrollView(
       controller: controller,
       physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
       slivers: [
-        appBarSliver,
+        if (!pinAppBar) SliverToBoxAdapter(child: appBarContent),
         ...slivers,
         // Tab-root case only: the floating glass tab bar overlays content
         // instead of reserving space for it (see _floatingTabBarClearance),
@@ -151,7 +161,15 @@ final class IosAppScaffold extends StatelessWidget {
     );
     if (fadeEdges) scrollView = FadingEdgeScrollView(child: scrollView);
     final refresh = onRefresh;
-    Widget body = refresh == null ? scrollView : RefreshIndicator.adaptive(onRefresh: refresh, child: scrollView);
+    final Widget content = refresh == null ? scrollView : RefreshIndicator.adaptive(onRefresh: refresh, child: scrollView);
+    Widget body = pinAppBar
+        ? Column(
+            children: [
+              appBarContent,
+              Expanded(child: content),
+            ],
+          )
+        : content;
     // Detail/Form routes own the full screen, so the home indicator area at
     // the bottom needs an explicit SafeArea; the tab-root list page already
     // sits inside MainPage's own scaffold, which reserves that space itself.

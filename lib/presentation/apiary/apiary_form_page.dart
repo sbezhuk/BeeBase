@@ -120,6 +120,7 @@ final class _ApiaryFormPageState extends State<ApiaryFormPage> {
   Widget build(BuildContext context) {
     return AppScaffold(
       title: _isEditing ? 'apiary.form.editTitle'.tr() : 'apiary.form.createTitle'.tr(),
+      fadeEdges: true,
       slivers: [
         BlocListener<ApiaryFormCubit, ApiaryFormState>(
           listener: _handleStateChange,
