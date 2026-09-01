@@ -616,7 +616,7 @@ void main() {
         final operation = captured.single as OfflineOperation;
         expect(operation.entityType, 'media');
         expect(operation.operationType, OperationType.create);
-        expect(operation.payload['owner_type'], 'apiary');
+        expect(operation.payload['owner_type'], 'APIARY');
         expect(operation.payload['owner_id'], 'apiary-1');
         expect(operation.dependsOnOperationId, isNull);
       },

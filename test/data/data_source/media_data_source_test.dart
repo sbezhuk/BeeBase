@@ -99,7 +99,7 @@ void main() {
                 ),
               ).captured.single
               as Map<String, dynamic>;
-      expect(captured['owner_type'], 'apiary');
+      expect(captured['owner_type'], 'APIARY');
       expect(captured['owner_id'], 'apiary-1');
       expect(captured['page'], 1);
       expect(captured['limit'], 20);
@@ -154,7 +154,7 @@ void main() {
                 ).captured.single
                 as FormData;
         final fields = Map.fromEntries(captured.fields);
-        expect(fields['owner_type'], 'apiary');
+        expect(fields['owner_type'], 'APIARY');
         expect(fields['owner_id'], 'apiary-1');
         expect(fields['media_id'], 'op-1');
         expect(captured.files.single.key, 'file');
@@ -194,7 +194,7 @@ void main() {
               as FormData;
       final fields = Map.fromEntries(captured.fields);
       expect(fields.containsKey('media_id'), isFalse);
-      expect(fields['owner_type'], 'hive');
+      expect(fields['owner_type'], 'HIVE');
     });
   });
 

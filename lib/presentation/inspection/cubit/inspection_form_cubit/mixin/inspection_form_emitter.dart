@@ -8,7 +8,7 @@ mixin InspectionFormEmitter on Cubit<InspectionFormState> {
     required Inspection? initial,
     required DateTime date,
     required InspectionType type,
-    String? notes,
+    required String notes,
   }) async {
     emit(const InspectionFormLoading());
     final result = initial == null

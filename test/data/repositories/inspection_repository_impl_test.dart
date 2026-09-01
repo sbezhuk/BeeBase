@@ -25,7 +25,11 @@ import 'package:beebase/utils/either.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-PaginatedResponse<InspectionResponse> _paginated(List<InspectionResponse> items, {required bool hasNext, int page = 1}) {
+PaginatedResponse<InspectionResponse> _paginated(
+  List<InspectionResponse> items, {
+  required bool hasNext,
+  int page = 1,
+}) {
   return PaginatedResponse(
     items: items,
     pagination: PaginationMeta(
@@ -39,11 +43,13 @@ PaginatedResponse<InspectionResponse> _paginated(List<InspectionResponse> items,
   );
 }
 
-Matcher _pageRequest(int page) => isA<PageRequest>().having((request) => request.page, 'page', page);
+Matcher _pageRequest(int page) =>
+    isA<PageRequest>().having((request) => request.page, 'page', page);
 
 class MockInspectionDataSource extends Mock implements IInspectionDataSource {}
 
-class MockInspectionLocalDataSource extends Mock implements LocalDataSource<List<InspectionResponse>> {}
+class MockInspectionLocalDataSource extends Mock
+    implements LocalDataSource<List<InspectionResponse>> {}
 
 class MockConnectivityService extends Mock implements IConnectivityService {}
 
@@ -72,7 +78,9 @@ void main() {
   );
 
   setUpAll(() {
-    registerFallbackValue(InspectionRequest(date: DateTime(2026), type: InspectionType.routine));
+    registerFallbackValue(
+      InspectionRequest(date: DateTime(2026), type: InspectionType.routine, notes: 'notes'),
+    );
     registerFallbackValue(const PageRequest(page: 1, limit: 20));
     registerFallbackValue(<InspectionResponse>[]);
     registerFallbackValue(
@@ -86,7 +94,8 @@ void main() {
         updatedAt: DateTime(2026),
       ),
     );
-    List<InspectionResponse> mutateFallback(List<InspectionResponse>? current) => <InspectionResponse>[];
+    List<InspectionResponse> mutateFallback(List<InspectionResponse>? current) =>
+        <InspectionResponse>[];
     Object? toJsonFallback(List<InspectionResponse> value) => null;
     List<InspectionResponse> fromJsonFallback(Object? json) => <InspectionResponse>[];
     registerFallbackValue(mutateFallback);
@@ -124,7 +133,8 @@ void main() {
     when(() => localDataSource.write(any())).thenAnswer((_) async {});
     when(() => localDataSource.modify(any())).thenAnswer((invocation) async {
       final update =
-          invocation.positionalArguments.single as FutureOr<List<InspectionResponse>> Function(List<InspectionResponse>?);
+          invocation.positionalArguments.single
+              as FutureOr<List<InspectionResponse>> Function(List<InspectionResponse>?);
       await update(await localDataSource.read());
     });
     when(() => operationQueue.all()).thenAnswer((_) async => []);
@@ -149,7 +159,9 @@ void main() {
         mergeInto: any(named: 'mergeInto'),
       ),
     ).thenAnswer((invocation) async {
-      final mutate = invocation.namedArguments[#mutate] as List<InspectionResponse> Function(List<InspectionResponse>?);
+      final mutate =
+          invocation.namedArguments[#mutate]
+              as List<InspectionResponse> Function(List<InspectionResponse>?);
       mutate(null);
     });
   });
@@ -160,6 +172,7 @@ void main() {
       hiveId: hiveId,
       date: DateTime(2026),
       type: InspectionType.routine,
+      notes: 'Test notes',
       createdAt: DateTime(2026),
       updatedAt: DateTime(2026),
     );
@@ -192,7 +205,9 @@ void main() {
     });
 
     test('falls back to an empty page (not a Failure) when nothing is cached', () async {
-      when(() => dataSource.getInspections(hiveId, any())).thenThrow(const InternalException(ErrorTextRaw('no connection')));
+      when(
+        () => dataSource.getInspections(hiveId, any()),
+      ).thenThrow(const InternalException(ErrorTextRaw('no connection')));
 
       final result = await repository.getInspections(hiveId: hiveId, page: 1, limit: 20);
 
@@ -203,18 +218,23 @@ void main() {
     });
 
     test('falls back to the cache when a connectivity failure occurs mid-request', () async {
-      when(() => dataSource.getInspections(hiveId, any())).thenThrow(const InternalException(ErrorTextRaw('no connection')));
+      when(
+        () => dataSource.getInspections(hiveId, any()),
+      ).thenThrow(const InternalException(ErrorTextRaw('no connection')));
       when(() => localDataSource.read()).thenAnswer((_) async => [inspectionResponse]);
 
       final result = await repository.getInspections(hiveId: hiveId, page: 1, limit: 20);
 
-      result.fold((_) => fail('expected Right'), (page) => expect(page.items.single.notes, 'All looks good'));
+      result.fold(
+        (_) => fail('expected Right'),
+        (page) => expect(page.items.single.notes, 'All looks good'),
+      );
     });
 
     test('does not fall back to the cache on a real server failure', () async {
-      when(
-        () => dataSource.getInspections(hiveId, any()),
-      ).thenThrow(const ServerException(statusCode: 403, code: 'forbidden', message: 'not allowed'));
+      when(() => dataSource.getInspections(hiveId, any())).thenThrow(
+        const ServerException(statusCode: 403, code: 'forbidden', message: 'not allowed'),
+      );
 
       final result = await repository.getInspections(hiveId: hiveId, page: 1, limit: 20);
 
@@ -253,6 +273,7 @@ void main() {
         hiveId: hiveId,
         date: DateTime(2026),
         type: InspectionType.routine,
+        notes: 'Test notes',
         createdAt: DateTime(2026),
         updatedAt: DateTime(2026),
       );
@@ -278,7 +299,10 @@ void main() {
       final result = await repository.getInspections(hiveId: hiveId, page: 1, limit: 20);
 
       result.fold((_) => fail('expected Right'), (page) {
-        expect(page.items.map((inspection) => inspection.id), containsAll(['inspection-1', 'local-pending-1']));
+        expect(
+          page.items.map((inspection) => inspection.id),
+          containsAll(['inspection-1', 'local-pending-1']),
+        );
         final pending = page.items.firstWhere((inspection) => inspection.id == 'local-pending-1');
         expect(pending.syncStatus, InspectionSyncStatus.pending);
       });
@@ -287,7 +311,9 @@ void main() {
 
   group('createInspection', () {
     test('sends the request and returns the mapped inspection', () async {
-      when(() => dataSource.createInspection(hiveId, any())).thenAnswer((_) async => inspectionResponse);
+      when(
+        () => dataSource.createInspection(hiveId, any()),
+      ).thenAnswer((_) async => inspectionResponse);
 
       final result = await repository.createInspection(
         hiveId: hiveId,
@@ -296,155 +322,210 @@ void main() {
         notes: 'All looks good',
       );
 
-      result.fold((_) => fail('expected Right'), (inspection) => expect(inspection.notes, 'All looks good'));
-      final captured = verify(() => dataSource.createInspection(hiveId, captureAny())).captured.single as InspectionRequest;
+      result.fold(
+        (_) => fail('expected Right'),
+        (inspection) => expect(inspection.notes, 'All looks good'),
+      );
+      final captured =
+          verify(() => dataSource.createInspection(hiveId, captureAny())).captured.single
+              as InspectionRequest;
       expect(captured.date, DateTime(2026, 1, 1));
     });
 
-    test('creates locally and enqueues a pending operation carrying the hive id when offline', () async {
-      when(() => connectivity.isOnline).thenAnswer((_) async => false);
+    test(
+      'creates locally and enqueues a pending operation carrying the hive id when offline',
+      () async {
+        when(() => connectivity.isOnline).thenAnswer((_) async => false);
 
-      final result = await repository.createInspection(hiveId: hiveId, date: DateTime(2026, 1, 1), type: InspectionType.routine);
+        final result = await repository.createInspection(
+          hiveId: hiveId,
+          date: DateTime(2026, 1, 1),
+          type: InspectionType.routine,
+          notes: 'Test notes',
+        );
 
-      late final String returnedId;
-      result.fold((_) => fail('expected Right'), (inspection) {
-        expect(inspection.hiveId, hiveId);
-        expect(inspection.syncStatus, InspectionSyncStatus.pending);
-        expect(LocalIdGenerator.isLocal(inspection.id), isTrue);
-        returnedId = inspection.id;
-      });
-      verifyNever(() => dataSource.createInspection(any(), any()));
+        late final String returnedId;
+        result.fold((_) => fail('expected Right'), (inspection) {
+          expect(inspection.hiveId, hiveId);
+          expect(inspection.syncStatus, InspectionSyncStatus.pending);
+          expect(LocalIdGenerator.isLocal(inspection.id), isTrue);
+          returnedId = inspection.id;
+        });
+        verifyNever(() => dataSource.createInspection(any(), any()));
 
-      final captured = verify(
-        () => offlineMutationStore.saveWithPendingOperation<List<InspectionResponse>>(
-          cacheKey: captureAny(named: 'cacheKey'),
-          mutate: any(named: 'mutate'),
-          toJson: any(named: 'toJson'),
-          fromJson: any(named: 'fromJson'),
-          operation: captureAny(named: 'operation'),
-        ),
-      ).captured;
-      expect(captured[0], inspectionCacheKey);
-      final operation = captured[1] as OfflineOperation;
-      expect(operation.entityType, 'inspection');
-      expect(operation.operationType, OperationType.create);
-      expect(operation.localEntityId, returnedId);
-      expect(operation.payload['hiveId'], hiveId);
-    });
+        final captured = verify(
+          () => offlineMutationStore.saveWithPendingOperation<List<InspectionResponse>>(
+            cacheKey: captureAny(named: 'cacheKey'),
+            mutate: any(named: 'mutate'),
+            toJson: any(named: 'toJson'),
+            fromJson: any(named: 'fromJson'),
+            operation: captureAny(named: 'operation'),
+          ),
+        ).captured;
+        expect(captured[0], inspectionCacheKey);
+        final operation = captured[1] as OfflineOperation;
+        expect(operation.entityType, 'inspection');
+        expect(operation.operationType, OperationType.create);
+        expect(operation.localEntityId, returnedId);
+        expect(operation.payload['hiveId'], hiveId);
+      },
+    );
 
-    test('falls back to a local-first create when the network call fails with a connectivity error', () async {
-      when(() => dataSource.createInspection(hiveId, any())).thenThrow(const InternalException(ErrorTextRaw('no connection')));
+    test(
+      'falls back to a local-first create when the network call fails with a connectivity error',
+      () async {
+        when(
+          () => dataSource.createInspection(hiveId, any()),
+        ).thenThrow(const InternalException(ErrorTextRaw('no connection')));
 
-      final result = await repository.createInspection(hiveId: hiveId, date: DateTime(2026, 1, 1), type: InspectionType.routine);
+        final result = await repository.createInspection(
+          hiveId: hiveId,
+          date: DateTime(2026, 1, 1),
+          type: InspectionType.routine,
+          notes: 'Test notes',
+        );
 
-      result.fold((_) => fail('expected Right'), (inspection) => expect(inspection.syncStatus, InspectionSyncStatus.pending));
-    });
+        result.fold(
+          (_) => fail('expected Right'),
+          (inspection) => expect(inspection.syncStatus, InspectionSyncStatus.pending),
+        );
+      },
+    );
 
-    test('links to the parent hive\'s pending CREATE operation when the hive id is itself still local', () async {
-      when(() => connectivity.isOnline).thenAnswer((_) async => false);
-      const localHiveId = 'local-hive-1';
-      final hiveCreateOp = OfflineOperation(
-        id: 'hive-op-1',
-        entityType: 'hive',
-        operationType: OperationType.create,
-        payload: const {'name': 'New Hive'},
-        status: OperationStatus.pending,
-        createdAt: DateTime(2026),
-        updatedAt: DateTime(2026),
-        localEntityId: localHiveId,
-      );
-      when(() => operationQueue.all()).thenAnswer((_) async => [hiveCreateOp]);
+    test(
+      'links to the parent hive\'s pending CREATE operation when the hive id is itself still local',
+      () async {
+        when(() => connectivity.isOnline).thenAnswer((_) async => false);
+        const localHiveId = 'local-hive-1';
+        final hiveCreateOp = OfflineOperation(
+          id: 'hive-op-1',
+          entityType: 'hive',
+          operationType: OperationType.create,
+          payload: const {'name': 'New Hive'},
+          status: OperationStatus.pending,
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+          localEntityId: localHiveId,
+        );
+        when(() => operationQueue.all()).thenAnswer((_) async => [hiveCreateOp]);
 
-      await repository.createInspection(hiveId: localHiveId, date: DateTime(2026, 1, 1), type: InspectionType.routine);
+        await repository.createInspection(
+          hiveId: localHiveId,
+          date: DateTime(2026, 1, 1),
+          type: InspectionType.routine,
+          notes: 'Test notes',
+        );
 
-      final captured = verify(
-        () => offlineMutationStore.saveWithPendingOperation<List<InspectionResponse>>(
-          cacheKey: any(named: 'cacheKey'),
-          mutate: any(named: 'mutate'),
-          toJson: any(named: 'toJson'),
-          fromJson: any(named: 'fromJson'),
-          operation: captureAny(named: 'operation'),
-        ),
-      ).captured;
-      final operation = captured.single as OfflineOperation;
-      expect(operation.dependsOnOperationId, 'hive-op-1');
-    });
+        final captured = verify(
+          () => offlineMutationStore.saveWithPendingOperation<List<InspectionResponse>>(
+            cacheKey: any(named: 'cacheKey'),
+            mutate: any(named: 'mutate'),
+            toJson: any(named: 'toJson'),
+            fromJson: any(named: 'fromJson'),
+            operation: captureAny(named: 'operation'),
+          ),
+        ).captured;
+        final operation = captured.single as OfflineOperation;
+        expect(operation.dependsOnOperationId, 'hive-op-1');
+      },
+    );
 
-    test('leaves dependsOnOperationId null when the hive id is already a real backend id', () async {
-      when(() => connectivity.isOnline).thenAnswer((_) async => false);
+    test(
+      'leaves dependsOnOperationId null when the hive id is already a real backend id',
+      () async {
+        when(() => connectivity.isOnline).thenAnswer((_) async => false);
 
-      await repository.createInspection(hiveId: hiveId, date: DateTime(2026, 1, 1), type: InspectionType.routine);
+        await repository.createInspection(
+          hiveId: hiveId,
+          date: DateTime(2026, 1, 1),
+          type: InspectionType.routine,
+          notes: 'Test notes',
+        );
 
-      final captured = verify(
-        () => offlineMutationStore.saveWithPendingOperation<List<InspectionResponse>>(
-          cacheKey: any(named: 'cacheKey'),
-          mutate: any(named: 'mutate'),
-          toJson: any(named: 'toJson'),
-          fromJson: any(named: 'fromJson'),
-          operation: captureAny(named: 'operation'),
-        ),
-      ).captured;
-      final operation = captured.single as OfflineOperation;
-      expect(operation.dependsOnOperationId, isNull);
-    });
+        final captured = verify(
+          () => offlineMutationStore.saveWithPendingOperation<List<InspectionResponse>>(
+            cacheKey: any(named: 'cacheKey'),
+            mutate: any(named: 'mutate'),
+            toJson: any(named: 'toJson'),
+            fromJson: any(named: 'fromJson'),
+            operation: captureAny(named: 'operation'),
+          ),
+        ).captured;
+        final operation = captured.single as OfflineOperation;
+        expect(operation.dependsOnOperationId, isNull);
+      },
+    );
   });
 
   group('updateInspection', () {
     test('sends the request and returns the mapped inspection', () async {
-      when(() => dataSource.updateInspection(hiveId, 'inspection-1', any())).thenAnswer((_) async => inspectionResponse);
+      when(
+        () => dataSource.updateInspection(hiveId, 'inspection-1', any()),
+      ).thenAnswer((_) async => inspectionResponse);
 
       final result = await repository.updateInspection(
         hiveId: hiveId,
         id: 'inspection-1',
         date: DateTime(2026, 1, 1),
         type: InspectionType.routine,
+        notes: 'Test notes',
       );
 
-      result.fold((_) => fail('expected Right'), (inspection) => expect(inspection.id, 'inspection-1'));
+      result.fold(
+        (_) => fail('expected Right'),
+        (inspection) => expect(inspection.id, 'inspection-1'),
+      );
     });
 
-    test('consolidates into the existing pending CREATE instead of erroring on a not-yet-synced local id', () async {
-      when(() => operationQueue.all()).thenAnswer(
-        (_) async => [
-          OfflineOperation(
-            id: 'op-1',
-            entityType: 'inspection',
-            operationType: OperationType.create,
-            payload: const {},
-            status: OperationStatus.pending,
-            createdAt: DateTime(2026),
-            updatedAt: DateTime(2026),
-            localEntityId: 'local-pending-1',
-          ),
-        ],
-      );
+    test(
+      'consolidates into the existing pending CREATE instead of erroring on a not-yet-synced local id',
+      () async {
+        when(() => operationQueue.all()).thenAnswer(
+          (_) async => [
+            OfflineOperation(
+              id: 'op-1',
+              entityType: 'inspection',
+              operationType: OperationType.create,
+              payload: const {},
+              status: OperationStatus.pending,
+              createdAt: DateTime(2026),
+              updatedAt: DateTime(2026),
+              localEntityId: 'local-pending-1',
+            ),
+          ],
+        );
 
-      final result = await repository.updateInspection(
-        hiveId: hiveId,
-        id: 'local-pending-1',
-        date: DateTime(2026, 1, 1),
-        type: InspectionType.routine,
-        notes: 'Updated before sync',
-      );
+        final result = await repository.updateInspection(
+          hiveId: hiveId,
+          id: 'local-pending-1',
+          date: DateTime(2026, 1, 1),
+          type: InspectionType.routine,
+          notes: 'Updated before sync',
+        );
 
-      result.fold((_) => fail('expected Right'), (inspection) {
-        expect(inspection.notes, 'Updated before sync');
-        expect(inspection.syncStatus, InspectionSyncStatus.pending);
-      });
-      verifyNever(() => dataSource.updateInspection(any(), any(), any()));
-    });
+        result.fold((_) => fail('expected Right'), (inspection) {
+          expect(inspection.notes, 'Updated before sync');
+          expect(inspection.syncStatus, InspectionSyncStatus.pending);
+        });
+        verifyNever(() => dataSource.updateInspection(any(), any(), any()));
+      },
+    );
 
-    test('a local id with no pending operation is rejected as an invariant-violation safety net', () async {
-      final result = await repository.updateInspection(
-        hiveId: hiveId,
-        id: 'local-pending-1',
-        date: DateTime(2026, 1, 1),
-        type: InspectionType.routine,
-      );
+    test(
+      'a local id with no pending operation is rejected as an invariant-violation safety net',
+      () async {
+        final result = await repository.updateInspection(
+          hiveId: hiveId,
+          id: 'local-pending-1',
+          date: DateTime(2026, 1, 1),
+          type: InspectionType.routine,
+          notes: 'Test notes',
+        );
 
-      expect(result, isA<Left<Failure, dynamic>>());
-      verifyNever(() => dataSource.updateInspection(any(), any(), any()));
-    });
+        expect(result, isA<Left<Failure, dynamic>>());
+        verifyNever(() => dataSource.updateInspection(any(), any(), any()));
+      },
+    );
 
     test('updates a synced entity locally and enqueues one pending UPDATE while offline', () async {
       when(() => connectivity.isOnline).thenAnswer((_) async => false);
@@ -464,20 +545,27 @@ void main() {
       verifyNever(() => dataSource.updateInspection(any(), any(), any()));
     });
 
-    test('falls back to a local update when the network call fails with a connectivity error', () async {
-      when(
-        () => dataSource.updateInspection(hiveId, 'inspection-1', any()),
-      ).thenThrow(const InternalException(ErrorTextRaw('no connection')));
+    test(
+      'falls back to a local update when the network call fails with a connectivity error',
+      () async {
+        when(
+          () => dataSource.updateInspection(hiveId, 'inspection-1', any()),
+        ).thenThrow(const InternalException(ErrorTextRaw('no connection')));
 
-      final result = await repository.updateInspection(
-        hiveId: hiveId,
-        id: 'inspection-1',
-        date: DateTime(2026, 1, 1),
-        type: InspectionType.routine,
-      );
+        final result = await repository.updateInspection(
+          hiveId: hiveId,
+          id: 'inspection-1',
+          date: DateTime(2026, 1, 1),
+          type: InspectionType.routine,
+          notes: 'Test notes',
+        );
 
-      result.fold((_) => fail('expected Right'), (inspection) => expect(inspection.syncStatus, InspectionSyncStatus.pending));
-    });
+        result.fold(
+          (_) => fail('expected Right'),
+          (inspection) => expect(inspection.syncStatus, InspectionSyncStatus.pending),
+        );
+      },
+    );
   });
 
   group('deleteInspection', () {
@@ -537,9 +625,9 @@ void main() {
 
     test('treats a 404 as an already-completed delete and purges the stale local record', () async {
       when(() => localDataSource.read()).thenAnswer((_) async => [inspectionResponse]);
-      when(
-        () => dataSource.deleteInspection(hiveId, 'inspection-1'),
-      ).thenThrow(const ServerException(statusCode: 404, code: 'not_found', message: 'inspection not found'));
+      when(() => dataSource.deleteInspection(hiveId, 'inspection-1')).thenThrow(
+        const ServerException(statusCode: 404, code: 'not_found', message: 'inspection not found'),
+      );
 
       final result = await repository.deleteInspection(hiveId: hiveId, id: 'inspection-1');
 
@@ -552,9 +640,9 @@ void main() {
     });
 
     test('still surfaces a non-404 server error as a failure without purging the cache', () async {
-      when(
-        () => dataSource.deleteInspection(hiveId, 'inspection-1'),
-      ).thenThrow(const ServerException(statusCode: 422, code: 'validation_error', message: 'cannot delete'));
+      when(() => dataSource.deleteInspection(hiveId, 'inspection-1')).thenThrow(
+        const ServerException(statusCode: 422, code: 'validation_error', message: 'cannot delete'),
+      );
 
       final result = await repository.deleteInspection(hiveId: hiveId, id: 'inspection-1');
 

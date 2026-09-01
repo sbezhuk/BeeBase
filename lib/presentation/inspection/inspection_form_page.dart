@@ -74,11 +74,10 @@ final class _InspectionFormPageState extends State<InspectionFormPage> {
 
   void _submit() {
     if (_formKey.currentState?.validate() ?? false) {
-      final notes = _notesController.text.trim();
       context.read<InspectionFormCubit>().submit(
         date: _selectedDate,
         type: _selectedType,
-        notes: notes.isEmpty ? null : notes,
+        notes: _notesController.text.trim(),
       );
     }
   }

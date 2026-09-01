@@ -21,6 +21,7 @@ void main() {
     hiveId: 'hive-1',
     date: DateTime(2026),
     type: InspectionType.routine,
+    notes: 'Test notes',
     createdAt: DateTime(2026),
     updatedAt: DateTime(2026),
   );

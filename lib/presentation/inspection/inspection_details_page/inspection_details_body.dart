@@ -9,7 +9,7 @@ final class _InspectionDetailsBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final hasNotes = inspection.notes != null && inspection.notes!.isNotEmpty;
+    final hasNotes = inspection.notes.isNotEmpty;
     Widget sectionDivider() => Divider(color: colors.surface.border, height: context.spacing.xl);
     return SliverPadding(
       padding: EdgeInsets.fromLTRB(
@@ -52,7 +52,7 @@ final class _InspectionDetailsBody extends StatelessWidget {
               sectionDivider(),
               _InspectionDetailsInfoSection(
                 label: 'inspection.form.notes_label'.tr(),
-                child: Text(inspection.notes!, style: context.textStyles.body),
+                child: Text(inspection.notes, style: context.textStyles.body),
               ),
             ],
             SizedBox(height: context.spacing.xl),

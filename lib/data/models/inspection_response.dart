@@ -10,7 +10,7 @@ final class InspectionResponse {
     required this.hiveId,
     required this.date,
     required this.type,
-    this.notes,
+    required this.notes,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -27,7 +27,7 @@ final class InspectionResponse {
   final DateTime date;
 
   final InspectionType type;
-  final String? notes;
+  final String notes;
 
   @JsonKey(name: 'created_at')
   final DateTime createdAt;

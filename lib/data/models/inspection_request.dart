@@ -10,7 +10,7 @@ part 'inspection_request.g.dart';
 /// rather than being a field here (mirrors `HiveRequest`).
 @JsonSerializable()
 final class InspectionRequest {
-  const InspectionRequest({required this.date, required this.type, this.notes});
+  const InspectionRequest({required this.date, required this.type, required this.notes});
 
   factory InspectionRequest.fromJson(Map<String, dynamic> json) =>
       _$InspectionRequestFromJson(json);
@@ -22,7 +22,7 @@ final class InspectionRequest {
   final DateTime date;
 
   final InspectionType type;
-  final String? notes;
+  final String notes;
 
   Map<String, dynamic> toJson() => _$InspectionRequestToJson(this);
 }

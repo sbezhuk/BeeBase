@@ -9,7 +9,7 @@ final class _InspectionListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final hasNotes = inspection.notes != null && inspection.notes!.isNotEmpty;
+    final hasNotes = inspection.notes.isNotEmpty;
     return Material(
       color: colors.surface.card,
       borderRadius: BorderRadius.circular(16),
@@ -35,7 +35,7 @@ final class _InspectionListTile extends StatelessWidget {
                     if (hasNotes) ...[
                       SizedBox(height: context.spacing.xs),
                       Text(
-                        inspection.notes!,
+                        inspection.notes,
                         style: context.textStyles.label.copyWith(color: colors.text.secondary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

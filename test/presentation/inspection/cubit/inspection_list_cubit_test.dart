@@ -23,6 +23,7 @@ void main() {
     hiveId: hiveId,
     date: DateTime(2026),
     type: InspectionType.routine,
+    notes: 'Test notes',
     createdAt: DateTime(2026),
     updatedAt: DateTime(2026),
   );
@@ -31,6 +32,7 @@ void main() {
     hiveId: hiveId,
     date: DateTime(2026),
     type: InspectionType.routine,
+    notes: 'Test notes',
     createdAt: DateTime(2026),
     updatedAt: DateTime(2026),
   );

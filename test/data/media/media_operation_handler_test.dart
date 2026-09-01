@@ -31,7 +31,7 @@ OfflineOperation _createOp({
   String id = 'op-1',
   String localEntityId = 'local-1',
   String ownerId = 'apiary-1',
-  String ownerType = 'apiary',
+  String ownerType = 'APIARY',
   String? dependsOnOperationId,
   String idempotencyKey = 'idem-key-1',
 }) {
@@ -180,7 +180,7 @@ void main() {
       ).thenAnswer((_) async => serverResponse);
       final notified = expectLater(apiaryRefreshNotifier.onChanged, emits(anything));
 
-      await handler.handle(_createOp(ownerType: 'apiary'));
+      await handler.handle(_createOp(ownerType: 'APIARY'));
 
       await notified;
     });
@@ -211,7 +211,7 @@ void main() {
       );
       final notified = expectLater(hiveRefreshNotifier.onChanged, emits(anything));
 
-      await handler.handle(_createOp(ownerType: 'hive', ownerId: 'hive-1'));
+      await handler.handle(_createOp(ownerType: 'HIVE', ownerId: 'hive-1'));
 
       await notified;
     });

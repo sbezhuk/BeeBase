@@ -30,7 +30,11 @@ final class InspectionFormCubit extends Cubit<InspectionFormState> with Inspecti
 
   bool get isEditing => initial != null;
 
-  Future<void> submit({required DateTime date, required InspectionType type, String? notes}) {
+  Future<void> submit({
+    required DateTime date,
+    required InspectionType type,
+    required String notes,
+  }) {
     return emitSubmit(
       writer,
       refreshNotifier,

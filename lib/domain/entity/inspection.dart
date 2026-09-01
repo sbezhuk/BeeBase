@@ -8,7 +8,7 @@ final class Inspection {
     required this.hiveId,
     required this.date,
     required this.type,
-    this.notes,
+    required this.notes,
     required this.createdAt,
     required this.updatedAt,
     this.syncStatus = InspectionSyncStatus.synced,
@@ -23,7 +23,7 @@ final class Inspection {
 
   final DateTime date;
   final InspectionType type;
-  final String? notes;
+  final String notes;
   final DateTime createdAt;
   final DateTime updatedAt;
   final InspectionSyncStatus syncStatus;

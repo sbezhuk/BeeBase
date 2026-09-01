@@ -25,6 +25,7 @@ void main() {
     hiveId: hiveId,
     date: date,
     type: type,
+    notes: 'Test notes',
     createdAt: DateTime(2026),
     updatedAt: DateTime(2026),
   );
@@ -58,11 +59,12 @@ void main() {
           refreshNotifier: refreshNotifier,
         );
       },
-      act: (cubit) => cubit.submit(date: date, type: type),
+      act: (cubit) => cubit.submit(date: date, type: type, notes: 'Test notes'),
       expect: () => [const InspectionFormLoading(), InspectionFormSuccess(inspection)],
       verify: (_) {
         verify(
-          () => writer.createInspection(hiveId: hiveId, date: date, type: type, notes: null),
+          () =>
+              writer.createInspection(hiveId: hiveId, date: date, type: type, notes: 'Test notes'),
         ).called(1);
         verifyNever(
           () => writer.updateInspection(
@@ -70,6 +72,7 @@ void main() {
             id: any(named: 'id'),
             date: any(named: 'date'),
             type: any(named: 'type'),
+            notes: any(named: 'notes'),
           ),
         );
         expect(notified, isTrue);
@@ -95,7 +98,7 @@ void main() {
           refreshNotifier: refreshNotifier,
         );
       },
-      act: (cubit) => cubit.submit(date: date, type: type),
+      act: (cubit) => cubit.submit(date: date, type: type, notes: 'Test notes'),
       expect: () => [
         const InspectionFormLoading(),
         InspectionFormError(ServerFailure(code: 'validation_error', message: 'invalid')),

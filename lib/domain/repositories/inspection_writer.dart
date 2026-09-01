@@ -8,7 +8,7 @@ abstract interface class IInspectionWriter {
     required String hiveId,
     required DateTime date,
     required InspectionType type,
-    String? notes,
+    required String notes,
   });
 
   Future<Either<Failure, Inspection>> updateInspection({
@@ -16,7 +16,7 @@ abstract interface class IInspectionWriter {
     required String id,
     required DateTime date,
     required InspectionType type,
-    String? notes,
+    required String notes,
   });
 
   Future<Either<Failure, void>> deleteInspection({required String hiveId, required String id});

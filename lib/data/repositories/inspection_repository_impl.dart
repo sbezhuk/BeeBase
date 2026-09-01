@@ -44,7 +44,8 @@ const inspectionCacheKey = 'cached_inspections';
 /// [InspectionOperationHandler] when replaying a queued operation.
 const _payloadHiveIdKey = 'hiveId';
 
-final class InspectionRepositoryImpl extends Repository implements IInspectionReader, IInspectionWriter {
+final class InspectionRepositoryImpl extends Repository
+    implements IInspectionReader, IInspectionWriter {
   InspectionRepositoryImpl({
     required this.dataSource,
     required this.localDataSource,
@@ -73,7 +74,10 @@ final class InspectionRepositoryImpl extends Repository implements IInspectionRe
     }
 
     final result = await on(() async {
-      final paginated = await dataSource.getInspections(hiveId, PageRequest(page: page, limit: limit));
+      final paginated = await dataSource.getInspections(
+        hiveId,
+        PageRequest(page: page, limit: limit),
+      );
       late List<InspectionResponse> merged;
       await localDataSource.modify((current) {
         final oldCache = current ?? const [];
@@ -110,7 +114,7 @@ final class InspectionRepositoryImpl extends Repository implements IInspectionRe
     required String hiveId,
     required DateTime date,
     required InspectionType type,
-    String? notes,
+    required String notes,
   }) async {
     if (!await connectivity.isOnline) {
       return _createOffline(hiveId: hiveId, date: date, type: type, notes: notes);
@@ -143,7 +147,7 @@ final class InspectionRepositoryImpl extends Repository implements IInspectionRe
     required String id,
     required DateTime date,
     required InspectionType type,
-    String? notes,
+    required String notes,
   }) async {
     final pending = await _pendingOperationFor(id);
     if (pending != null) {
@@ -157,7 +161,9 @@ final class InspectionRepositoryImpl extends Repository implements IInspectionRe
     }
 
     final request = InspectionRequest(date: date, type: type, notes: notes);
-    final result = await on(() async => (await dataSource.updateInspection(hiveId, id, request)).toEntity());
+    final result = await on(
+      () async => (await dataSource.updateInspection(hiveId, id, request)).toEntity(),
+    );
 
     return result.fold((failure) async {
       if (failure is ServerFailure) {
@@ -173,12 +179,17 @@ final class InspectionRepositoryImpl extends Repository implements IInspectionRe
   /// connectivity to delete, since deleting it is a real server call with no
   /// offline-queued equivalent.
   @override
-  Future<Either<Failure, void>> deleteInspection({required String hiveId, required String id}) async {
+  Future<Either<Failure, void>> deleteInspection({
+    required String hiveId,
+    required String id,
+  }) async {
     if (LocalIdGenerator.isLocal(id)) {
       return _deleteLocalOnly(id);
     }
     if (!await connectivity.isOnline) {
-      return const Left(InternalFailure(ErrorTextKey('inspection.errors.delete_requires_connection')));
+      return const Left(
+        InternalFailure(ErrorTextKey('inspection.errors.delete_requires_connection')),
+      );
     }
     return _deleteOnline(hiveId: hiveId, id: id);
   }
@@ -195,7 +206,11 @@ final class InspectionRepositoryImpl extends Repository implements IInspectionRe
   /// true, so this is treated as a successful delete rather than a failure —
   /// see [on]'s `ignoreStatusCode`.
   Future<Either<Failure, void>> _deleteOnline({required String hiveId, required String id}) async {
-    final result = await on(() => dataSource.deleteInspection(hiveId, id), ignoreStatusCode: 404, onIgnoredStatusCode: () {});
+    final result = await on(
+      () => dataSource.deleteInspection(hiveId, id),
+      ignoreStatusCode: 404,
+      onIgnoredStatusCode: () {},
+    );
 
     return result.fold((failure) async => Left(failure), (_) async {
       await _purgeLocal(id);
@@ -208,7 +223,9 @@ final class InspectionRepositoryImpl extends Repository implements IInspectionRe
   /// after a synced entity is deleted server-side, so neither can reappear
   /// from the cache the next time the list is read offline.
   Future<void> _purgeLocal(String id) async {
-    await localDataSource.modify((current) => (current ?? const []).where((response) => response.id != id).toList());
+    await localDataSource.modify(
+      (current) => (current ?? const []).where((response) => response.id != id).toList(),
+    );
     final pending = await _pendingOperationFor(id);
     if (pending != null) {
       await operationQueue.remove(pending.id);
@@ -230,11 +247,13 @@ final class InspectionRepositoryImpl extends Repository implements IInspectionRe
     required String hiveId,
     required DateTime date,
     required InspectionType type,
-    String? notes,
+    required String notes,
   }) async {
     final now = DateTime.now();
     final localId = LocalIdGenerator.generate();
-    final dependsOnOperationId = LocalIdGenerator.isLocal(hiveId) ? await _pendingHiveCreateOperationId(hiveId) : null;
+    final dependsOnOperationId = LocalIdGenerator.isLocal(hiveId)
+        ? await _pendingHiveCreateOperationId(hiveId)
+        : null;
     final placeholder = InspectionResponse(
       id: localId,
       hiveId: hiveId,
@@ -248,8 +267,9 @@ final class InspectionRepositoryImpl extends Repository implements IInspectionRe
       cacheKey: inspectionCacheKey,
       mutate: (current) => [...(current ?? const []), placeholder],
       toJson: (list) => list.map((response) => response.toJson()).toList(),
-      fromJson: (json) =>
-          (json as List<dynamic>).map((item) => InspectionResponse.fromJson(item as Map<String, dynamic>)).toList(),
+      fromJson: (json) => (json as List<dynamic>)
+          .map((item) => InspectionResponse.fromJson(item as Map<String, dynamic>))
+          .toList(),
       operation: OfflineOperation(
         id: LocalIdGenerator.generate(),
         entityType: _inspectionEntityType,
@@ -296,7 +316,7 @@ final class InspectionRepositoryImpl extends Repository implements IInspectionRe
     required String id,
     required DateTime date,
     required InspectionType type,
-    String? notes,
+    required String notes,
   }) async {
     final now = DateTime.now();
     final request = InspectionRequest(date: date, type: type, notes: notes);
@@ -313,7 +333,12 @@ final class InspectionRepositoryImpl extends Repository implements IInspectionRe
             break;
           }
         }
-        final response = request.toResponse(id: id, hiveId: hiveId, createdAt: match?.createdAt ?? now, updatedAt: now);
+        final response = request.toResponse(
+          id: id,
+          hiveId: hiveId,
+          createdAt: match?.createdAt ?? now,
+          updatedAt: now,
+        );
         updatedResponse = response;
         return [
           for (final existing in list)
@@ -322,8 +347,9 @@ final class InspectionRepositoryImpl extends Repository implements IInspectionRe
         ];
       },
       toJson: (list) => list.map((response) => response.toJson()).toList(),
-      fromJson: (json) =>
-          (json as List<dynamic>).map((item) => InspectionResponse.fromJson(item as Map<String, dynamic>)).toList(),
+      fromJson: (json) => (json as List<dynamic>)
+          .map((item) => InspectionResponse.fromJson(item as Map<String, dynamic>))
+          .toList(),
       entityType: _inspectionEntityType,
       entityId: id,
       operation: () => OfflineOperation(
@@ -348,7 +374,9 @@ final class InspectionRepositoryImpl extends Repository implements IInspectionRe
   }
 
   Future<List<OfflineOperation>> _inspectionOperations() async {
-    return (await operationQueue.all()).where((operation) => operation.entityType == _inspectionEntityType).toList();
+    return (await operationQueue.all())
+        .where((operation) => operation.entityType == _inspectionEntityType)
+        .toList();
   }
 
   /// The current non-synced operation for [id] (a pending `CREATE` if [id]
@@ -376,7 +404,10 @@ final class InspectionRepositoryImpl extends Repository implements IInspectionRe
   /// reached for a connectivity-shaped problem (offline, or an online
   /// request that failed for a non-`ServerFailure` reason) — a real
   /// `ServerFailure` is never routed through here (see [getInspections]).
-  Future<Either<Failure, Page<Inspection>>> _cachedPage(String hiveId, List<OfflineOperation> pendingOps) async {
+  Future<Either<Failure, Page<Inspection>>> _cachedPage(
+    String hiveId,
+    List<OfflineOperation> pendingOps,
+  ) async {
     final all = await localDataSource.read();
     final cached = (all ?? const []).where((response) => response.hiveId == hiveId).toList();
     return Right(Page(items: cacheMerger.toEntities(cached, pendingOps), hasNext: false));
