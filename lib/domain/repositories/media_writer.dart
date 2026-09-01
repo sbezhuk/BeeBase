@@ -1,6 +1,6 @@
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/entity/media_attachment.dart';
-import 'package:beebase/domain/enum/media_owner_type.dart';
+import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/utils/either.dart';
 
 abstract interface class IMediaWriter {

@@ -3,7 +3,7 @@ import 'package:beebase/core/offline/operation_status.dart';
 import 'package:beebase/data/models/extensions/inspection_extension.dart';
 import 'package:beebase/data/models/inspection_response.dart';
 import 'package:beebase/domain/entity/inspection.dart';
-import 'package:beebase/domain/enum/inspection_sync_status.dart';
+import 'package:beebase/domain/enum/local/inspection_sync_status.dart';
 
 /// Cross-references the cached Inspection list against the offline
 /// operation queue, so `InspectionRepositoryImpl` can show a not-yet-synced

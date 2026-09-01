@@ -1,7 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/entity/inspection.dart';
-import 'package:beebase/domain/enum/inspection_sync_status.dart';
+import 'package:beebase/domain/enum/local/inspection_sync_status.dart';
 import 'package:beebase/presentation/component/honeycomb_pattern.dart';
 import 'package:beebase/presentation/inspection/cubit/inspection_list_cubit/inspection_list_cubit.dart';
 import 'package:beebase/presentation/inspection/extension/inspection_date_x.dart';

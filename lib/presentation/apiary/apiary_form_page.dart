@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/domain/entity/apiary.dart';
-import 'package:beebase/domain/enum/media_owner_type.dart';
+import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_form_cubit/apiary_form_cubit.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_section_card.dart';
 import 'package:beebase/presentation/component/buttons/primary_button.dart';

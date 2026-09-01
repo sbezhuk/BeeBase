@@ -1,5 +1,5 @@
 import 'package:beebase/domain/entity/apiary.dart';
-import 'package:beebase/domain/enum/apiary_sync_status.dart';
+import 'package:beebase/domain/enum/local/apiary_sync_status.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_photo_placeholder.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/presentation/media/widget/media_thumbnail.dart';

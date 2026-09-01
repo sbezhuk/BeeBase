@@ -8,7 +8,7 @@ import 'package:beebase/data/models/media_response.dart';
 import 'package:beebase/data/models/media_upload_form_request.dart';
 import 'package:beebase/data/models/page_request.dart';
 import 'package:beebase/data/models/paginated_response.dart';
-import 'package:beebase/domain/enum/media_owner_type.dart';
+import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:dio/dio.dart' as dio;
 
 final class MediaDataSource implements IMediaDataSource {

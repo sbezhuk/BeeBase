@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/domain/entity/inspection.dart';
-import 'package:beebase/domain/enum/inspection_type.dart';
+import 'package:beebase/domain/enum/backend/inspection_type.dart';
 import 'package:beebase/presentation/component/buttons/primary_button.dart';
 import 'package:beebase/presentation/component/text_field/app_text_field.dart';
 import 'package:beebase/presentation/inspection/cubit/inspection_form_cubit/inspection_form_cubit.dart';

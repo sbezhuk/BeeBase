@@ -1,7 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/domain/entity/apiary.dart';
-import 'package:beebase/domain/enum/apiary_sync_status.dart';
-import 'package:beebase/domain/enum/media_owner_type.dart';
+import 'package:beebase/domain/enum/local/apiary_sync_status.dart';
+import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_delete_cubit/apiary_delete_cubit.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_details_cubit/apiary_details_cubit.dart';
 import 'package:beebase/presentation/apiary/extension/apiary_date_x.dart';

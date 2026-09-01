@@ -1,4 +1,4 @@
-import 'package:beebase/domain/enum/inspection_type.dart';
+import 'package:beebase/domain/enum/backend/inspection_type.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 /// Localized display label for an [InspectionType] — keyed off the enum's

@@ -3,8 +3,8 @@ import 'package:beebase/core/offline/operation_status.dart';
 import 'package:beebase/core/offline/operation_type.dart';
 import 'package:beebase/data/models/media_response.dart';
 import 'package:beebase/data/repositories/media_cache_merger.dart';
-import 'package:beebase/domain/enum/media_owner_type.dart';
-import 'package:beebase/domain/enum/media_sync_status.dart';
+import 'package:beebase/domain/enum/backend/media_owner_type.dart';
+import 'package:beebase/domain/enum/local/media_sync_status.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 MediaResponse _response({

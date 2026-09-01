@@ -1,4 +1,4 @@
-import 'package:beebase/domain/enum/hive_sync_status.dart';
+import 'package:beebase/domain/enum/local/hive_sync_status.dart';
 import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
 import 'package:beebase/utils/extensions/theme_text_styles.dart';

@@ -1,6 +1,6 @@
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/entity/inspection.dart';
-import 'package:beebase/domain/enum/inspection_type.dart';
+import 'package:beebase/domain/enum/backend/inspection_type.dart';
 import 'package:beebase/domain/repositories/inspection_writer.dart';
 import 'package:beebase/presentation/inspection/inspection_list_refresh_notifier.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';

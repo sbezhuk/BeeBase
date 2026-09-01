@@ -3,7 +3,7 @@ import 'package:beebase/core/offline/operation_status.dart';
 import 'package:beebase/data/models/apiary_response.dart';
 import 'package:beebase/data/models/extensions/apiary_extension.dart';
 import 'package:beebase/domain/entity/apiary.dart';
-import 'package:beebase/domain/enum/apiary_sync_status.dart';
+import 'package:beebase/domain/enum/local/apiary_sync_status.dart';
 
 /// Cross-references the cached Apiary list against the offline operation
 /// queue, so `ApiaryRepositoryImpl` can show a not-yet-synced apiary

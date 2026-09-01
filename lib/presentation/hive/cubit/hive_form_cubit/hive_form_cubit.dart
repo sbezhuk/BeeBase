@@ -1,6 +1,6 @@
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/entity/hive.dart';
-import 'package:beebase/domain/enum/media_owner_type.dart';
+import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/domain/repositories/hive_writer.dart';
 import 'package:beebase/presentation/hive/hive_list_refresh_notifier.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';

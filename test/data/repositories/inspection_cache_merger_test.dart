@@ -3,8 +3,8 @@ import 'package:beebase/core/offline/operation_status.dart';
 import 'package:beebase/core/offline/operation_type.dart';
 import 'package:beebase/data/models/inspection_response.dart';
 import 'package:beebase/data/repositories/inspection_cache_merger.dart';
-import 'package:beebase/domain/enum/inspection_sync_status.dart';
-import 'package:beebase/domain/enum/inspection_type.dart';
+import 'package:beebase/domain/enum/local/inspection_sync_status.dart';
+import 'package:beebase/domain/enum/backend/inspection_type.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

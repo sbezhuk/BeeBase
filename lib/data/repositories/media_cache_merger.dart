@@ -3,8 +3,8 @@ import 'package:beebase/core/offline/operation_status.dart';
 import 'package:beebase/data/models/extensions/media_extension.dart';
 import 'package:beebase/data/models/media_response.dart';
 import 'package:beebase/domain/entity/media_attachment.dart';
-import 'package:beebase/domain/enum/media_owner_type.dart';
-import 'package:beebase/domain/enum/media_sync_status.dart';
+import 'package:beebase/domain/enum/backend/media_owner_type.dart';
+import 'package:beebase/domain/enum/local/media_sync_status.dart';
 
 /// Cross-references the cached (global, across every owner) media list
 /// against the offline operation queue, so `MediaRepositoryImpl` can show a

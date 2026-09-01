@@ -3,7 +3,7 @@ import 'package:beebase/core/offline/operation_status.dart';
 import 'package:beebase/data/models/extensions/hive_extension.dart';
 import 'package:beebase/data/models/hive_response.dart';
 import 'package:beebase/domain/entity/hive.dart';
-import 'package:beebase/domain/enum/hive_sync_status.dart';
+import 'package:beebase/domain/enum/local/hive_sync_status.dart';
 
 /// Cross-references the cached Hive list against the offline operation
 /// queue, so `HiveRepositoryImpl` can show a not-yet-synced hive alongside

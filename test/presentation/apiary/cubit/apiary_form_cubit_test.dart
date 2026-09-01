@@ -5,7 +5,7 @@ import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/core/storage/local_media_store.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/entity/media_attachment.dart';
-import 'package:beebase/domain/enum/media_owner_type.dart';
+import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/domain/repositories/apiary_writer.dart';
 import 'package:beebase/domain/repositories/media_reader.dart';
 import 'package:beebase/domain/repositories/media_writer.dart';

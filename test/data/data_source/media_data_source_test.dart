@@ -10,7 +10,7 @@ import 'package:beebase/core/storage/token_storage.dart';
 import 'package:beebase/data/data_source/media_data_source.dart';
 import 'package:beebase/data/models/media_response.dart';
 import 'package:beebase/data/models/page_request.dart';
-import 'package:beebase/domain/enum/media_owner_type.dart';
+import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';

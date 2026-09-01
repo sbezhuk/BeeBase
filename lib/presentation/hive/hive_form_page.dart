@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/domain/entity/hive.dart';
-import 'package:beebase/domain/enum/media_owner_type.dart';
+import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/presentation/component/buttons/primary_button.dart';
 import 'package:beebase/presentation/component/text_field/app_text_field.dart';
 import 'package:beebase/presentation/hive/cubit/hive_form_cubit/hive_form_cubit.dart';

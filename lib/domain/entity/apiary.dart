@@ -1,5 +1,5 @@
 import 'package:beebase/core/offline/local_id_generator.dart';
-import 'package:beebase/domain/enum/apiary_sync_status.dart';
+import 'package:beebase/domain/enum/local/apiary_sync_status.dart';
 
 final class Apiary {
   const Apiary({

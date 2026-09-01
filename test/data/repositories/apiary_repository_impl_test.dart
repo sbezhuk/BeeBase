@@ -19,7 +19,7 @@ import 'package:beebase/data/models/page_request.dart';
 import 'package:beebase/data/models/paginated_response.dart';
 import 'package:beebase/data/models/pagination_meta.dart';
 import 'package:beebase/data/repositories/apiary_repository_impl.dart';
-import 'package:beebase/domain/enum/apiary_sync_status.dart';
+import 'package:beebase/domain/enum/local/apiary_sync_status.dart';
 import 'package:beebase/utils/either.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';

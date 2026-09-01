@@ -3,7 +3,7 @@ import 'package:beebase/core/offline/operation_status.dart';
 import 'package:beebase/core/offline/operation_type.dart';
 import 'package:beebase/data/models/hive_response.dart';
 import 'package:beebase/data/repositories/hive_cache_merger.dart';
-import 'package:beebase/domain/enum/hive_sync_status.dart';
+import 'package:beebase/domain/enum/local/hive_sync_status.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

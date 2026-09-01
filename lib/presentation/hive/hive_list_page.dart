@@ -1,7 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/entity/hive.dart';
-import 'package:beebase/domain/enum/hive_sync_status.dart';
+import 'package:beebase/domain/enum/local/hive_sync_status.dart';
 import 'package:beebase/presentation/component/honeycomb_pattern.dart';
 import 'package:beebase/presentation/hive/cubit/hive_list_cubit/hive_list_cubit.dart';
 import 'package:beebase/presentation/hive/widget/hive_sync_badge.dart';

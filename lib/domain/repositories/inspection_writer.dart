@@ -1,6 +1,6 @@
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/entity/inspection.dart';
-import 'package:beebase/domain/enum/inspection_type.dart';
+import 'package:beebase/domain/enum/backend/inspection_type.dart';
 import 'package:beebase/utils/either.dart';
 
 abstract interface class IInspectionWriter {

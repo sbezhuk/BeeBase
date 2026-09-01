@@ -1,6 +1,6 @@
 import 'package:beebase/core/offline/local_id_generator.dart';
-import 'package:beebase/domain/enum/media_owner_type.dart';
-import 'package:beebase/domain/enum/media_sync_status.dart';
+import 'package:beebase/domain/enum/backend/media_owner_type.dart';
+import 'package:beebase/domain/enum/local/media_sync_status.dart';
 
 final class MediaAttachment {
   const MediaAttachment({

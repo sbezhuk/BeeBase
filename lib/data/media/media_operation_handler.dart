@@ -11,7 +11,7 @@ import 'package:beebase/data/data_source/interface/local_data_source.dart';
 import 'package:beebase/data/data_source/interface/media_data_source.dart';
 import 'package:beebase/data/models/media_response.dart';
 import 'package:beebase/data/models/media_upload_request.dart';
-import 'package:beebase/domain/enum/media_owner_type.dart';
+import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/domain/repositories/repository.dart';
 import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
 import 'package:beebase/presentation/hive/hive_list_refresh_notifier.dart';

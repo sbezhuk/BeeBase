@@ -29,7 +29,7 @@ import 'package:beebase/data/models/pagination_meta.dart';
 import 'package:beebase/data/repositories/apiary_repository_impl.dart';
 import 'package:beebase/data/repositories/hive_repository_impl.dart';
 import 'package:beebase/data/repositories/media_repository_impl.dart';
-import 'package:beebase/domain/enum/media_owner_type.dart';
+import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
 import 'package:beebase/presentation/hive/hive_list_refresh_notifier.dart';
 import 'package:flutter_test/flutter_test.dart';

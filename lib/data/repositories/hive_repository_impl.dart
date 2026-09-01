@@ -15,7 +15,7 @@ import 'package:beebase/data/models/hive_response.dart';
 import 'package:beebase/data/models/page_request.dart';
 import 'package:beebase/data/repositories/hive_cache_merger.dart';
 import 'package:beebase/domain/entity/hive.dart';
-import 'package:beebase/domain/enum/hive_sync_status.dart';
+import 'package:beebase/domain/enum/local/hive_sync_status.dart';
 import 'package:beebase/domain/repositories/hive_reader.dart';
 import 'package:beebase/domain/repositories/hive_writer.dart';
 import 'package:beebase/domain/repositories/repository.dart';

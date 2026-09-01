@@ -15,7 +15,7 @@ import 'package:beebase/data/models/extensions/apiary_extension.dart';
 import 'package:beebase/data/models/page_request.dart';
 import 'package:beebase/data/repositories/apiary_cache_merger.dart';
 import 'package:beebase/domain/entity/apiary.dart';
-import 'package:beebase/domain/enum/apiary_sync_status.dart';
+import 'package:beebase/domain/enum/local/apiary_sync_status.dart';
 import 'package:beebase/domain/repositories/apiary_reader.dart';
 import 'package:beebase/domain/repositories/apiary_writer.dart';
 import 'package:beebase/domain/repositories/repository.dart';

@@ -1,7 +1,7 @@
 import 'package:beebase/core/offline/local_id_generator.dart';
 import 'package:beebase/domain/entity/inspection.dart';
-import 'package:beebase/domain/enum/inspection_sync_status.dart';
-import 'package:beebase/domain/enum/inspection_type.dart';
+import 'package:beebase/domain/enum/local/inspection_sync_status.dart';
+import 'package:beebase/domain/enum/backend/inspection_type.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

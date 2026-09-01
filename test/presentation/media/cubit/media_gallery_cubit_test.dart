@@ -5,7 +5,7 @@ import 'package:beebase/core/error/error_text.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/core/storage/local_media_store.dart';
 import 'package:beebase/domain/entity/media_attachment.dart';
-import 'package:beebase/domain/enum/media_owner_type.dart';
+import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/domain/repositories/media_reader.dart';
 import 'package:beebase/domain/repositories/media_writer.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';

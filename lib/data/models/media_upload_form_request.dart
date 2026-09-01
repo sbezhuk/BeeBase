@@ -1,4 +1,4 @@
-import 'package:beebase/domain/enum/media_owner_type.dart';
+import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'media_upload_form_request.g.dart';

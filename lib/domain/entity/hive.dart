@@ -1,5 +1,5 @@
 import 'package:beebase/core/offline/local_id_generator.dart';
-import 'package:beebase/domain/enum/hive_sync_status.dart';
+import 'package:beebase/domain/enum/local/hive_sync_status.dart';
 
 final class Hive {
   const Hive({
