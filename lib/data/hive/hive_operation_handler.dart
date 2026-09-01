@@ -21,8 +21,7 @@ const _payloadApiaryIdKey = 'apiaryId';
 /// classification — the same rule already governs online reads/writes, so
 /// there is exactly one place that decides what counts as a permanent vs a
 /// retryable failure.
-final class HiveOperationHandler extends Repository
-    implements OperationHandler {
+final class HiveOperationHandler extends Repository implements OperationHandler {
   HiveOperationHandler({
     required this.dataSource,
     required this.localDataSource,
@@ -43,48 +42,28 @@ final class HiveOperationHandler extends Repository
     return switch (operation.operationType) {
       OperationType.create => _handleCreate(operation),
       OperationType.update => _handleUpdate(operation),
-      OperationType.delete => Future.value(
-        const OperationPermanentFailure('Offline delete is not supported yet.'),
-      ),
+      OperationType.delete => Future.value(const OperationPermanentFailure('Offline delete is not supported yet.')),
     };
   }
 
   Future<OperationResult> _handleCreate(OfflineOperation operation) async {
     final rawApiaryId = operation.payload[_payloadApiaryIdKey] as String;
-    final apiaryId = await _resolveApiaryId(
-      rawApiaryId,
-      operation.dependsOnOperationId,
-    );
+    final apiaryId = await _resolveApiaryId(rawApiaryId, operation.dependsOnOperationId);
     if (apiaryId == null) {
-      return const OperationRetryableFailure(
-        'The parent apiary has not synced yet.',
-      );
+      return const OperationRetryableFailure('The parent apiary has not synced yet.');
     }
     final request = HiveRequest.fromJson(operation.payload);
-    final result = await on(
-      () => dataSource.createHive(
-        request,
-        apiaryId: apiaryId,
-        idempotencyKey: operation.id,
-      ),
-    );
+    final result = await on(() => dataSource.createHive(request, apiaryId: apiaryId, idempotencyKey: operation.id));
 
     return result.fold(_classify, (response) async {
-      final retargeted = await _checkSupersededAndRetarget(
-        operation,
-        newEntityId: response.id,
-        newType: OperationType.update,
-      );
+      final retargeted = await _checkSupersededAndRetarget(operation, newEntityId: response.id, newType: OperationType.update);
       if (retargeted != null) {
-        await _reconcileCache(
-          operation.localEntityId,
-          response,
-          latestPayload: retargeted.payload,
-        );
+        await _reconcileCache(operation.localEntityId, response, latestPayload: retargeted.payload);
         refreshNotifier.notify();
         return const OperationSuperseded();
       }
       await _reconcileCache(operation.localEntityId, response);
+      await _markSynced(operation, resolvedEntityId: response.id);
       refreshNotifier.notify();
       return OperationSuccess(resolvedEntityId: response.id);
     });
@@ -101,10 +80,7 @@ final class HiveOperationHandler extends Repository
   /// hasn't synced yet, which `SyncEngine` should already have prevented by
   /// not dispatching this operation in the first place — this is a
   /// defensive fallback, not the primary guard.
-  Future<String?> _resolveApiaryId(
-    String rawApiaryId,
-    String? dependsOnOperationId,
-  ) async {
+  Future<String?> _resolveApiaryId(String rawApiaryId, String? dependsOnOperationId) async {
     if (!LocalIdGenerator.isLocal(rawApiaryId)) {
       return rawApiaryId;
     }
@@ -124,20 +100,33 @@ final class HiveOperationHandler extends Repository
     final result = await on(() => dataSource.updateHive(id, request));
 
     return result.fold(_classify, (response) async {
-      final retargeted = await _checkSupersededAndRetarget(
-        operation,
-        newEntityId: id,
-        newType: OperationType.update,
-      );
+      final retargeted = await _checkSupersededAndRetarget(operation, newEntityId: id, newType: OperationType.update);
       if (retargeted != null) {
         await _reconcileCache(id, response, latestPayload: retargeted.payload);
         refreshNotifier.notify();
         return const OperationSuperseded();
       }
       await _reconcileCache(id, response);
+      await _markSynced(operation);
       refreshNotifier.notify();
       return const OperationSuccess();
     });
+  }
+
+  /// Marks [operation] `synced` in the queue before [refreshNotifier] fires.
+  /// [SyncEngine] makes this exact same write itself once `handle()`
+  /// returns (see `SyncEngineImpl._process`), but only *after* the handler
+  /// call completes — which is too late for a UI refresh triggered by the
+  /// notify below: it would still find this operation `inProgress` in the
+  /// queue and keep showing a "needs sync" badge for a hive that has, in
+  /// fact, already synced (see the identical fix in
+  /// `ApiaryOperationHandler._markSynced`). `SyncEngineImpl`'s later write
+  /// just repeats this (harmlessly) with a fresher `updatedAt` once it
+  /// re-reads the row.
+  Future<void> _markSynced(OfflineOperation operation, {String? resolvedEntityId}) {
+    return operationQueue.update(
+      operation.copyWith(status: OperationStatus.synced, resolvedEntityId: resolvedEntityId, updatedAt: DateTime.now()),
+    );
   }
 
   Future<OperationResult> _classify(Failure failure) async {
@@ -162,11 +151,7 @@ final class HiveOperationHandler extends Repository
     if (current == null || current.version == sent.version) {
       return null;
     }
-    final retargeted = current.copyWith(
-      operationType: newType,
-      localEntityId: newEntityId,
-      status: OperationStatus.pending,
-    );
+    final retargeted = current.copyWith(operationType: newType, localEntityId: newEntityId, status: OperationStatus.pending);
     await operationQueue.update(retargeted);
     return retargeted;
   }
@@ -175,11 +160,7 @@ final class HiveOperationHandler extends Repository
   /// [serverResponse] — or, when [latestPayload] is given (the entity was
   /// edited again after this request was sent), with the newer field values
   /// under the server's id instead of the now-stale response fields.
-  Future<void> _reconcileCache(
-    String? localEntityId,
-    HiveResponse serverResponse, {
-    Map<String, dynamic>? latestPayload,
-  }) {
+  Future<void> _reconcileCache(String? localEntityId, HiveResponse serverResponse, {Map<String, dynamic>? latestPayload}) {
     final resolved = latestPayload == null
         ? serverResponse
         : HiveRequest.fromJson(latestPayload).toResponse(
@@ -189,9 +170,7 @@ final class HiveOperationHandler extends Repository
             updatedAt: DateTime.now(),
           );
     return localDataSource.modify((current) {
-      final withoutPlaceholder = (current ?? const []).where(
-        (response) => response.id != localEntityId,
-      );
+      final withoutPlaceholder = (current ?? const []).where((response) => response.id != localEntityId);
       return [...withoutPlaceholder, resolved];
     });
   }

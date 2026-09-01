@@ -58,6 +58,7 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
         return const OperationSuperseded();
       }
       await _reconcileCache(operation.localEntityId, response);
+      await _markSynced(operation, resolvedEntityId: response.id);
       refreshNotifier.notify();
       return OperationSuccess(resolvedEntityId: response.id);
     });
@@ -79,6 +80,7 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
         return const OperationSuperseded();
       }
       await _reconcileCache(id, response);
+      await _markSynced(operation);
       refreshNotifier.notify();
       return const OperationSuccess();
     });
@@ -98,6 +100,20 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
 
     final resolvedLocation = await locationService.resolveAddress(latitude: lat, longitude: lon);
     return ApiaryRequest(name: request.name, description: request.description, location: resolvedLocation, lat: lat, lon: lon);
+  }
+
+  /// Marks [operation] `synced` in the queue before [refreshNotifier] fires.
+  /// [SyncEngine] makes this exact same write itself once `handle()`
+  /// returns (see `SyncEngineImpl._process`), but only *after* the handler
+  /// call completes — which is too late for a UI refresh triggered by the
+  /// notify below: it would still find this operation `inProgress` in the
+  /// queue and keep showing a "needs sync" badge for an apiary that has, in
+  /// fact, already synced. `SyncEngineImpl`'s later write just repeats this
+  /// (harmlessly) with a fresher `updatedAt` once it re-reads the row.
+  Future<void> _markSynced(OfflineOperation operation, {String? resolvedEntityId}) {
+    return operationQueue.update(
+      operation.copyWith(status: OperationStatus.synced, resolvedEntityId: resolvedEntityId, updatedAt: DateTime.now()),
+    );
   }
 
   Future<OperationResult> _classify(Failure failure) async {

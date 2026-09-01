@@ -19,16 +19,11 @@ import 'package:mocktail/mocktail.dart';
 
 class MockHiveDataSource extends Mock implements IHiveDataSource {}
 
-class MockHiveLocalDataSource extends Mock
-    implements LocalDataSource<List<HiveResponse>> {}
+class MockHiveLocalDataSource extends Mock implements LocalDataSource<List<HiveResponse>> {}
 
 class MockOperationQueue extends Mock implements OperationQueue {}
 
-OfflineOperation _createOp({
-  String id = 'op-1',
-  String localEntityId = 'local-1',
-  int version = 0,
-}) {
+OfflineOperation _createOp({String id = 'op-1', String localEntityId = 'local-1', int version = 0}) {
   return OfflineOperation(
     id: id,
     entityType: 'hive',
@@ -45,11 +40,7 @@ OfflineOperation _createOp({
   );
 }
 
-OfflineOperation _updateOp({
-  String id = 'op-2',
-  String localEntityId = 'hive-1',
-  int version = 0,
-}) {
+OfflineOperation _updateOp({String id = 'op-2', String localEntityId = 'hive-1', int version = 0}) {
   return OfflineOperation(
     id: id,
     entityType: 'hive',
@@ -99,9 +90,7 @@ void main() {
       operationQueue: operationQueue,
     );
     when(() => localDataSource.modify(any())).thenAnswer((invocation) async {
-      final update =
-          invocation.positionalArguments.single
-              as FutureOr<List<HiveResponse>> Function(List<HiveResponse>?);
+      final update = invocation.positionalArguments.single as FutureOr<List<HiveResponse>> Function(List<HiveResponse>?);
       await update(await localDataSource.read());
     });
     when(() => operationQueue.update(any())).thenAnswer((_) async {});
@@ -115,38 +104,33 @@ void main() {
   });
 
   group('create', () {
-    test(
-      'reads the apiary id from the payload and reconciles the cache on success',
-      () async {
-        final placeholder = HiveResponse(
-          id: 'local-1',
+    test('reads the apiary id from the payload and reconciles the cache on success', () async {
+      final placeholder = HiveResponse(
+        id: 'local-1',
+        apiaryId: 'apiary-1',
+        name: 'New Hive',
+        notes: 'desc',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+      when(() => localDataSource.read()).thenAnswer((_) async => [placeholder]);
+      when(
+        () => dataSource.createHive(
+          any(),
           apiaryId: 'apiary-1',
-          name: 'New Hive',
-          notes: 'desc',
-          createdAt: DateTime(2026),
-          updatedAt: DateTime(2026),
-        );
-        when(
-          () => localDataSource.read(),
-        ).thenAnswer((_) async => [placeholder]);
-        when(
-          () => dataSource.createHive(
-            any(),
-            apiaryId: 'apiary-1',
-            idempotencyKey: any(named: 'idempotencyKey'),
-          ),
-        ).thenAnswer((_) async => serverResponse);
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      ).thenAnswer((_) async => serverResponse);
 
-        final result = await handler.handle(_createOp());
+      final result = await handler.handle(_createOp());
 
-        expect(result, isA<OperationSuccess>());
-        final update =
-            verify(() => localDataSource.modify(captureAny())).captured.single
-                as FutureOr<List<HiveResponse>> Function(List<HiveResponse>?);
-        final written = await update([placeholder]);
-        expect(written.map((response) => response.id), ['server-42']);
-      },
-    );
+      expect(result, isA<OperationSuccess>());
+      final update =
+          verify(() => localDataSource.modify(captureAny())).captured.single
+              as FutureOr<List<HiveResponse>> Function(List<HiveResponse>?);
+      final written = await update([placeholder]);
+      expect(written.map((response) => response.id), ['server-42']);
+    });
 
     test('passes the operation id as the idempotency key', () async {
       when(() => localDataSource.read()).thenAnswer((_) async => []);
@@ -160,13 +144,7 @@ void main() {
 
       await handler.handle(_createOp(id: 'op-99'));
 
-      verify(
-        () => dataSource.createHive(
-          any(),
-          apiaryId: 'apiary-1',
-          idempotencyKey: 'op-99',
-        ),
-      ).called(1);
+      verify(() => dataSource.createHive(any(), apiaryId: 'apiary-1', idempotencyKey: 'op-99')).called(1);
     });
 
     test('classifies a ServerException as a permanent failure', () async {
@@ -176,13 +154,7 @@ void main() {
           apiaryId: any(named: 'apiaryId'),
           idempotencyKey: any(named: 'idempotencyKey'),
         ),
-      ).thenThrow(
-        const ServerException(
-          statusCode: 422,
-          code: 'validation_error',
-          message: 'invalid',
-        ),
-      );
+      ).thenThrow(const ServerException(statusCode: 422, code: 'validation_error', message: 'invalid'));
 
       final result = await handler.handle(_createOp());
 
@@ -204,47 +176,57 @@ void main() {
       expect(result, isA<OperationRetryableFailure>());
     });
 
-    test(
-      'retargets to a pending UPDATE and reports superseded when a newer edit landed mid-flight',
-      () async {
-        when(() => localDataSource.read()).thenAnswer((_) async => []);
-        when(
-          () => dataSource.createHive(
-            any(),
-            apiaryId: any(named: 'apiaryId'),
-            idempotencyKey: any(named: 'idempotencyKey'),
-          ),
-        ).thenAnswer((_) async => serverResponse);
-        final sent = _createOp();
-        final racedRow = _createOp(version: 1).copyWith(
-          payload: {
-            'apiaryId': 'apiary-1',
-            ...const HiveRequest(name: 'Newer Edit').toJson(),
-          },
-        );
-        when(
-          () => operationQueue.find(sent.id),
-        ).thenAnswer((_) async => racedRow);
+    test('retargets to a pending UPDATE and reports superseded when a newer edit landed mid-flight', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => []);
+      when(
+        () => dataSource.createHive(
+          any(),
+          apiaryId: any(named: 'apiaryId'),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      ).thenAnswer((_) async => serverResponse);
+      final sent = _createOp();
+      final racedRow = _createOp(version: 1).copyWith(
+        payload: {
+          'apiaryId': 'apiary-1',
+          ...const HiveRequest(name: 'Newer Edit').toJson(),
+        },
+      );
+      when(() => operationQueue.find(sent.id)).thenAnswer((_) async => racedRow);
 
-        final result = await handler.handle(sent);
+      final result = await handler.handle(sent);
 
-        expect(result, isA<OperationSuperseded>());
-        final retargeted =
-            verify(() => operationQueue.update(captureAny())).captured.single
-                as OfflineOperation;
-        expect(retargeted.operationType, OperationType.update);
-        expect(retargeted.localEntityId, 'server-42');
-        expect(retargeted.status, OperationStatus.pending);
+      expect(result, isA<OperationSuperseded>());
+      final retargeted = verify(() => operationQueue.update(captureAny())).captured.single as OfflineOperation;
+      expect(retargeted.operationType, OperationType.update);
+      expect(retargeted.localEntityId, 'server-42');
+      expect(retargeted.status, OperationStatus.pending);
 
-        final update =
-            verify(() => localDataSource.modify(captureAny())).captured.single
-                as FutureOr<List<HiveResponse>> Function(List<HiveResponse>?);
-        final written = await update([]);
-        expect(written.single.id, 'server-42');
-        expect(written.single.name, 'Newer Edit');
-        expect(written.single.apiaryId, 'apiary-1');
-      },
-    );
+      final update =
+          verify(() => localDataSource.modify(captureAny())).captured.single
+              as FutureOr<List<HiveResponse>> Function(List<HiveResponse>?);
+      final written = await update([]);
+      expect(written.single.id, 'server-42');
+      expect(written.single.name, 'Newer Edit');
+      expect(written.single.apiaryId, 'apiary-1');
+    });
+
+    test('marks the operation synced in the queue before notifying, so a live refresh sees it as already synced', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => []);
+      when(
+        () => dataSource.createHive(
+          any(),
+          apiaryId: any(named: 'apiaryId'),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      ).thenAnswer((_) async => serverResponse);
+
+      await handler.handle(_createOp());
+
+      final syncedUpdate = verify(() => operationQueue.update(captureAny())).captured.single as OfflineOperation;
+      expect(syncedUpdate.status, OperationStatus.synced);
+      expect(syncedUpdate.resolvedEntityId, 'server-42');
+    });
   });
 
   group('create with a still-local parent apiary', () {
@@ -265,129 +247,101 @@ void main() {
       );
     }
 
-    test(
-      'resolves the real apiary id from the synced dependency operation before sending',
-      () async {
-        when(() => localDataSource.read()).thenAnswer((_) async => []);
-        when(
-          () => operationQueue.find('apiary-op-1'),
-        ).thenAnswer(
-          (_) async => OfflineOperation(
-            id: 'apiary-op-1',
-            entityType: 'apiary',
-            operationType: OperationType.create,
-            payload: const {},
-            status: OperationStatus.synced,
-            createdAt: DateTime(2026),
-            updatedAt: DateTime(2026),
-            resolvedEntityId: 'server-apiary-9',
-          ),
-        );
-        when(
-          () => dataSource.createHive(
-            any(),
-            apiaryId: any(named: 'apiaryId'),
-            idempotencyKey: any(named: 'idempotencyKey'),
-          ),
-        ).thenAnswer((_) async => serverResponse);
+    test('resolves the real apiary id from the synced dependency operation before sending', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => []);
+      when(() => operationQueue.find('apiary-op-1')).thenAnswer(
+        (_) async => OfflineOperation(
+          id: 'apiary-op-1',
+          entityType: 'apiary',
+          operationType: OperationType.create,
+          payload: const {},
+          status: OperationStatus.synced,
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+          resolvedEntityId: 'server-apiary-9',
+        ),
+      );
+      when(
+        () => dataSource.createHive(
+          any(),
+          apiaryId: any(named: 'apiaryId'),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      ).thenAnswer((_) async => serverResponse);
 
-        final result = await handler.handle(
-          createOpForLocalApiary(dependsOnOperationId: 'apiary-op-1'),
-        );
+      final result = await handler.handle(createOpForLocalApiary(dependsOnOperationId: 'apiary-op-1'));
 
-        expect(result, isA<OperationSuccess>());
-        verify(
-          () => dataSource.createHive(
-            any(),
-            apiaryId: 'server-apiary-9',
-            idempotencyKey: 'op-1',
-          ),
-        ).called(1);
-      },
-    );
+      expect(result, isA<OperationSuccess>());
+      verify(() => dataSource.createHive(any(), apiaryId: 'server-apiary-9', idempotencyKey: 'op-1')).called(1);
+    });
 
-    test(
-      'fails retryably without calling the API when the dependency has not synced yet',
-      () async {
-        when(
-          () => operationQueue.find('apiary-op-1'),
-        ).thenAnswer(
-          (_) async => OfflineOperation(
-            id: 'apiary-op-1',
-            entityType: 'apiary',
-            operationType: OperationType.create,
-            payload: const {},
-            status: OperationStatus.pending,
-            createdAt: DateTime(2026),
-            updatedAt: DateTime(2026),
-          ),
-        );
+    test('fails retryably without calling the API when the dependency has not synced yet', () async {
+      when(() => operationQueue.find('apiary-op-1')).thenAnswer(
+        (_) async => OfflineOperation(
+          id: 'apiary-op-1',
+          entityType: 'apiary',
+          operationType: OperationType.create,
+          payload: const {},
+          status: OperationStatus.pending,
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        ),
+      );
 
-        final result = await handler.handle(
-          createOpForLocalApiary(dependsOnOperationId: 'apiary-op-1'),
-        );
+      final result = await handler.handle(createOpForLocalApiary(dependsOnOperationId: 'apiary-op-1'));
 
-        expect(result, isA<OperationRetryableFailure>());
-        verifyNever(
-          () => dataSource.createHive(
-            any(),
-            apiaryId: any(named: 'apiaryId'),
-            idempotencyKey: any(named: 'idempotencyKey'),
-          ),
-        );
-      },
-    );
+      expect(result, isA<OperationRetryableFailure>());
+      verifyNever(
+        () => dataSource.createHive(
+          any(),
+          apiaryId: any(named: 'apiaryId'),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      );
+    });
 
-    test(
-      'fails retryably when there is no dependency operation id at all',
-      () async {
-        final result = await handler.handle(createOpForLocalApiary());
+    test('fails retryably when there is no dependency operation id at all', () async {
+      final result = await handler.handle(createOpForLocalApiary());
 
-        expect(result, isA<OperationRetryableFailure>());
-        verifyNever(
-          () => dataSource.createHive(
-            any(),
-            apiaryId: any(named: 'apiaryId'),
-            idempotencyKey: any(named: 'idempotencyKey'),
-          ),
-        );
-      },
-    );
+      expect(result, isA<OperationRetryableFailure>());
+      verifyNever(
+        () => dataSource.createHive(
+          any(),
+          apiaryId: any(named: 'apiaryId'),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      );
+    });
   });
 
   group('update', () {
-    test(
-      'reconciles the cache with the server response and reports success',
-      () async {
-        final existing = HiveResponse(
-          id: 'hive-1',
-          apiaryId: 'apiary-1',
-          name: 'Old Name',
-          createdAt: DateTime(2026),
-          updatedAt: DateTime(2026),
-        );
-        final updatedResponse = HiveResponse(
-          id: 'hive-1',
-          apiaryId: 'apiary-1',
-          name: 'Renamed',
-          createdAt: DateTime(2026),
-          updatedAt: DateTime(2026),
-        );
-        when(() => localDataSource.read()).thenAnswer((_) async => [existing]);
-        when(
-          () => dataSource.updateHive('hive-1', any()),
-        ).thenAnswer((_) async => updatedResponse);
+    test('reconciles the cache with the server response and reports success', () async {
+      final existing = HiveResponse(
+        id: 'hive-1',
+        apiaryId: 'apiary-1',
+        name: 'Old Name',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+      final updatedResponse = HiveResponse(
+        id: 'hive-1',
+        apiaryId: 'apiary-1',
+        name: 'Renamed',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
+      when(() => localDataSource.read()).thenAnswer((_) async => [existing]);
+      when(() => dataSource.updateHive('hive-1', any())).thenAnswer((_) async => updatedResponse);
 
-        final result = await handler.handle(_updateOp());
+      final result = await handler.handle(_updateOp());
 
-        expect(result, isA<OperationSuccess>());
-        final update =
-            verify(() => localDataSource.modify(captureAny())).captured.single
-                as FutureOr<List<HiveResponse>> Function(List<HiveResponse>?);
-        final written = await update([existing]);
-        expect(written.single.name, 'Renamed');
-      },
-    );
+      expect(result, isA<OperationSuccess>());
+      final update =
+          verify(() => localDataSource.modify(captureAny())).captured.single
+              as FutureOr<List<HiveResponse>> Function(List<HiveResponse>?);
+      final written = await update([existing]);
+      expect(written.single.name, 'Renamed');
+    });
 
     test('does not send an apiary id in the update request', () async {
       final updatedResponse = HiveResponse(
@@ -398,23 +352,34 @@ void main() {
         updatedAt: DateTime(2026),
       );
       when(() => localDataSource.read()).thenAnswer((_) async => []);
-      when(
-        () => dataSource.updateHive('hive-1', any()),
-      ).thenAnswer((_) async => updatedResponse);
+      when(() => dataSource.updateHive('hive-1', any())).thenAnswer((_) async => updatedResponse);
 
       await handler.handle(_updateOp());
 
       verify(() => dataSource.updateHive('hive-1', any())).called(1);
     });
 
-    test('classifies a ServerException as a permanent failure', () async {
-      when(() => dataSource.updateHive(any(), any())).thenThrow(
-        const ServerException(
-          statusCode: 422,
-          code: 'validation_error',
-          message: 'invalid',
-        ),
+    test('marks the operation synced in the queue before notifying, so a live refresh sees it as already synced', () async {
+      final updatedResponse = HiveResponse(
+        id: 'hive-1',
+        apiaryId: 'apiary-1',
+        name: 'Renamed',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
       );
+      when(() => localDataSource.read()).thenAnswer((_) async => []);
+      when(() => dataSource.updateHive('hive-1', any())).thenAnswer((_) async => updatedResponse);
+
+      await handler.handle(_updateOp());
+
+      final syncedUpdate = verify(() => operationQueue.update(captureAny())).captured.single as OfflineOperation;
+      expect(syncedUpdate.status, OperationStatus.synced);
+    });
+
+    test('classifies a ServerException as a permanent failure', () async {
+      when(
+        () => dataSource.updateHive(any(), any()),
+      ).thenThrow(const ServerException(statusCode: 422, code: 'validation_error', message: 'invalid'));
 
       final result = await handler.handle(_updateOp());
 

@@ -155,8 +155,7 @@ void main() {
         mergeInto: any(named: 'mergeInto'),
       ),
     ).thenAnswer((invocation) async {
-      final mutate =
-          invocation.namedArguments[#mutate] as List<ApiaryResponse> Function(List<ApiaryResponse>?);
+      final mutate = invocation.namedArguments[#mutate] as List<ApiaryResponse> Function(List<ApiaryResponse>?);
       mutate(null);
     });
   });
@@ -402,6 +401,56 @@ void main() {
       final result = await repository.getApiary('apiary-1');
 
       result.fold((_) => fail('expected Right'), (apiary) => expect(apiary.id, 'apiary-1'));
+    });
+  });
+
+  group('getCachedApiary', () {
+    test('returns the mapped apiary straight from the cache, without calling the network', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => [apiaryResponse]);
+
+      final result = await repository.getCachedApiary('apiary-1');
+
+      expect(result?.id, 'apiary-1');
+      expect(result?.location, 'Springfield');
+      verifyNever(() => dataSource.getApiary(any()));
+    });
+
+    test('reflects a pending sync status from the operation queue', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => [apiaryResponse]);
+      when(() => operationQueue.all()).thenAnswer(
+        (_) async => [
+          OfflineOperation(
+            id: 'op-1',
+            entityType: 'apiary',
+            operationType: OperationType.update,
+            payload: const {},
+            status: OperationStatus.pending,
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+            localEntityId: 'apiary-1',
+          ),
+        ],
+      );
+
+      final result = await repository.getCachedApiary('apiary-1');
+
+      expect(result?.syncStatus, ApiarySyncStatus.pending);
+    });
+
+    test('returns null when the id is not cached', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => [apiaryResponse]);
+
+      final result = await repository.getCachedApiary('missing-id');
+
+      expect(result, isNull);
+    });
+
+    test('returns null when nothing is cached at all', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => null);
+
+      final result = await repository.getCachedApiary('apiary-1');
+
+      expect(result, isNull);
     });
   });
 

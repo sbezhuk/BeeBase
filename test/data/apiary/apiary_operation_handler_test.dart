@@ -228,6 +228,19 @@ void main() {
 
       verifyNever(() => locationService.resolveAddress(latitude: any(named: 'latitude'), longitude: any(named: 'longitude')));
     });
+
+    test('marks the operation synced in the queue before notifying, so a live refresh sees it as already synced', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => []);
+      when(
+        () => dataSource.createApiary(any(), idempotencyKey: any(named: 'idempotencyKey')),
+      ).thenAnswer((_) async => serverResponse);
+
+      await handler.handle(_createOp());
+
+      final syncedUpdate = verify(() => operationQueue.update(captureAny())).captured.single as OfflineOperation;
+      expect(syncedUpdate.status, OperationStatus.synced);
+      expect(syncedUpdate.resolvedEntityId, 'server-42');
+    });
   });
 
   group('update', () {
@@ -320,6 +333,17 @@ void main() {
       await handler.handle(_updateOp());
 
       verifyNever(() => locationService.resolveAddress(latitude: any(named: 'latitude'), longitude: any(named: 'longitude')));
+    });
+
+    test('marks the operation synced in the queue before notifying, so a live refresh sees it as already synced', () async {
+      final updatedResponse = ApiaryResponse(id: 'apiary-1', name: 'Renamed', createdAt: DateTime(2026), updatedAt: DateTime(2026));
+      when(() => localDataSource.read()).thenAnswer((_) async => []);
+      when(() => dataSource.updateApiary('apiary-1', any())).thenAnswer((_) async => updatedResponse);
+
+      await handler.handle(_updateOp());
+
+      final syncedUpdate = verify(() => operationQueue.update(captureAny())).captured.single as OfflineOperation;
+      expect(syncedUpdate.status, OperationStatus.synced);
     });
   });
 

@@ -3,6 +3,7 @@ import 'package:beebase/presentation/widgets/app_scaffold/android_app_scaffold.d
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold_action.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/ios_app_scaffold.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Platform-forked page shell shared by every list/details/form screen in
 /// the app: Liquid Glass chrome on iOS ([IosAppScaffold]), Material 3 on
@@ -36,7 +37,7 @@ final class AppScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return switch (Theme.of(context).platform) {
+    final body = switch (Theme.of(context).platform) {
       TargetPlatform.iOS => IosAppScaffold(
         title: title,
         slivers: slivers,
@@ -57,5 +58,10 @@ final class AppScaffold extends StatelessWidget {
         controller: controller,
       ),
     };
+
+    return SafeArea(
+      bottom: false,
+      child: AnnotatedRegion<SystemUiOverlayStyle>(value: SystemUiOverlayStyle.dark, child: body),
+    );
   }
 }

@@ -4,6 +4,7 @@ import 'package:beebase/core/offline/offline_operation.dart';
 import 'package:beebase/core/offline/operation_handler.dart';
 import 'package:beebase/core/offline/operation_queue.dart';
 import 'package:beebase/core/offline/operation_result.dart';
+import 'package:beebase/core/offline/operation_status.dart';
 import 'package:beebase/core/offline/operation_type.dart';
 import 'package:beebase/core/storage/local_media_store.dart';
 import 'package:beebase/data/data_source/interface/local_data_source.dart';
@@ -21,8 +22,7 @@ import 'package:easy_localization/easy_localization.dart';
 /// queue. Simpler than `ApiaryOperationHandler`/`HiveOperationHandler`: a
 /// photo is only ever created or removed, never edited, so there's no
 /// version/supersede handling to do.
-final class MediaOperationHandler extends Repository
-    implements OperationHandler {
+final class MediaOperationHandler extends Repository implements OperationHandler {
   MediaOperationHandler({
     required this.dataSource,
     required this.localDataSource,
@@ -46,23 +46,14 @@ final class MediaOperationHandler extends Repository
   Future<OperationResult> handle(OfflineOperation operation) {
     return switch (operation.operationType) {
       OperationType.create => _handleCreate(operation),
-      OperationType.update => Future.value(
-        OperationPermanentFailure('media.errors.updateNotSupported'.tr()),
-      ),
-      OperationType.delete => Future.value(
-        OperationPermanentFailure(
-          'media.errors.offlineDeleteNotSupported'.tr(),
-        ),
-      ),
+      OperationType.update => Future.value(OperationPermanentFailure('media.errors.updateNotSupported'.tr())),
+      OperationType.delete => Future.value(OperationPermanentFailure('media.errors.offlineDeleteNotSupported'.tr())),
     };
   }
 
   Future<OperationResult> _handleCreate(OfflineOperation operation) async {
     final request = MediaUploadRequest.fromJson(operation.payload);
-    final ownerId = await _resolveOwnerId(
-      request.ownerId,
-      operation.dependsOnOperationId,
-    );
+    final ownerId = await _resolveOwnerId(request.ownerId, operation.dependsOnOperationId);
     if (ownerId == null) {
       return OperationRetryableFailure('media.errors.ownerNotSynced'.tr());
     }
@@ -90,9 +81,26 @@ final class MediaOperationHandler extends Repository
         extension: extensionFromFilename(request.originalFilename),
       );
       await _reconcileCache(operation.localEntityId, response, cachedPath);
+      await _markSynced(operation, resolvedEntityId: response.id);
       _notifyOwnerListChanged(request.ownerType);
       return OperationSuccess(resolvedEntityId: response.id);
     });
+  }
+
+  /// Marks [operation] `synced` in the queue before the owner's list-refresh
+  /// notifier fires. [SyncEngine] makes this exact same write itself once
+  /// `handle()` returns (see `SyncEngineImpl._process`), but only *after*
+  /// the handler call completes — which is too late for a gallery refresh
+  /// triggered by `_notifyOwnerListChanged` below: it would still find this
+  /// operation `inProgress` in the queue and keep showing a "needs
+  /// synchronization" badge for a photo that has, in fact, already synced
+  /// (see the identical fix in `ApiaryOperationHandler._markSynced`).
+  /// `SyncEngineImpl`'s later write just repeats this (harmlessly) with a
+  /// fresher `updatedAt` once it re-reads the row.
+  Future<void> _markSynced(OfflineOperation operation, {String? resolvedEntityId}) {
+    return operationQueue.update(
+      operation.copyWith(status: OperationStatus.synced, resolvedEntityId: resolvedEntityId, updatedAt: DateTime.now()),
+    );
   }
 
   /// Reuses the owning Apiary/Hive's list-refresh broadcast as the "media
@@ -115,10 +123,7 @@ final class MediaOperationHandler extends Repository
   /// still a local placeholder, the real id has to be read off that owner's
   /// own now-synced operation — see
   /// `HiveOperationHandler._resolveApiaryId` for the identical pattern.
-  Future<String?> _resolveOwnerId(
-    String rawOwnerId,
-    String? dependsOnOperationId,
-  ) async {
+  Future<String?> _resolveOwnerId(String rawOwnerId, String? dependsOnOperationId) async {
     if (!LocalIdGenerator.isLocal(rawOwnerId)) {
       return rawOwnerId;
     }
@@ -135,19 +140,10 @@ final class MediaOperationHandler extends Repository
         : OperationRetryableFailure(failure.message.resolve());
   }
 
-  Future<void> _reconcileCache(
-    String? localEntityId,
-    MediaResponse serverResponse,
-    String? cachedPath,
-  ) {
+  Future<void> _reconcileCache(String? localEntityId, MediaResponse serverResponse, String? cachedPath) {
     return localDataSource.modify((current) {
-      final withoutPlaceholder = (current ?? const []).where(
-        (response) => response.id != localEntityId,
-      );
-      return [
-        ...withoutPlaceholder,
-        serverResponse.copyWith(localFilePath: cachedPath),
-      ];
+      final withoutPlaceholder = (current ?? const []).where((response) => response.id != localEntityId);
+      return [...withoutPlaceholder, serverResponse.copyWith(localFilePath: cachedPath)];
     });
   }
 }

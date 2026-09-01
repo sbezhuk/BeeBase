@@ -95,6 +95,22 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
   }
 
   @override
+  Future<Apiary?> getCachedApiary(String id) async {
+    final cached = await localDataSource.read() ?? const <ApiaryResponse>[];
+    ApiaryResponse? match;
+    for (final response in cached) {
+      if (response.id == id) {
+        match = response;
+        break;
+      }
+    }
+    if (match == null) return null;
+
+    final pendingOps = await _apiaryOperations();
+    return cacheMerger.toEntities([match], pendingOps).first;
+  }
+
+  @override
   Future<Either<Failure, Apiary>> createApiary({
     required String name,
     String? description,

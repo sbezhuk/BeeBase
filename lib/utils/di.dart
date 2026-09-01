@@ -51,6 +51,7 @@ import 'package:beebase/domain/repositories/media_reader.dart';
 import 'package:beebase/domain/repositories/media_writer.dart';
 import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_delete_cubit/apiary_delete_cubit.dart';
+import 'package:beebase/presentation/apiary/cubit/apiary_details_cubit/apiary_details_cubit.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_form_cubit/apiary_form_cubit.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_list_cubit/apiary_list_cubit.dart';
 import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';
@@ -255,6 +256,9 @@ Future<void> initDi() async {
   );
   di.registerFactoryParam<ApiaryDeleteCubit, Apiary, void>(
     (apiary, _) => ApiaryDeleteCubit(writer: di(), apiary: apiary, refreshNotifier: di()),
+  );
+  di.registerFactoryParam<ApiaryDetailsCubit, Apiary, void>(
+    (apiary, _) => ApiaryDetailsCubit(apiary: apiary, reader: di(), refreshNotifier: di()),
   );
   di.registerFactoryParam<HiveListCubit, String, void>(
     (apiaryId, _) => HiveListCubit(reader: di(), apiaryId: apiaryId, refreshNotifier: di()),

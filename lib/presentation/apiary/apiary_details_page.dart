@@ -3,6 +3,7 @@ import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/enum/apiary_sync_status.dart';
 import 'package:beebase/domain/enum/media_owner_type.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_delete_cubit/apiary_delete_cubit.dart';
+import 'package:beebase/presentation/apiary/cubit/apiary_details_cubit/apiary_details_cubit.dart';
 import 'package:beebase/presentation/apiary/extension/apiary_date_x.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_preview_image.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_sync_badge.dart';
@@ -41,6 +42,7 @@ final class ApiaryDetailsPage extends StatefulWidget implements AutoRouteWrapper
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => di.get<ApiaryDeleteCubit>(param1: apiary)),
+        BlocProvider(create: (_) => di.get<ApiaryDetailsCubit>(param1: apiary)),
         BlocProvider(
           create: (_) => di.get<MediaGalleryCubit>(param1: MediaOwnerType.apiary, param2: apiary.id)..load(),
         ),
@@ -54,34 +56,39 @@ final class ApiaryDetailsPage extends StatefulWidget implements AutoRouteWrapper
 }
 
 final class _ApiaryDetailsPageState extends State<ApiaryDetailsPage> {
-  late Apiary _apiary = widget.apiary;
   bool _isDeleting = false;
 
   @override
   Widget build(BuildContext context) {
-    return AppScaffold(
-      title: _apiary.name,
-      trailingAction: AppScaffoldAction(
-        label: 'apiary.details.edit'.tr(),
-        materialIcon: Icons.edit_outlined,
-        cupertinoIcon: CupertinoIcons.pencil,
-        onPressed: _isDeleting ? () {} : () => _edit(context),
-      ),
-      slivers: [
-        BlocConsumer<ApiaryDeleteCubit, ApiaryDeleteState>(
-          listener: _handleStateChange,
-          builder: (context, state) {
-            _isDeleting = state is ApiaryDeleteLoading;
-            return _ApiaryDetailsBody(apiary: _apiary, isDeleting: _isDeleting);
-          },
-        ),
-      ],
+    return BlocBuilder<ApiaryDetailsCubit, ApiaryDetailsState>(
+      builder: (context, detailsState) {
+        final apiary = detailsState.apiary;
+        return AppScaffold(
+          title: apiary.name,
+          trailingAction: AppScaffoldAction(
+            label: 'apiary.details.edit'.tr(),
+            materialIcon: Icons.edit_outlined,
+            cupertinoIcon: CupertinoIcons.pencil,
+            onPressed: _isDeleting ? () {} : () => _edit(context, apiary),
+          ),
+          slivers: [
+            BlocConsumer<ApiaryDeleteCubit, ApiaryDeleteState>(
+              listener: _handleStateChange,
+              builder: (context, state) {
+                _isDeleting = state is ApiaryDeleteLoading;
+                return _ApiaryDetailsBody(apiary: apiary, isDeleting: _isDeleting);
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Future<void> _edit(BuildContext context) async {
-    final updated = await context.router.push<Apiary>(ApiaryFormRoute(apiary: _apiary));
-    if (updated != null && mounted) setState(() => _apiary = updated);
+  Future<void> _edit(BuildContext context, Apiary apiary) async {
+    final detailsCubit = context.read<ApiaryDetailsCubit>();
+    final updated = await context.router.push<Apiary>(ApiaryFormRoute(apiary: apiary));
+    if (updated != null) detailsCubit.setApiary(updated);
   }
 
   void _handleStateChange(BuildContext context, ApiaryDeleteState state) {

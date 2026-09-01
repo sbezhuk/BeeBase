@@ -47,8 +47,7 @@ const hiveCacheKey = 'cached_hives';
 /// [HiveOperationHandler] when replaying a queued operation.
 const _payloadApiaryIdKey = 'apiaryId';
 
-final class HiveRepositoryImpl extends Repository
-    implements IHiveReader, IHiveWriter {
+final class HiveRepositoryImpl extends Repository implements IHiveReader, IHiveWriter {
   HiveRepositoryImpl({
     required this.dataSource,
     required this.localDataSource,
@@ -70,26 +69,18 @@ final class HiveRepositoryImpl extends Repository
   /// `ApiaryRepositoryImpl` does for apiaries, then filters the merged cache
   /// down to [apiaryId] only for the page actually returned to the caller.
   @override
-  Future<Either<Failure, Page<Hive>>> getHives({
-    required String apiaryId,
-    required int page,
-    required int limit,
-  }) async {
+  Future<Either<Failure, Page<Hive>>> getHives({required String apiaryId, required int page, required int limit}) async {
     final pendingOps = await _hiveOperations();
     if (!await connectivity.isOnline) {
       return _cachedPageOrFailure(
         apiaryId,
-        const InternalFailure(
-          ErrorTextKey('core.errors.unexpectedNetworkError'),
-        ),
+        const InternalFailure(ErrorTextKey('core.errors.unexpectedNetworkError')),
         pendingOps,
       );
     }
 
     final result = await on(() async {
-      final paginated = await dataSource.getHives(
-        PageRequest(page: page, limit: limit),
-      );
+      final paginated = await dataSource.getHives(PageRequest(page: page, limit: limit));
       late List<HiveResponse> merged;
       await localDataSource.modify((current) {
         final oldCache = current ?? const [];
@@ -110,15 +101,8 @@ final class HiveRepositoryImpl extends Repository
       },
       (data) async {
         final (merged, hasNext) = data;
-        final forApiary = merged
-            .where((response) => response.apiaryId == apiaryId)
-            .toList();
-        return Right(
-          Page(
-            items: cacheMerger.toEntities(forApiary, pendingOps),
-            hasNext: hasNext,
-          ),
-        );
+        final forApiary = merged.where((response) => response.apiaryId == apiaryId).toList();
+        return Right(Page(items: cacheMerger.toEntities(forApiary, pendingOps), hasNext: hasNext));
       },
     );
   }
@@ -129,11 +113,7 @@ final class HiveRepositoryImpl extends Repository
   }
 
   @override
-  Future<Either<Failure, Hive>> createHive({
-    required String apiaryId,
-    required String name,
-    String? notes,
-  }) async {
+  Future<Either<Failure, Hive>> createHive({required String apiaryId, required String name, String? notes}) async {
     if (!await connectivity.isOnline) {
       return _createOffline(apiaryId: apiaryId, name: name, notes: notes);
     }
@@ -141,9 +121,7 @@ final class HiveRepositoryImpl extends Repository
     final request = HiveRequest(name: name, notes: notes);
     final result = await on(() async {
       final response = await dataSource.createHive(request, apiaryId: apiaryId);
-      await localDataSource.modify(
-        (current) => [...(current ?? const []), response],
-      );
+      await localDataSource.modify((current) => [...(current ?? const []), response]);
       return response;
     });
 
@@ -170,42 +148,23 @@ final class HiveRepositoryImpl extends Repository
   }) async {
     final pending = await _pendingOperationFor(id);
     if (pending != null) {
-      return _updateOffline(
-        apiaryId: apiaryId,
-        id: id,
-        name: name,
-        notes: notes,
-      );
+      return _updateOffline(apiaryId: apiaryId, id: id, name: name, notes: notes);
     }
     if (LocalIdGenerator.isLocal(id)) {
-      return const Left(
-        InternalFailure(ErrorTextKey('hive.errors.pendingSync')),
-      );
+      return const Left(InternalFailure(ErrorTextKey('hive.errors.pendingSync')));
     }
     if (!await connectivity.isOnline) {
-      return _updateOffline(
-        apiaryId: apiaryId,
-        id: id,
-        name: name,
-        notes: notes,
-      );
+      return _updateOffline(apiaryId: apiaryId, id: id, name: name, notes: notes);
     }
 
     final request = HiveRequest(name: name, notes: notes);
-    final result = await on(
-      () async => (await dataSource.updateHive(id, request)).toEntity(),
-    );
+    final result = await on(() async => (await dataSource.updateHive(id, request)).toEntity());
 
     return result.fold((failure) async {
       if (failure is ServerFailure) {
         return Left(failure);
       }
-      return _updateOffline(
-        apiaryId: apiaryId,
-        id: id,
-        name: name,
-        notes: notes,
-      );
+      return _updateOffline(apiaryId: apiaryId, id: id, name: name, notes: notes);
     }, (hive) => Future.value(Right(hive)));
   }
 
@@ -220,9 +179,7 @@ final class HiveRepositoryImpl extends Repository
       return _deleteLocalOnly(id);
     }
     if (!await connectivity.isOnline) {
-      return const Left(
-        InternalFailure(ErrorTextKey('hive.errors.deleteRequiresConnection')),
-      );
+      return const Left(InternalFailure(ErrorTextKey('hive.errors.deleteRequiresConnection')));
     }
     return _deleteOnline(id);
   }
@@ -244,9 +201,7 @@ final class HiveRepositoryImpl extends Repository
       await dataSource.deleteHive(id);
     } on ServerException catch (e) {
       if (e.statusCode != 404) {
-        return Left(
-          ServerFailure(code: e.code, message: e.message, fields: e.fields),
-        );
+        return Left(ServerFailure(code: e.code, message: e.message, fields: e.fields));
       }
     } on CancellationException catch (e) {
       return Left(CancellationFailure(e.message));
@@ -262,10 +217,7 @@ final class HiveRepositoryImpl extends Repository
   /// after a synced entity is deleted server-side, so neither can reappear
   /// from the cache the next time the list is read offline.
   Future<void> _purgeLocal(String id) async {
-    await localDataSource.modify(
-      (current) =>
-          (current ?? const []).where((response) => response.id != id).toList(),
-    );
+    await localDataSource.modify((current) => (current ?? const []).where((response) => response.id != id).toList());
     final pending = await _pendingOperationFor(id);
     if (pending != null) {
       await operationQueue.remove(pending.id);
@@ -283,31 +235,16 @@ final class HiveRepositoryImpl extends Repository
   /// try to create this hive under an apiary id the backend has never heard
   /// of. See [HiveOperationHandler] for how that dependency is resolved once
   /// it syncs.
-  Future<Either<Failure, Hive>> _createOffline({
-    required String apiaryId,
-    required String name,
-    String? notes,
-  }) async {
+  Future<Either<Failure, Hive>> _createOffline({required String apiaryId, required String name, String? notes}) async {
     final now = DateTime.now();
     final localId = LocalIdGenerator.generate();
-    final dependsOnOperationId = LocalIdGenerator.isLocal(apiaryId)
-        ? await _pendingApiaryCreateOperationId(apiaryId)
-        : null;
-    final placeholder = HiveResponse(
-      id: localId,
-      apiaryId: apiaryId,
-      name: name,
-      notes: notes,
-      createdAt: now,
-      updatedAt: now,
-    );
+    final dependsOnOperationId = LocalIdGenerator.isLocal(apiaryId) ? await _pendingApiaryCreateOperationId(apiaryId) : null;
+    final placeholder = HiveResponse(id: localId, apiaryId: apiaryId, name: name, notes: notes, createdAt: now, updatedAt: now);
     await offlineMutationStore.saveWithPendingOperation<List<HiveResponse>>(
       cacheKey: hiveCacheKey,
       mutate: (current) => [...(current ?? const []), placeholder],
       toJson: (list) => list.map((response) => response.toJson()).toList(),
-      fromJson: (json) => (json as List<dynamic>)
-          .map((item) => HiveResponse.fromJson(item as Map<String, dynamic>))
-          .toList(),
+      fromJson: (json) => (json as List<dynamic>).map((item) => HiveResponse.fromJson(item as Map<String, dynamic>)).toList(),
       operation: OfflineOperation(
         id: LocalIdGenerator.generate(),
         entityType: _hiveEntityType,
@@ -323,9 +260,7 @@ final class HiveRepositoryImpl extends Repository
         dependsOnOperationId: dependsOnOperationId,
       ),
     );
-    return Right(
-      placeholder.toEntity().copyWith(syncStatus: HiveSyncStatus.pending),
-    );
+    return Right(placeholder.toEntity().copyWith(syncStatus: HiveSyncStatus.pending));
   }
 
   /// The still-pending (or already-processed but not-yet-synced) `create`
@@ -361,66 +296,52 @@ final class HiveRepositoryImpl extends Repository
     final request = HiveRequest(name: name, notes: notes);
     HiveResponse? updatedResponse;
 
-    await offlineMutationStore
-        .saveWithConsolidatedOperation<List<HiveResponse>>(
-          cacheKey: hiveCacheKey,
-          mutate: (current) {
-            final list = current ?? const <HiveResponse>[];
-            HiveResponse? match;
-            for (final response in list) {
-              if (response.id == id) {
-                match = response;
-                break;
-              }
-            }
-            final response = request.toResponse(
-              id: id,
-              apiaryId: apiaryId,
-              createdAt: match?.createdAt ?? now,
-              updatedAt: now,
-            );
-            updatedResponse = response;
-            return [
-              for (final existing in list)
-                if (existing.id != id) existing,
-              response,
-            ];
-          },
-          toJson: (list) => list.map((response) => response.toJson()).toList(),
-          fromJson: (json) => (json as List<dynamic>)
-              .map(
-                (item) => HiveResponse.fromJson(item as Map<String, dynamic>),
-              )
-              .toList(),
-          entityType: _hiveEntityType,
-          entityId: id,
-          operation: () => OfflineOperation(
-            id: LocalIdGenerator.generate(),
-            entityType: _hiveEntityType,
-            operationType: OperationType.update,
-            payload: {_payloadApiaryIdKey: apiaryId, ...request.toJson()},
-            status: OperationStatus.pending,
-            createdAt: now,
-            updatedAt: now,
-            localEntityId: id,
-          ),
-          mergeInto: (existing) => existing.copyWith(
-            payload: {_payloadApiaryIdKey: apiaryId, ...request.toJson()},
-            status: OperationStatus.pending,
-            updatedAt: now,
-            version: existing.version + 1,
-          ),
-        );
-
-    return Right(
-      updatedResponse!.toEntity().copyWith(syncStatus: HiveSyncStatus.pending),
+    await offlineMutationStore.saveWithConsolidatedOperation<List<HiveResponse>>(
+      cacheKey: hiveCacheKey,
+      mutate: (current) {
+        final list = current ?? const <HiveResponse>[];
+        HiveResponse? match;
+        for (final response in list) {
+          if (response.id == id) {
+            match = response;
+            break;
+          }
+        }
+        final response = request.toResponse(id: id, apiaryId: apiaryId, createdAt: match?.createdAt ?? now, updatedAt: now);
+        updatedResponse = response;
+        return [
+          for (final existing in list)
+            if (existing.id != id) existing,
+          response,
+        ];
+      },
+      toJson: (list) => list.map((response) => response.toJson()).toList(),
+      fromJson: (json) => (json as List<dynamic>).map((item) => HiveResponse.fromJson(item as Map<String, dynamic>)).toList(),
+      entityType: _hiveEntityType,
+      entityId: id,
+      operation: () => OfflineOperation(
+        id: LocalIdGenerator.generate(),
+        entityType: _hiveEntityType,
+        operationType: OperationType.update,
+        payload: {_payloadApiaryIdKey: apiaryId, ...request.toJson()},
+        status: OperationStatus.pending,
+        createdAt: now,
+        updatedAt: now,
+        localEntityId: id,
+      ),
+      mergeInto: (existing) => existing.copyWith(
+        payload: {_payloadApiaryIdKey: apiaryId, ...request.toJson()},
+        status: OperationStatus.pending,
+        updatedAt: now,
+        version: existing.version + 1,
+      ),
     );
+
+    return Right(updatedResponse!.toEntity().copyWith(syncStatus: HiveSyncStatus.pending));
   }
 
   Future<List<OfflineOperation>> _hiveOperations() async {
-    return (await operationQueue.all())
-        .where((operation) => operation.entityType == _hiveEntityType)
-        .toList();
+    return (await operationQueue.all()).where((operation) => operation.entityType == _hiveEntityType).toList();
   }
 
   /// The current non-synced operation for [id] (a pending `CREATE` if [id]
@@ -428,9 +349,7 @@ final class HiveRepositoryImpl extends Repository
   /// with an unsynced edit) — `null` if [id] has nothing outstanding.
   Future<OfflineOperation?> _pendingOperationFor(String id) async {
     final matches = (await _hiveOperations()).where(
-      (operation) =>
-          operation.localEntityId == id &&
-          operation.status != OperationStatus.synced,
+      (operation) => operation.localEntityId == id && operation.status != OperationStatus.synced,
     );
     if (matches.isEmpty) {
       return null;
@@ -442,19 +361,22 @@ final class HiveRepositoryImpl extends Repository
   /// or offline, so "load more" simply isn't offered again until the next
   /// successful online fetch; pull-to-refresh is the existing "try again"
   /// affordance once back online.
+  ///
+  /// Emptiness must be judged on the whole cache, before filtering to
+  /// [apiaryId] — a `null` cache means hives have never been fetched (no
+  /// data to fall back on, so [failure] stands), whereas a populated cache
+  /// with zero entries for this apiary is a confirmed "no hives yet" and
+  /// must return an empty page, not a failure.
   Future<Either<Failure, Page<Hive>>> _cachedPageOrFailure(
     String apiaryId,
     Failure failure,
     List<OfflineOperation> pendingOps,
   ) async {
-    final cached = ((await localDataSource.read()) ?? const [])
-        .where((response) => response.apiaryId == apiaryId)
-        .toList();
-    if (cached.isEmpty) {
+    final all = await localDataSource.read();
+    if (all == null) {
       return Left(failure);
     }
-    return Right(
-      Page(items: cacheMerger.toEntities(cached, pendingOps), hasNext: false),
-    );
+    final cached = all.where((response) => response.apiaryId == apiaryId).toList();
+    return Right(Page(items: cacheMerger.toEntities(cached, pendingOps), hasNext: false));
   }
 }
