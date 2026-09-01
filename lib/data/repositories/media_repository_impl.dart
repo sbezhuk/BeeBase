@@ -1,9 +1,6 @@
 import 'dart:io';
 
 import 'package:beebase/core/error/error_text.dart';
-import 'package:beebase/core/networking/exceptions/cancellation_exception.dart';
-import 'package:beebase/core/networking/exceptions/internal_exception.dart';
-import 'package:beebase/core/networking/exceptions/server_exception.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/core/offline/idempotency_key_generator.dart';
 import 'package:beebase/core/offline/local_id_generator.dart';
@@ -276,23 +273,18 @@ final class MediaRepositoryImpl extends Repository
 
   /// A 404 here means the server has already forgotten this photo — treated
   /// as an already-completed delete, matching `ApiaryRepositoryImpl`'s policy
-  /// for the same case.
+  /// for the same case. See [on]'s `ignoreStatusCode`.
   Future<Either<Failure, void>> _deleteOnline(String id) async {
-    try {
-      await dataSource.deleteMedia(id);
-    } on ServerException catch (e) {
-      if (e.statusCode != 404) {
-        return Left(
-          ServerFailure(code: e.code, message: e.message, fields: e.fields),
-        );
-      }
-    } on CancellationException catch (e) {
-      return Left(CancellationFailure(e.message));
-    } on InternalException catch (e) {
-      return Left(InternalFailure(e.message));
-    }
-    await _purgeLocal(id);
-    return const Right(null);
+    final result = await on(
+      () => dataSource.deleteMedia(id),
+      ignoreStatusCode: 404,
+      onIgnoredStatusCode: () {},
+    );
+
+    return result.fold((failure) async => Left(failure), (_) async {
+      await _purgeLocal(id);
+      return const Right(null);
+    });
   }
 
   /// Drops [id]'s cache entry, its lingering pending operation (if any), and

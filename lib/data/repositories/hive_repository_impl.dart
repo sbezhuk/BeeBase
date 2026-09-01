@@ -1,7 +1,4 @@
 import 'package:beebase/core/error/error_text.dart';
-import 'package:beebase/core/networking/exceptions/cancellation_exception.dart';
-import 'package:beebase/core/networking/exceptions/internal_exception.dart';
-import 'package:beebase/core/networking/exceptions/server_exception.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/core/offline/local_id_generator.dart';
 import 'package:beebase/core/offline/offline_mutation_store.dart';
@@ -232,23 +229,19 @@ final class HiveRepositoryImpl extends Repository implements IHiveReader, IHiveW
   /// local record left behind by, e.g., a previous sync that succeeded
   /// server-side but never reconciled locally, or a delete from another
   /// device/session. The desired end state (no such hive) is already true,
-  /// so this is treated as a successful delete rather than a failure. Any
-  /// other server error still surfaces normally via [on]'s standard
-  /// translation.
+  /// so this is treated as a successful delete rather than a failure — see
+  /// [on]'s `ignoreStatusCode`.
   Future<Either<Failure, void>> _deleteOnline(String id) async {
-    try {
-      await dataSource.deleteHive(id);
-    } on ServerException catch (e) {
-      if (e.statusCode != 404) {
-        return Left(ServerFailure(code: e.code, message: e.message, fields: e.fields));
-      }
-    } on CancellationException catch (e) {
-      return Left(CancellationFailure(e.message));
-    } on InternalException catch (e) {
-      return Left(InternalFailure(e.message));
-    }
-    await _purgeLocal(id);
-    return const Right(null);
+    final result = await on(
+      () => dataSource.deleteHive(id),
+      ignoreStatusCode: 404,
+      onIgnoredStatusCode: () {},
+    );
+
+    return result.fold((failure) async => Left(failure), (_) async {
+      await _purgeLocal(id);
+      return const Right(null);
+    });
   }
 
   /// Drops [id]'s cache entry and any lingering pending operation for it —

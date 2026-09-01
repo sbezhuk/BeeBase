@@ -10,10 +10,23 @@ import 'package:beebase/utils/either.dart';
 abstract class Repository {
   const Repository();
 
-  Future<Either<Failure, T>> on<T>(Future<T> Function() action) async {
+  /// Runs [action], translating a thrown [ServerException]/
+  /// [CancellationException]/[InternalException] into the matching
+  /// [Failure]. If [ignoreStatusCode] is given and the [ServerException]'s
+  /// `statusCode` matches it, the exception is treated as success instead —
+  /// e.g. a delete that 404s because the entity is already gone server-side
+  /// — and [onIgnoredStatusCode] is called to produce the result value.
+  Future<Either<Failure, T>> on<T>(
+    Future<T> Function() action, {
+    int? ignoreStatusCode,
+    T Function()? onIgnoredStatusCode,
+  }) async {
     try {
       return Right(await action());
     } on ServerException catch (e) {
+      if (ignoreStatusCode != null && e.statusCode == ignoreStatusCode && onIgnoredStatusCode != null) {
+        return Right(onIgnoredStatusCode());
+      }
       return Left(ServerFailure(code: e.code, message: e.message, fields: e.fields));
     } on CancellationException catch (e) {
       return Left(CancellationFailure(e.message));
