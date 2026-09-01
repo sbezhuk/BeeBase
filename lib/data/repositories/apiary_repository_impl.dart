@@ -163,7 +163,21 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
     }
 
     final request = ApiaryRequest(name: name, description: description, location: location, lat: lat, lon: lon);
-    final result = await on(() async => (await dataSource.updateApiary(id, request)).toEntity());
+    final result = await on(() async {
+      final response = await dataSource.updateApiary(id, request);
+      // Without this, getCachedApiary keeps returning the pre-edit response,
+      // and ApiaryDetailsCubit.refreshFromCache (fired by the same
+      // refreshNotifier.notify() this update triggers) clobbers the just-set
+      // edited state with that stale cache read.
+      await localDataSource.modify(
+        (current) => [
+          for (final existing in current ?? const <ApiaryResponse>[])
+            if (existing.id != id) existing,
+          response,
+        ],
+      );
+      return response.toEntity();
+    });
 
     return result.fold((failure) async {
       if (failure is ServerFailure) {
@@ -203,11 +217,7 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
   /// failure — otherwise a row in this state could never be removed, since
   /// every retry would 404 the same way. See [on]'s `ignoreStatusCode`.
   Future<Either<Failure, void>> _deleteOnline(String id) async {
-    final result = await on(
-      () => dataSource.deleteApiary(id),
-      ignoreStatusCode: 404,
-      onIgnoredStatusCode: () {},
-    );
+    final result = await on(() => dataSource.deleteApiary(id), ignoreStatusCode: 404, onIgnoredStatusCode: () {});
 
     return result.fold((failure) async => Left(failure), (_) async {
       await _purgeLocal(id);

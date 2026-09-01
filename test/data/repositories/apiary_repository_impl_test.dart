@@ -553,6 +553,25 @@ void main() {
       result.fold((_) => fail('expected Right'), (apiary) => expect(apiary.id, 'apiary-1'));
     });
 
+    test('writes the server response into the cache so getCachedApiary reflects the edit immediately', () async {
+      final updatedResponse = ApiaryResponse(
+        id: 'apiary-1',
+        name: 'Renamed Garden',
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026, 1, 2),
+      );
+      final second = ApiaryResponse(id: 'apiary-2', name: 'Meadow', createdAt: DateTime(2026), updatedAt: DateTime(2026));
+      when(() => localDataSource.read()).thenAnswer((_) async => [apiaryResponse, second]);
+      when(() => dataSource.updateApiary('apiary-1', any())).thenAnswer((_) async => updatedResponse);
+
+      await repository.updateApiary(id: 'apiary-1', name: 'Renamed Garden');
+
+      final update =
+          verify(() => localDataSource.modify(captureAny())).captured.single
+              as FutureOr<List<ApiaryResponse>> Function(List<ApiaryResponse>?);
+      expect(await update([apiaryResponse, second]), [second, updatedResponse]);
+    });
+
     test('consolidates into the existing pending CREATE instead of erroring on a not-yet-synced local id', () async {
       when(() => operationQueue.all()).thenAnswer(
         (_) async => [
