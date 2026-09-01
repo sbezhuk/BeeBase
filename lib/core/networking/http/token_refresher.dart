@@ -5,6 +5,7 @@ import 'package:beebase/core/networking/exceptions/server_exception.dart';
 import 'package:beebase/core/networking/http/dio_client.dart';
 import 'package:beebase/core/services/session_service.dart';
 import 'package:beebase/core/storage/token_storage.dart';
+import 'package:beebase/data/models/refresh_token_response.dart';
 
 /// Rotates the refresh token (sent automatically as an HttpOnly cookie by
 /// [dioClient]'s cookie interceptor) for a new access/refresh pair, and
@@ -24,7 +25,8 @@ class TokenRefresher {
   Future<String?> refresh() async {
     try {
       final response = await dioClient.post<Map<String, dynamic>>(ApiEndpoints.auth.refresh);
-      final accessToken = response.data?['access_token'] as String?;
+      final data = response.data;
+      final accessToken = data == null ? null : RefreshTokenResponse.fromJson(data).accessToken;
       if (accessToken == null) {
         return null;
       }
