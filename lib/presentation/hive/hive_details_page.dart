@@ -27,6 +27,7 @@ part 'hive_details_page/hive_details_body.dart';
 part 'hive_details_page/hive_details_detail_row.dart';
 part 'hive_details_page/hive_details_delete_link.dart';
 part 'hive_details_page/hive_details_info_section.dart';
+part 'hive_details_page/hive_details_inspections_link.dart';
 
 @RoutePage()
 final class HiveDetailsPage extends StatefulWidget implements AutoRouteWrapper {

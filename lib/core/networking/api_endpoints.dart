@@ -1,6 +1,7 @@
 import 'package:beebase/core/networking/apiary_endpoints.dart';
 import 'package:beebase/core/networking/auth_endpoints.dart';
 import 'package:beebase/core/networking/hive_endpoints.dart';
+import 'package:beebase/core/networking/inspection_endpoints.dart';
 import 'package:beebase/core/networking/media_endpoints.dart';
 
 /// Path constants for the BeeBase API, shared between data sources and the
@@ -11,5 +12,6 @@ abstract final class ApiEndpoints {
   static const auth = AuthEndpoints();
   static const apiaries = ApiaryEndpoints();
   static const hives = HiveEndpoints();
+  static const inspections = InspectionEndpoints();
   static const media = MediaEndpoints();
 }

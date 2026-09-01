@@ -37,6 +37,8 @@ final class _HiveDetailsBody extends StatelessWidget {
               text: 'hive.details.addedOn'.tr(namedArgs: {'date': hive.createdAt.toHiveDisplayDate()}),
             ),
             sectionDivider(),
+            _HiveDetailsInspectionsLink(hive: hive),
+            sectionDivider(),
             const MediaGallerySection(),
             if (hasDescription) ...[
               sectionDivider(),

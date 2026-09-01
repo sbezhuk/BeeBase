@@ -22,31 +22,39 @@ import 'package:beebase/data/apiary/apiary_operation_handler.dart';
 import 'package:beebase/data/data_source/apiary_data_source.dart';
 import 'package:beebase/data/data_source/authentication_data_source.dart';
 import 'package:beebase/data/data_source/hive_data_source.dart';
+import 'package:beebase/data/data_source/inspection_data_source.dart';
 import 'package:beebase/data/data_source/interface/apiary_data_source.dart';
 import 'package:beebase/data/data_source/interface/authentication_data_source.dart';
 import 'package:beebase/data/data_source/interface/hive_data_source.dart';
+import 'package:beebase/data/data_source/interface/inspection_data_source.dart';
 import 'package:beebase/data/data_source/interface/local_data_source.dart';
 import 'package:beebase/data/data_source/interface/media_data_source.dart';
 import 'package:beebase/data/data_source/media_data_source.dart';
 import 'package:beebase/data/data_source/sqlite_local_data_source.dart';
 import 'package:beebase/data/hive/hive_operation_handler.dart';
+import 'package:beebase/data/inspection/inspection_operation_handler.dart';
 import 'package:beebase/data/media/media_operation_handler.dart';
 import 'package:beebase/data/models/apiary_response.dart';
 import 'package:beebase/data/models/hive_response.dart';
+import 'package:beebase/data/models/inspection_response.dart';
 import 'package:beebase/data/models/media_response.dart';
 import 'package:beebase/data/models/user_response.dart';
 import 'package:beebase/data/repositories/apiary_repository_impl.dart';
 import 'package:beebase/data/repositories/authentication_repository_impl.dart';
 import 'package:beebase/data/repositories/hive_repository_impl.dart';
+import 'package:beebase/data/repositories/inspection_repository_impl.dart';
 import 'package:beebase/data/repositories/media_repository_impl.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/entity/hive.dart';
+import 'package:beebase/domain/entity/inspection.dart';
 import 'package:beebase/domain/enum/media_owner_type.dart';
 import 'package:beebase/domain/repositories/apiary_reader.dart';
 import 'package:beebase/domain/repositories/apiary_writer.dart';
 import 'package:beebase/domain/repositories/authentication_repository.dart';
 import 'package:beebase/domain/repositories/hive_reader.dart';
 import 'package:beebase/domain/repositories/hive_writer.dart';
+import 'package:beebase/domain/repositories/inspection_reader.dart';
+import 'package:beebase/domain/repositories/inspection_writer.dart';
 import 'package:beebase/domain/repositories/media_reader.dart';
 import 'package:beebase/domain/repositories/media_writer.dart';
 import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
@@ -62,6 +70,10 @@ import 'package:beebase/presentation/hive/cubit/hive_delete_cubit/hive_delete_cu
 import 'package:beebase/presentation/hive/cubit/hive_form_cubit/hive_form_cubit.dart';
 import 'package:beebase/presentation/hive/cubit/hive_list_cubit/hive_list_cubit.dart';
 import 'package:beebase/presentation/hive/hive_list_refresh_notifier.dart';
+import 'package:beebase/presentation/inspection/cubit/inspection_delete_cubit/inspection_delete_cubit.dart';
+import 'package:beebase/presentation/inspection/cubit/inspection_form_cubit/inspection_form_cubit.dart';
+import 'package:beebase/presentation/inspection/cubit/inspection_list_cubit/inspection_list_cubit.dart';
+import 'package:beebase/presentation/inspection/inspection_list_refresh_notifier.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/router/guardes/authentication_guard.dart';
@@ -82,6 +94,7 @@ Future<void> initDi() async {
   di.registerLazySingleton<LocationService>(() => LocationService(connectivity: di()));
   di.registerLazySingleton<ApiaryListRefreshNotifier>(ApiaryListRefreshNotifier.new);
   di.registerLazySingleton<HiveListRefreshNotifier>(HiveListRefreshNotifier.new);
+  di.registerLazySingleton<InspectionListRefreshNotifier>(InspectionListRefreshNotifier.new);
   di.registerLazySingleton<ConnectivityService>(ConnectivityService.new);
   di.registerLazySingleton<IConnectivityService>(() => di<ConnectivityService>());
   // #endregion
@@ -130,6 +143,15 @@ Future<void> initDi() async {
       fromJson: (json) => (json as List<dynamic>).map((item) => MediaResponse.fromJson(item as Map<String, dynamic>)).toList(),
     ),
   );
+  di.registerLazySingleton<LocalDataSource<List<InspectionResponse>>>(
+    () => SqliteLocalDataSource<List<InspectionResponse>>(
+      database: di(),
+      key: inspectionCacheKey,
+      toJson: (inspections) => inspections.map((inspection) => inspection.toJson()).toList(),
+      fromJson: (json) =>
+          (json as List<dynamic>).map((item) => InspectionResponse.fromJson(item as Map<String, dynamic>)).toList(),
+    ),
+  );
   di.registerLazySingleton<LocalMediaStore>(LocalMediaStore.new);
   // #endregion
 
@@ -156,6 +178,8 @@ Future<void> initDi() async {
   di.registerLazySingleton<IApiaryDataSource>(() => di<ApiaryDataSource>());
   di.registerLazySingleton<HiveDataSource>(() => HiveDataSource(dioClient: di(), resolver: di()));
   di.registerLazySingleton<IHiveDataSource>(() => di<HiveDataSource>());
+  di.registerLazySingleton<InspectionDataSource>(() => InspectionDataSource(dioClient: di(), resolver: di()));
+  di.registerLazySingleton<IInspectionDataSource>(() => di<InspectionDataSource>());
   di.registerLazySingleton<MediaDataSource>(() => MediaDataSource(dioClient: di(), resolver: di()));
   di.registerLazySingleton<IMediaDataSource>(() => di<MediaDataSource>());
   // #endregion
@@ -178,6 +202,9 @@ Future<void> initDi() async {
   di.registerLazySingleton<HiveOperationHandler>(
     () => HiveOperationHandler(dataSource: di(), localDataSource: di(), refreshNotifier: di(), operationQueue: di()),
   );
+  di.registerLazySingleton<InspectionOperationHandler>(
+    () => InspectionOperationHandler(dataSource: di(), localDataSource: di(), refreshNotifier: di(), operationQueue: di()),
+  );
   di.registerLazySingleton<MediaOperationHandler>(
     () => MediaOperationHandler(
       dataSource: di(),
@@ -192,6 +219,7 @@ Future<void> initDi() async {
     () => OperationRegistry({
       'apiary': di<ApiaryOperationHandler>(),
       'hive': di<HiveOperationHandler>(),
+      'inspection': di<InspectionOperationHandler>(),
       'media': di<MediaOperationHandler>(),
     }),
   );
@@ -225,6 +253,17 @@ Future<void> initDi() async {
   );
   di.registerLazySingleton<IHiveReader>(() => di<HiveRepositoryImpl>());
   di.registerLazySingleton<IHiveWriter>(() => di<HiveRepositoryImpl>());
+  di.registerLazySingleton<InspectionRepositoryImpl>(
+    () => InspectionRepositoryImpl(
+      dataSource: di(),
+      localDataSource: di(),
+      connectivity: di(),
+      operationQueue: di(),
+      offlineMutationStore: di(),
+    ),
+  );
+  di.registerLazySingleton<IInspectionReader>(() => di<InspectionRepositoryImpl>());
+  di.registerLazySingleton<IInspectionWriter>(() => di<InspectionRepositoryImpl>());
   di.registerLazySingleton<MediaRepositoryImpl>(
     () => MediaRepositoryImpl(
       dataSource: di(),
@@ -276,6 +315,15 @@ Future<void> initDi() async {
   );
   di.registerFactoryParam<HiveDeleteCubit, Hive, void>(
     (hive, _) => HiveDeleteCubit(writer: di(), hive: hive, refreshNotifier: di()),
+  );
+  di.registerFactoryParam<InspectionListCubit, String, void>(
+    (hiveId, _) => InspectionListCubit(reader: di(), hiveId: hiveId, refreshNotifier: di()),
+  );
+  di.registerFactoryParam<InspectionFormCubit, String, Inspection?>(
+    (hiveId, initial) => InspectionFormCubit(writer: di(), hiveId: hiveId, refreshNotifier: di(), initial: initial),
+  );
+  di.registerFactoryParam<InspectionDeleteCubit, Inspection, void>(
+    (inspection, _) => InspectionDeleteCubit(writer: di(), inspection: inspection, refreshNotifier: di()),
   );
   di.registerFactoryParam<MediaGalleryCubit, MediaOwnerType, String?>(
     (ownerType, ownerId) => MediaGalleryCubit(

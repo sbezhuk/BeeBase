@@ -311,6 +311,190 @@ class HomeRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [InspectionDetailsPage]
+class InspectionDetailsRoute extends PageRouteInfo<InspectionDetailsRouteArgs> {
+  InspectionDetailsRoute({
+    required Inspection inspection,
+    Key? key,
+    List<PageRouteInfo>? children,
+  }) : super(
+         InspectionDetailsRoute.name,
+         args: InspectionDetailsRouteArgs(inspection: inspection, key: key),
+         initialChildren: children,
+       );
+
+  static const String name = 'InspectionDetailsRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      final args = data.argsAs<InspectionDetailsRouteArgs>();
+      return WrappedRoute(
+        child: InspectionDetailsPage(
+          inspection: args.inspection,
+          key: args.key,
+        ),
+      );
+    },
+  );
+}
+
+class InspectionDetailsRouteArgs {
+  const InspectionDetailsRouteArgs({required this.inspection, this.key});
+
+  final Inspection inspection;
+
+  final Key? key;
+
+  @override
+  String toString() {
+    return 'InspectionDetailsRouteArgs{inspection: $inspection, key: $key}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! InspectionDetailsRouteArgs) return false;
+    return inspection == other.inspection && key == other.key;
+  }
+
+  @override
+  int get hashCode => inspection.hashCode ^ key.hashCode;
+}
+
+/// generated route for
+/// [InspectionFormPage]
+class InspectionFormRoute extends PageRouteInfo<InspectionFormRouteArgs> {
+  InspectionFormRoute({
+    required String hiveId,
+    Inspection? inspection,
+    Key? key,
+    List<PageRouteInfo>? children,
+  }) : super(
+         InspectionFormRoute.name,
+         args: InspectionFormRouteArgs(
+           hiveId: hiveId,
+           inspection: inspection,
+           key: key,
+         ),
+         initialChildren: children,
+       );
+
+  static const String name = 'InspectionFormRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      final args = data.argsAs<InspectionFormRouteArgs>();
+      return WrappedRoute(
+        child: InspectionFormPage(
+          hiveId: args.hiveId,
+          inspection: args.inspection,
+          key: args.key,
+        ),
+      );
+    },
+  );
+}
+
+class InspectionFormRouteArgs {
+  const InspectionFormRouteArgs({
+    required this.hiveId,
+    this.inspection,
+    this.key,
+  });
+
+  final String hiveId;
+
+  final Inspection? inspection;
+
+  final Key? key;
+
+  @override
+  String toString() {
+    return 'InspectionFormRouteArgs{hiveId: $hiveId, inspection: $inspection, key: $key}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! InspectionFormRouteArgs) return false;
+    return hiveId == other.hiveId &&
+        inspection == other.inspection &&
+        key == other.key;
+  }
+
+  @override
+  int get hashCode => hiveId.hashCode ^ inspection.hashCode ^ key.hashCode;
+}
+
+/// generated route for
+/// [InspectionListPage]
+class InspectionListRoute extends PageRouteInfo<InspectionListRouteArgs> {
+  InspectionListRoute({
+    required String hiveId,
+    required String hiveName,
+    Key? key,
+    List<PageRouteInfo>? children,
+  }) : super(
+         InspectionListRoute.name,
+         args: InspectionListRouteArgs(
+           hiveId: hiveId,
+           hiveName: hiveName,
+           key: key,
+         ),
+         initialChildren: children,
+       );
+
+  static const String name = 'InspectionListRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      final args = data.argsAs<InspectionListRouteArgs>();
+      return WrappedRoute(
+        child: InspectionListPage(
+          hiveId: args.hiveId,
+          hiveName: args.hiveName,
+          key: args.key,
+        ),
+      );
+    },
+  );
+}
+
+class InspectionListRouteArgs {
+  const InspectionListRouteArgs({
+    required this.hiveId,
+    required this.hiveName,
+    this.key,
+  });
+
+  final String hiveId;
+
+  final String hiveName;
+
+  final Key? key;
+
+  @override
+  String toString() {
+    return 'InspectionListRouteArgs{hiveId: $hiveId, hiveName: $hiveName, key: $key}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! InspectionListRouteArgs) return false;
+    return hiveId == other.hiveId &&
+        hiveName == other.hiveName &&
+        key == other.key;
+  }
+
+  @override
+  int get hashCode => hiveId.hashCode ^ hiveName.hashCode ^ key.hashCode;
+}
+
+/// generated route for
 /// [LoginPage]
 class LoginRoute extends PageRouteInfo<void> {
   const LoginRoute({List<PageRouteInfo>? children})

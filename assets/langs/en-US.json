@@ -127,7 +127,8 @@
       "addedOn": "Added {date}",
       "deleteConfirmTitle": "Delete hive?",
       "deleteConfirmMessage": "This will permanently remove this hive. This action cannot be undone.",
-      "deleteRequiresConnection": "This hive is already saved to the server — connect to the internet to delete it."
+      "deleteRequiresConnection": "This hive is already saved to the server — connect to the internet to delete it.",
+      "manageInspections": "Manage Inspections"
     },
     "form": {
       "createTitle": "New Hive",
@@ -145,6 +146,52 @@
     "errors": {
       "pendingSync": "This hive hasn't finished syncing yet. Try again once it's synced.",
       "deleteRequiresConnection": "You need an internet connection to delete this hive."
+    }
+  },
+  "inspection": {
+    "list": {
+      "addInspection": "Add Inspection",
+      "emptyTitle": "No inspections yet",
+      "emptySubtitle": "Record your first inspection to start tracking this hive.",
+      "retry": "Retry",
+      "loadMoreError": "Couldn't load more inspections",
+      "syncPending": "Needs synchronization",
+      "syncFailed": "Sync failed"
+    },
+    "details": {
+      "sectionLabel": "Inspection",
+      "edit": "Edit",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "addedOn": "Added {date}",
+      "deleteConfirmTitle": "Delete inspection?",
+      "deleteConfirmMessage": "This will permanently remove this inspection. This action cannot be undone.",
+      "deleteRequiresConnection": "This inspection is already saved to the server — connect to the internet to delete it."
+    },
+    "form": {
+      "createTitle": "New Inspection",
+      "editTitle": "Edit Inspection",
+      "dateLabel": "Date",
+      "notesLabel": "Notes",
+      "notesHint": "Add any notes about this inspection",
+      "validations": {
+        "notesRequired": "Notes are required"
+      },
+      "submitCreate": "Create Inspection",
+      "submitUpdate": "Save Changes",
+      "typeLabel": "Type"
+    },
+    "errors": {
+      "pendingSync": "This inspection hasn't finished syncing yet. Try again once it's synced.",
+      "deleteRequiresConnection": "You need an internet connection to delete this inspection."
+    },
+    "types": {
+      "routine": "Routine",
+      "queen": "Queen",
+      "brood": "Brood",
+      "health": "Health",
+      "feeding": "Feeding",
+      "seasonal": "Seasonal"
     }
   },
   "media": {
@@ -217,6 +264,7 @@
       "file_too_large": "This photo is too large to upload.",
       "apiary_not_found": "This apiary couldn't be found on the server.",
       "hive_not_found": "This hive couldn't be found on the server.",
+      "inspection_not_found": "This inspection couldn't be found on the server.",
       "media_not_found": "This photo couldn't be found on the server.",
       "media_id_conflict": "This photo was already uploaded by another account."
     }
