@@ -112,15 +112,16 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
     if (state is! MediaGalleryLoaded) {
       emit(const MediaGalleryLoading());
     }
-    final ids = resolveImages == null ? const <String>[] : await resolveImages(ownerId);
+    final ids = resolveImages == null
+        ? const <String>[]
+        : await resolveImages(ownerId);
     if (isClosed) return;
     final result = await reader.getMedia(ids: ids);
     if (isClosed) return;
     result.fold(
       (failure) => emit(MediaGalleryError(failure)),
-      (items) => emit(
-        MediaGalleryLoaded(items.map(_itemFromAttachment).toList()),
-      ),
+      (items) =>
+          emit(MediaGalleryLoaded(items.map(_itemFromAttachment).toList())),
     );
   }
 
@@ -228,7 +229,7 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
     final pending = _pendingRemovalIds.toList();
     _pendingRemovalIds.clear();
     for (final id in pending) {
-      await writer.removeMedia(id);
+      await writer.removeMedia(ownerType: ownerType, ownerId: ownerId, id: id);
     }
   }
 
@@ -257,6 +258,8 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
   Future<void> emitRemove(
     IMediaWriter writer,
     LocalMediaStore localMediaStore,
+    MediaOwnerType ownerType,
+    String? ownerId,
     String localId,
     bool deferChanges,
     VoidCallback? notifyOwnerListChanged,
@@ -277,7 +280,7 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
     }
 
     final attachment = item.attachment;
-    if (attachment == null) return;
+    if (attachment == null || ownerId == null) return;
 
     if (deferChanges) {
       _pendingRemovalIds.add(attachment.id);
@@ -289,7 +292,11 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
       localId,
       (existing) => existing.copyWith(status: MediaGalleryItemStatus.removing),
     );
-    final result = await writer.removeMedia(attachment.id);
+    final result = await writer.removeMedia(
+      ownerType: ownerType,
+      ownerId: ownerId,
+      id: attachment.id,
+    );
     result.fold(
       (failure) => _updateItem(
         localId,

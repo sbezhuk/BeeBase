@@ -17,4 +17,13 @@ abstract interface class IOwnerImageWriter {
     required String ownerId,
     required String mediaId,
   });
+
+  /// The reverse of [addImage] - routes to
+  /// [IApiaryWriter.removeApiaryImage]/[IHiveWriter.removeHiveImage] by
+  /// [ownerType].
+  Future<Either<Failure, void>> removeImage({
+    required MediaOwnerType ownerType,
+    required String ownerId,
+    required String mediaId,
+  });
 }

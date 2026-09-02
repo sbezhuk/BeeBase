@@ -27,12 +27,19 @@ final class AuthenticationInterceptor extends QueuedInterceptorsWrapper {
   final Dio retryDio;
 
   @override
-  Future<void> onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+  Future<void> onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
     final token = await tokenStorage.accessToken();
     if (token == null) {
       sessionService.notifySessionExpired();
       handler.reject(
-        DioException(requestOptions: options, error: 'core.errors.no_active_session'.tr(), type: DioExceptionType.cancel),
+        DioException(
+          requestOptions: options,
+          error: 'core.errors.no_active_session'.tr(),
+          type: DioExceptionType.cancel,
+        ),
       );
       return;
     }
@@ -41,7 +48,10 @@ final class AuthenticationInterceptor extends QueuedInterceptorsWrapper {
   }
 
   @override
-  Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
+  Future<void> onError(
+    DioException err,
+    ErrorInterceptorHandler handler,
+  ) async {
     if (err.response?.statusCode != 401) {
       handler.next(err);
       return;
@@ -53,7 +63,19 @@ final class AuthenticationInterceptor extends QueuedInterceptorsWrapper {
       return;
     }
 
-    final retryOptions = err.requestOptions..headers['Authorization'] = 'Bearer $newAccessToken';
+    final retryOptions = err.requestOptions
+      ..headers['Authorization'] = 'Bearer $newAccessToken';
+    // A multipart body (media upload) was already streamed to the failed
+    // first attempt, which leaves it finalized — resending that same
+    // FormData throws ("already been finalized") instead of retrying, so a
+    // photo upload that hits a 401 never actually reaches the server on
+    // retry. FormData.clone() (dio's own fix for exactly this) rebuilds a
+    // fresh, unfinalized copy; every other body type is plain data that's
+    // safe to resend as-is.
+    final requestData = retryOptions.data;
+    if (requestData is FormData) {
+      retryOptions.data = requestData.clone();
+    }
     try {
       final response = await retryDio.fetch<dynamic>(retryOptions);
       handler.resolve(response);

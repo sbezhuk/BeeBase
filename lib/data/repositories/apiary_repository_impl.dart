@@ -30,7 +30,8 @@ const _apiaryEntityType = 'apiary';
 /// `LocalDataSource<List<ApiaryResponse>>` agree on.
 const apiaryCacheKey = 'cached_apiaries';
 
-final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IApiaryWriter {
+final class ApiaryRepositoryImpl extends Repository
+    implements IApiaryReader, IApiaryWriter {
   ApiaryRepositoryImpl({
     required this.dataSource,
     required this.localDataSource,
@@ -55,14 +56,24 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
   /// refresh) replaces the cache; page 2+ appends to it (see
   /// [ApiaryCacheMerger]).
   @override
-  Future<Either<Failure, Page<Apiary>>> getApiaries({required int page, required int limit}) async {
+  Future<Either<Failure, Page<Apiary>>> getApiaries({
+    required int page,
+    required int limit,
+  }) async {
     final pendingOps = await _apiaryOperations();
     if (!await connectivity.isOnline) {
-      return _cachedPageOrFailure(const InternalFailure(ErrorTextKey('core.errors.unexpected_network_error')), pendingOps);
+      return _cachedPageOrFailure(
+        const InternalFailure(
+          ErrorTextKey('core.errors.unexpected_network_error'),
+        ),
+        pendingOps,
+      );
     }
 
     final result = await on(() async {
-      final paginated = await dataSource.getApiaries(PageRequest(page: page, limit: limit));
+      final paginated = await dataSource.getApiaries(
+        PageRequest(page: page, limit: limit),
+      );
       late List<ApiaryResponse> merged;
       await localDataSource.modify((current) {
         final oldCache = current ?? const [];
@@ -83,7 +94,12 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
       },
       (data) async {
         final (merged, hasNext) = data;
-        return Right(Page(items: cacheMerger.toEntities(merged, pendingOps), hasNext: hasNext));
+        return Right(
+          Page(
+            items: cacheMerger.toEntities(merged, pendingOps),
+            hasNext: hasNext,
+          ),
+        );
       },
     );
   }
@@ -118,13 +134,27 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
     double? lon,
   }) async {
     if (!await connectivity.isOnline) {
-      return _createOffline(name: name, description: description, location: location, lat: lat, lon: lon);
+      return _createOffline(
+        name: name,
+        description: description,
+        location: location,
+        lat: lat,
+        lon: lon,
+      );
     }
 
-    final request = ApiaryRequest(name: name, description: description, location: location, lat: lat, lon: lon);
+    final request = ApiaryRequest(
+      name: name,
+      description: description,
+      location: location,
+      lat: lat,
+      lon: lon,
+    );
     final result = await on(() async {
       final response = await dataSource.createApiary(request);
-      await localDataSource.modify((current) => [...(current ?? const []), response]);
+      await localDataSource.modify(
+        (current) => [...(current ?? const []), response],
+      );
       return response;
     });
 
@@ -132,7 +162,13 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
       if (failure is ServerFailure) {
         return Left(failure);
       }
-      return _createOffline(name: name, description: description, location: location, lat: lat, lon: lon);
+      return _createOffline(
+        name: name,
+        description: description,
+        location: location,
+        lat: lat,
+        lon: lon,
+      );
     }, (response) => Future.value(Right(response.toEntity())));
   }
 
@@ -155,20 +191,42 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
   }) async {
     final pending = await _pendingOperationFor(id);
     if (pending != null) {
-      return _updateOffline(id: id, name: name, description: description, location: location, lat: lat, lon: lon);
+      return _updateOffline(
+        id: id,
+        name: name,
+        description: description,
+        location: location,
+        lat: lat,
+        lon: lon,
+      );
     }
     if (LocalIdGenerator.isLocal(id)) {
-      return const Left(InternalFailure(ErrorTextKey('core.errors.pending_sync')));
+      return const Left(
+        InternalFailure(ErrorTextKey('core.errors.pending_sync')),
+      );
     }
     if (!await connectivity.isOnline) {
-      return _updateOffline(id: id, name: name, description: description, location: location, lat: lat, lon: lon);
+      return _updateOffline(
+        id: id,
+        name: name,
+        description: description,
+        location: location,
+        lat: lat,
+        lon: lon,
+      );
     }
 
     // images is never set here: a plain field edit never touches attached
     // media, and omitting the key (see [ApiaryRequest.images]) is exactly
     // what tells apiary-service to leave it alone. Attaching new media goes
     // through [addApiaryImage] instead.
-    final request = ApiaryRequest(name: name, description: description, location: location, lat: lat, lon: lon);
+    final request = ApiaryRequest(
+      name: name,
+      description: description,
+      location: location,
+      lat: lat,
+      lon: lon,
+    );
     final result = await on(() async {
       final response = await dataSource.updateApiary(id, request);
       // Without this, getCachedApiary keeps returning the pre-edit response,
@@ -189,7 +247,14 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
       if (failure is ServerFailure) {
         return Left(failure);
       }
-      return _updateOffline(id: id, name: name, description: description, location: location, lat: lat, lon: lon);
+      return _updateOffline(
+        id: id,
+        name: name,
+        description: description,
+        location: location,
+        lat: lat,
+        lon: lon,
+      );
     }, (apiary) => Future.value(Right(apiary)));
   }
 
@@ -207,9 +272,15 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
   /// "the current state" of an apiary the server doesn't know about yet, or
   /// reference a media id it hasn't heard of yet.
   @override
-  Future<Either<Failure, MediaSyncStatus>> addApiaryImage({required String apiaryId, required String mediaId}) async {
+  Future<Either<Failure, MediaSyncStatus>> addApiaryImage({
+    required String apiaryId,
+    required String mediaId,
+  }) async {
     final pending = await _pendingOperationFor(apiaryId);
-    if (pending != null || LocalIdGenerator.isLocal(apiaryId) || LocalIdGenerator.isLocal(mediaId) || !await connectivity.isOnline) {
+    if (pending != null ||
+        LocalIdGenerator.isLocal(apiaryId) ||
+        LocalIdGenerator.isLocal(mediaId) ||
+        !await connectivity.isOnline) {
       return _queueImageAdd(apiaryId: apiaryId, mediaId: mediaId);
     }
 
@@ -225,7 +296,11 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
       );
       final updated = await dataSource.updateApiary(apiaryId, request);
       await localDataSource.modify(
-        (list) => [for (final existing in list ?? const <ApiaryResponse>[]) if (existing.id != apiaryId) existing, updated],
+        (list) => [
+          for (final existing in list ?? const <ApiaryResponse>[])
+            if (existing.id != apiaryId) existing,
+          updated,
+        ],
       );
     });
 
@@ -237,13 +312,61 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
     }, (_) => Future.value(const Right(MediaSyncStatus.synced)));
   }
 
-  Future<Either<Failure, MediaSyncStatus>> _queueImageAdd({required String apiaryId, required String mediaId}) async {
+  /// The reverse of [addApiaryImage]. Skipped (a no-op success) rather than
+  /// queued when [apiaryId] is still local or there's no connectivity:
+  /// [addApiaryImage] itself would have gone offline in that same
+  /// situation (never actually PUT [mediaId] into any server-side
+  /// `images`), so there is nothing server-side yet to detach - unlike
+  /// [addApiaryImage], there's no dependent upload to wait on here, so
+  /// there's no equivalent queued operation to fall back to (offline
+  /// Apiary delete isn't supported yet either - see [deleteApiary]).
+  @override
+  Future<Either<Failure, void>> removeApiaryImage({
+    required String apiaryId,
+    required String mediaId,
+  }) async {
+    if (LocalIdGenerator.isLocal(apiaryId) || !await connectivity.isOnline) {
+      return const Right(null);
+    }
+
+    final result = await on(() async {
+      final current = await dataSource.getApiary(apiaryId);
+      if (!current.images.contains(mediaId)) return;
+      final request = ApiaryRequest(
+        name: current.name,
+        description: current.description,
+        location: current.location,
+        lat: current.lat,
+        lon: current.lon,
+        images: current.images.where((id) => id != mediaId).toList(),
+      );
+      final updated = await dataSource.updateApiary(apiaryId, request);
+      await localDataSource.modify(
+        (list) => [
+          for (final existing in list ?? const <ApiaryResponse>[])
+            if (existing.id != apiaryId) existing,
+          updated,
+        ],
+      );
+    });
+
+    return result.fold(Left.new, (_) => Future.value(const Right(null)));
+  }
+
+  Future<Either<Failure, MediaSyncStatus>> _queueImageAdd({
+    required String apiaryId,
+    required String mediaId,
+  }) async {
     final now = DateTime.now();
-    final dependsOnOperationId = LocalIdGenerator.isLocal(mediaId) ? await _pendingMediaCreateOperationId(mediaId) : null;
+    final dependsOnOperationId = LocalIdGenerator.isLocal(mediaId)
+        ? await _pendingMediaCreateOperationId(mediaId)
+        : null;
     if (LocalIdGenerator.isLocal(mediaId) && dependsOnOperationId == null) {
       // Invariant violated: a local media id should always have a pending
       // upload operation behind it (see `MediaRepositoryImpl._attachOffline`).
-      return const Left(InternalFailure(ErrorTextKey('core.errors.unexpected_network_error')));
+      return const Left(
+        InternalFailure(ErrorTextKey('core.errors.unexpected_network_error')),
+      );
     }
     await operationQueue.enqueue(
       OfflineOperation(
@@ -288,7 +411,9 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
       return _deleteLocalOnly(id);
     }
     if (!await connectivity.isOnline) {
-      return const Left(InternalFailure(ErrorTextKey('core.errors.delete_requires_connection')));
+      return const Left(
+        InternalFailure(ErrorTextKey('core.errors.delete_requires_connection')),
+      );
     }
     return _deleteOnline(id);
   }
@@ -306,7 +431,11 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
   /// failure — otherwise a row in this state could never be removed, since
   /// every retry would 404 the same way. See [on]'s `ignoreStatusCode`.
   Future<Either<Failure, void>> _deleteOnline(String id) async {
-    final result = await on(() => dataSource.deleteApiary(id), ignoreStatusCode: 404, onIgnoredStatusCode: () {});
+    final result = await on(
+      () => dataSource.deleteApiary(id),
+      ignoreStatusCode: 404,
+      onIgnoredStatusCode: () {},
+    );
 
     return result.fold((failure) async => Left(failure), (_) async {
       await _purgeLocal(id);
@@ -319,7 +448,10 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
   /// after a synced entity is deleted server-side, so neither can reappear
   /// from the cache the next time the list is read offline.
   Future<void> _purgeLocal(String id) async {
-    await localDataSource.modify((current) => (current ?? const []).where((response) => response.id != id).toList());
+    await localDataSource.modify(
+      (current) =>
+          (current ?? const []).where((response) => response.id != id).toList(),
+    );
     final pending = await _pendingOperationFor(id);
     if (pending != null) {
       await operationQueue.remove(pending.id);
@@ -352,19 +484,29 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
       cacheKey: apiaryCacheKey,
       mutate: (current) => [...(current ?? const []), placeholder],
       toJson: (list) => list.map((response) => response.toJson()).toList(),
-      fromJson: (json) => (json as List<dynamic>).map((item) => ApiaryResponse.fromJson(item as Map<String, dynamic>)).toList(),
+      fromJson: (json) => (json as List<dynamic>)
+          .map((item) => ApiaryResponse.fromJson(item as Map<String, dynamic>))
+          .toList(),
       operation: OfflineOperation(
         id: LocalIdGenerator.generate(),
         entityType: _apiaryEntityType,
         operationType: OperationType.create,
-        payload: ApiaryRequest(name: name, description: description, location: location, lat: lat, lon: lon).toJson(),
+        payload: ApiaryRequest(
+          name: name,
+          description: description,
+          location: location,
+          lat: lat,
+          lon: lon,
+        ).toJson(),
         status: OperationStatus.pending,
         createdAt: now,
         updatedAt: now,
         localEntityId: localId,
       ),
     );
-    return Right(placeholder.toEntity().copyWith(syncStatus: ApiarySyncStatus.pending));
+    return Right(
+      placeholder.toEntity().copyWith(syncStatus: ApiarySyncStatus.pending),
+    );
   }
 
   /// Updates the cached entity and folds the change into the single
@@ -384,60 +526,83 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
     double? lon,
   }) async {
     final now = DateTime.now();
-    final request = ApiaryRequest(name: name, description: description, location: location, lat: lat, lon: lon);
+    final request = ApiaryRequest(
+      name: name,
+      description: description,
+      location: location,
+      lat: lat,
+      lon: lon,
+    );
     ApiaryResponse? updatedResponse;
 
-    await offlineMutationStore.saveWithConsolidatedOperation<List<ApiaryResponse>>(
-      cacheKey: apiaryCacheKey,
-      mutate: (current) {
-        final list = current ?? const <ApiaryResponse>[];
-        ApiaryResponse? match;
-        for (final response in list) {
-          if (response.id == id) {
-            match = response;
-            break;
-          }
-        }
-        // images: match?.images preserves whatever was last known to be
-        // attached - this request never carries a value for it (see
-        // [ApiaryRequest.images]), so without this, a plain field edit
-        // would wipe the cached images list rather than leaving it alone.
-        final response = request.toResponse(id: id, createdAt: match?.createdAt ?? now, updatedAt: now, images: match?.images ?? const []);
-        updatedResponse = response;
-        return [
-          for (final existing in list)
-            if (existing.id != id) existing,
-          response,
-        ];
-      },
-      toJson: (list) => list.map((response) => response.toJson()).toList(),
-      fromJson: (json) => (json as List<dynamic>).map((item) => ApiaryResponse.fromJson(item as Map<String, dynamic>)).toList(),
-      entityType: _apiaryEntityType,
-      entityId: id,
-      // Never the outstanding pending operation this looks up: an
-      // `imageAdd` op tied to this same apiary (see
-      // `ApiaryOperationHandler`) has its own dependency and identity that
-      // this plain field edit must not clobber.
-      matchingOperationTypes: const {OperationType.create, OperationType.update},
-      operation: () => OfflineOperation(
-        id: LocalIdGenerator.generate(),
-        entityType: _apiaryEntityType,
-        operationType: OperationType.update,
-        payload: request.toJson(),
-        status: OperationStatus.pending,
-        createdAt: now,
-        updatedAt: now,
-        localEntityId: id,
-      ),
-      mergeInto: (existing) => existing.copyWith(
-        payload: request.toJson(),
-        status: OperationStatus.pending,
-        updatedAt: now,
-        version: existing.version + 1,
+    await offlineMutationStore
+        .saveWithConsolidatedOperation<List<ApiaryResponse>>(
+          cacheKey: apiaryCacheKey,
+          mutate: (current) {
+            final list = current ?? const <ApiaryResponse>[];
+            ApiaryResponse? match;
+            for (final response in list) {
+              if (response.id == id) {
+                match = response;
+                break;
+              }
+            }
+            // images: match?.images preserves whatever was last known to be
+            // attached - this request never carries a value for it (see
+            // [ApiaryRequest.images]), so without this, a plain field edit
+            // would wipe the cached images list rather than leaving it alone.
+            final response = request.toResponse(
+              id: id,
+              createdAt: match?.createdAt ?? now,
+              updatedAt: now,
+              images: match?.images ?? const [],
+            );
+            updatedResponse = response;
+            return [
+              for (final existing in list)
+                if (existing.id != id) existing,
+              response,
+            ];
+          },
+          toJson: (list) => list.map((response) => response.toJson()).toList(),
+          fromJson: (json) => (json as List<dynamic>)
+              .map(
+                (item) => ApiaryResponse.fromJson(item as Map<String, dynamic>),
+              )
+              .toList(),
+          entityType: _apiaryEntityType,
+          entityId: id,
+          // Never the outstanding pending operation this looks up: an
+          // `imageAdd` op tied to this same apiary (see
+          // `ApiaryOperationHandler`) has its own dependency and identity that
+          // this plain field edit must not clobber.
+          matchingOperationTypes: const {
+            OperationType.create,
+            OperationType.update,
+          },
+          operation: () => OfflineOperation(
+            id: LocalIdGenerator.generate(),
+            entityType: _apiaryEntityType,
+            operationType: OperationType.update,
+            payload: request.toJson(),
+            status: OperationStatus.pending,
+            createdAt: now,
+            updatedAt: now,
+            localEntityId: id,
+          ),
+          mergeInto: (existing) => existing.copyWith(
+            payload: request.toJson(),
+            status: OperationStatus.pending,
+            updatedAt: now,
+            version: existing.version + 1,
+          ),
+        );
+
+    return Right(
+      updatedResponse!.toEntity().copyWith(
+        syncStatus: ApiarySyncStatus.pending,
       ),
     );
-
-    return Right(updatedResponse!.toEntity().copyWith(syncStatus: ApiarySyncStatus.pending));
   }
 
   /// Includes both this apiary's own operations and every queued photo
@@ -447,7 +612,11 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
   /// marks its owning apiary's tile "needs sync" too.
   Future<List<OfflineOperation>> _apiaryOperations() async {
     return (await operationQueue.all())
-        .where((operation) => operation.entityType == _apiaryEntityType || operation.entityType == mediaOperationEntityType)
+        .where(
+          (operation) =>
+              operation.entityType == _apiaryEntityType ||
+              operation.entityType == mediaOperationEntityType,
+        )
         .toList();
   }
 
@@ -456,7 +625,9 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
   /// with an unsynced edit) — `null` if [id] has nothing outstanding.
   Future<OfflineOperation?> _pendingOperationFor(String id) async {
     final matches = (await _apiaryOperations()).where(
-      (operation) => operation.localEntityId == id && operation.status != OperationStatus.synced,
+      (operation) =>
+          operation.localEntityId == id &&
+          operation.status != OperationStatus.synced,
     );
     if (matches.isEmpty) {
       return null;
@@ -468,11 +639,16 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
   /// or offline, so "load more" simply isn't offered again until the next
   /// successful online fetch; pull-to-refresh is the existing "try again"
   /// affordance once back online.
-  Future<Either<Failure, Page<Apiary>>> _cachedPageOrFailure(Failure failure, List<OfflineOperation> pendingOps) async {
+  Future<Either<Failure, Page<Apiary>>> _cachedPageOrFailure(
+    Failure failure,
+    List<OfflineOperation> pendingOps,
+  ) async {
     final cached = await localDataSource.read();
     if (cached == null || cached.isEmpty) {
       return Left(failure);
     }
-    return Right(Page(items: cacheMerger.toEntities(cached, pendingOps), hasNext: false));
+    return Right(
+      Page(items: cacheMerger.toEntities(cached, pendingOps), hasNext: false),
+    );
   }
 }

@@ -1,16 +1,16 @@
-import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'media_response.g.dart';
 
 /// Doubles as this feature's cached-list DTO, not just the wire DTO — see
-/// [localFilePath].
+/// [localFilePath]. Has no notion of an owning apiary/hive - media-service
+/// dropped `owner_type`/`owner_id` from this response entirely; that
+/// relationship is now tracked only in `ApiaryResponse.images`/
+/// `HiveResponse.images`.
 @JsonSerializable()
 final class MediaResponse {
   const MediaResponse({
     required this.id,
-    required this.ownerType,
-    required this.ownerId,
     required this.originalFilename,
     required this.contentType,
     required this.sizeBytes,
@@ -23,12 +23,6 @@ final class MediaResponse {
       _$MediaResponseFromJson(json);
 
   final String id;
-
-  @JsonKey(name: 'owner_type')
-  final MediaOwnerType ownerType;
-
-  @JsonKey(name: 'owner_id')
-  final String ownerId;
 
   @JsonKey(name: 'original_filename')
   final String originalFilename;
@@ -61,8 +55,6 @@ final class MediaResponse {
   MediaResponse copyWith({String? localFilePath}) {
     return MediaResponse(
       id: id,
-      ownerType: ownerType,
-      ownerId: ownerId,
       originalFilename: originalFilename,
       contentType: contentType,
       sizeBytes: sizeBytes,

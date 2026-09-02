@@ -46,8 +46,6 @@ void main() {
 
   final syncedAttachment = MediaAttachment(
     id: 'media-1',
-    ownerType: MediaOwnerType.apiary,
-    ownerId: 'apiary-1',
     originalFilename: 'photo.jpg',
     contentType: 'image/jpeg',
     sizeBytes: 4,
@@ -57,8 +55,6 @@ void main() {
 
   final localOnlyAttachment = MediaAttachment(
     id: 'local-pending-1',
-    ownerType: MediaOwnerType.apiary,
-    ownerId: 'apiary-1',
     originalFilename: 'photo2.jpg',
     contentType: 'image/jpeg',
     sizeBytes: 4,
@@ -81,11 +77,16 @@ void main() {
     await connectivity.dispose();
   });
 
-  Future<void> pumpGallery(WidgetTester tester, MediaAttachment attachment) async {
+  Future<void> pumpGallery(
+    WidgetTester tester,
+    MediaAttachment attachment,
+  ) async {
     when(
       () => reader.getMedia(ids: any(named: 'ids')),
     ).thenAnswer((_) async => Right([attachment]));
-    when(() => reader.cacheDownloadedMedia(any(), any())).thenAnswer((_) async {});
+    when(
+      () => reader.cacheDownloadedMedia(any(), any()),
+    ).thenAnswer((_) async {});
 
     galleryCubit = MediaGalleryCubit(
       reader: reader,
@@ -125,7 +126,12 @@ void main() {
   }
 
   GestureDetector removeButtonDetector(WidgetTester tester) {
-    return tester.widget<GestureDetector>(find.ancestor(of: find.byIcon(Icons.close), matching: find.byType(GestureDetector)));
+    return tester.widget<GestureDetector>(
+      find.ancestor(
+        of: find.byIcon(Icons.close),
+        matching: find.byType(GestureDetector),
+      ),
+    );
   }
 
   // Discrete pumps throughout this file, never pumpAndSettle — MediaThumbnail
@@ -140,13 +146,20 @@ void main() {
   Future<void> confirmDelete(WidgetTester tester) async {
     await tester.tap(find.byIcon(Icons.close));
     await tester.pump(const Duration(milliseconds: 300));
-    final button = tester.widget<InkWell>(find.ancestor(of: find.text('media.gallery.delete'), matching: find.byType(InkWell)));
+    final button = tester.widget<InkWell>(
+      find.ancestor(
+        of: find.text('media.gallery.delete'),
+        matching: find.byType(InkWell),
+      ),
+    );
     button.onTap!();
     await tester.pump(const Duration(milliseconds: 300));
   }
 
   group('an already-synced photo (exists on the server)', () {
-    testWidgets('the remove button is hidden entirely while offline', (tester) async {
+    testWidgets('the remove button is hidden entirely while offline', (
+      tester,
+    ) async {
       await pumpGallery(tester, syncedAttachment);
 
       connectivity.emit(false);
@@ -156,19 +169,39 @@ void main() {
       expect(find.byIcon(Icons.close), findsNothing);
     });
 
-    testWidgets('the remove action works normally while online', (tester) async {
-      when(() => writer.removeMedia('media-1')).thenAnswer((_) async => const Right(null));
+    testWidgets('the remove action works normally while online', (
+      tester,
+    ) async {
+      when(
+        () => writer.removeMedia(
+          ownerType: MediaOwnerType.apiary,
+          ownerId: 'apiary-1',
+          id: 'media-1',
+        ),
+      ).thenAnswer((_) async => const Right(null));
       await pumpGallery(tester, syncedAttachment);
 
       expect(removeButtonDetector(tester).onTap, isNotNull);
       expect(find.byTooltip('media.gallery.remove'), findsOneWidget);
 
       await confirmDelete(tester);
-      verify(() => writer.removeMedia('media-1')).called(1);
+      verify(
+        () => writer.removeMedia(
+          ownerType: MediaOwnerType.apiary,
+          ownerId: 'apiary-1',
+          id: 'media-1',
+        ),
+      ).called(1);
     });
 
     testWidgets('the remove button reappears once back online', (tester) async {
-      when(() => writer.removeMedia('media-1')).thenAnswer((_) async => const Right(null));
+      when(
+        () => writer.removeMedia(
+          ownerType: MediaOwnerType.apiary,
+          ownerId: 'apiary-1',
+          id: 'media-1',
+        ),
+      ).thenAnswer((_) async => const Right(null));
       await pumpGallery(tester, syncedAttachment);
 
       connectivity.emit(false);
@@ -182,38 +215,72 @@ void main() {
       expect(removeButtonDetector(tester).onTap, isNotNull);
 
       await confirmDelete(tester);
-      verify(() => writer.removeMedia('media-1')).called(1);
+      verify(
+        () => writer.removeMedia(
+          ownerType: MediaOwnerType.apiary,
+          ownerId: 'apiary-1',
+          id: 'media-1',
+        ),
+      ).called(1);
     });
 
-    testWidgets('tapping remove shows a confirmation sheet before deleting anything', (tester) async {
-      await pumpGallery(tester, syncedAttachment);
+    testWidgets(
+      'tapping remove shows a confirmation sheet before deleting anything',
+      (tester) async {
+        await pumpGallery(tester, syncedAttachment);
 
-      await tester.tap(find.byIcon(Icons.close));
-      await tester.pump(const Duration(milliseconds: 300));
+        await tester.tap(find.byIcon(Icons.close));
+        await tester.pump(const Duration(milliseconds: 300));
 
-      expect(find.text('media.gallery.delete_confirm_title'), findsOneWidget);
-      verifyNever(() => writer.removeMedia(any()));
-    });
+        expect(find.text('media.gallery.delete_confirm_title'), findsOneWidget);
+        verifyNever(
+          () => writer.removeMedia(
+            ownerType: any(named: 'ownerType'),
+            ownerId: any(named: 'ownerId'),
+            id: any(named: 'id'),
+          ),
+        );
+      },
+    );
 
-    testWidgets('cancelling the confirmation sheet does not delete the photo', (tester) async {
+    testWidgets('cancelling the confirmation sheet does not delete the photo', (
+      tester,
+    ) async {
       await pumpGallery(tester, syncedAttachment);
 
       await tester.tap(find.byIcon(Icons.close));
       await tester.pump(const Duration(milliseconds: 300));
       final cancelButton = tester.widget<InkWell>(
-        find.ancestor(of: find.text('media.gallery.cancel'), matching: find.byType(InkWell)),
+        find.ancestor(
+          of: find.text('media.gallery.cancel'),
+          matching: find.byType(InkWell),
+        ),
       );
       cancelButton.onTap!();
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('media.gallery.delete_confirm_title'), findsNothing);
-      verifyNever(() => writer.removeMedia(any()));
+      verifyNever(
+        () => writer.removeMedia(
+          ownerType: any(named: 'ownerType'),
+          ownerId: any(named: 'ownerId'),
+          id: any(named: 'id'),
+        ),
+      );
     });
   });
 
   group('a photo attached offline and not yet synchronized', () {
-    testWidgets('the remove action stays enabled while offline', (tester) async {
-      when(() => writer.removeMedia('local-pending-1')).thenAnswer((_) async => const Right(null));
+    testWidgets('the remove action stays enabled while offline', (
+      tester,
+    ) async {
+      when(
+        () => writer.removeMedia(
+          ownerType: MediaOwnerType.apiary,
+          ownerId: 'apiary-1',
+          id: 'local-pending-1',
+        ),
+      ).thenAnswer((_) async => const Right(null));
       await pumpGallery(tester, localOnlyAttachment);
 
       connectivity.emit(false);
@@ -224,7 +291,13 @@ void main() {
       expect(find.byTooltip('media.gallery.remove'), findsOneWidget);
 
       await confirmDelete(tester);
-      verify(() => writer.removeMedia('local-pending-1')).called(1);
+      verify(
+        () => writer.removeMedia(
+          ownerType: MediaOwnerType.apiary,
+          ownerId: 'apiary-1',
+          id: 'local-pending-1',
+        ),
+      ).called(1);
     });
   });
 }

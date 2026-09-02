@@ -3,19 +3,12 @@ import 'package:beebase/core/offline/operation_status.dart';
 import 'package:beebase/core/offline/operation_type.dart';
 import 'package:beebase/data/models/media_response.dart';
 import 'package:beebase/data/repositories/media_cache_merger.dart';
-import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/domain/enum/local/media_sync_status.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-MediaResponse _response({
-  required String id,
-  MediaOwnerType ownerType = MediaOwnerType.apiary,
-  String ownerId = 'apiary-1',
-}) {
+MediaResponse _response({required String id}) {
   return MediaResponse(
     id: id,
-    ownerType: ownerType,
-    ownerId: ownerId,
     originalFilename: 'photo.jpg',
     contentType: 'image/jpeg',
     sizeBytes: 1024,
@@ -47,16 +40,19 @@ void main() {
   }
 
   group('mergeForIds', () {
-    test('replaces the old cache with the fresh server response for the same id', () {
-      final stale = _response(id: 'media-1', ownerId: 'apiary-1-old-name');
-      final merged = merger.mergeForIds(
-        [serverItem],
-        [stale],
-        ids: const {'media-1'},
-        pendingOps: const [],
-      );
-      expect(merged, [serverItem]);
-    });
+    test(
+      'replaces the old cache with the fresh server response for the same id',
+      () {
+        final stale = _response(id: 'media-1');
+        final merged = merger.mergeForIds(
+          [serverItem],
+          [stale],
+          ids: const {'media-1'},
+          pendingOps: const [],
+        );
+        expect(merged, [serverItem]);
+      },
+    );
 
     test(
       'keeps a not-yet-synced local placeholder alongside the fresh server response',
@@ -123,11 +119,8 @@ void main() {
         'untouched — fetching one gallery must not silently discard another '
         'owner\'s already-synced, previously cached photos from the single '
         'shared "cached_media" blob', () {
-      final otherOwnerSynced = _response(id: 'media-2', ownerId: 'apiary-2');
-      final otherOwnerPending = _response(
-        id: 'local-pending-2',
-        ownerId: 'apiary-2',
-      );
+      final otherOwnerSynced = _response(id: 'media-2');
+      final otherOwnerPending = _response(id: 'local-pending-2');
       final oldCache = [serverItem, otherOwnerSynced, otherOwnerPending];
 
       final merged = merger.mergeForIds(

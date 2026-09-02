@@ -22,8 +22,14 @@ import 'package:easy_localization/easy_localization.dart';
 /// `HiveOperationHandler`'s job (`OperationType.imageAdd`), not this one's.
 /// Simpler than those two: a photo is only ever created or removed, never
 /// edited, so there's no version/supersede handling to do.
-final class MediaOperationHandler extends Repository implements OperationHandler {
-  MediaOperationHandler({required this.dataSource, required this.localDataSource, required this.localMediaStore, required this.operationQueue});
+final class MediaOperationHandler extends Repository
+    implements OperationHandler {
+  MediaOperationHandler({
+    required this.dataSource,
+    required this.localDataSource,
+    required this.localMediaStore,
+    required this.operationQueue,
+  });
 
   final IMediaDataSource dataSource;
   final LocalDataSource<List<MediaResponse>> localDataSource;
@@ -38,10 +44,14 @@ final class MediaOperationHandler extends Repository implements OperationHandler
     return switch (operation.operationType) {
       OperationType.create => _handleCreate(operation),
       OperationType.delete => _handleDelete(operation),
-      OperationType.update => Future.value(OperationPermanentFailure('media.errors.update_not_supported'.tr())),
+      OperationType.update => Future.value(
+        OperationPermanentFailure('media.errors.update_not_supported'.tr()),
+      ),
       // Only apiary/hive operations are ever queued as imageAdd - a media
       // operation reaching this branch would be a bug elsewhere.
-      OperationType.imageAdd => Future.value(const OperationPermanentFailure('imageAdd is not a media operation.')),
+      OperationType.imageAdd => Future.value(
+        const OperationPermanentFailure('imageAdd is not a media operation.'),
+      ),
     };
   }
 
@@ -84,7 +94,11 @@ final class MediaOperationHandler extends Repository implements OperationHandler
     if (id == null) {
       return const OperationPermanentFailure('Missing target id for delete.');
     }
-    final result = await on(() => dataSource.deleteMedia(id), ignoreStatusCode: 404, onIgnoredStatusCode: () {});
+    final result = await on(
+      () => dataSource.deleteMedia(id),
+      ignoreStatusCode: 404,
+      onIgnoredStatusCode: () {},
+    );
 
     return result.fold(_classify, (_) async {
       await _markSynced(operation);
@@ -99,9 +113,16 @@ final class MediaOperationHandler extends Repository implements OperationHandler
   /// refresh that might race ahead of it. `SyncEngineImpl`'s later write
   /// just repeats this (harmlessly) with a fresher `updatedAt` once it
   /// re-reads the row.
-  Future<void> _markSynced(OfflineOperation operation, {String? resolvedEntityId}) {
+  Future<void> _markSynced(
+    OfflineOperation operation, {
+    String? resolvedEntityId,
+  }) {
     return operationQueue.update(
-      operation.copyWith(status: OperationStatus.synced, resolvedEntityId: resolvedEntityId, updatedAt: DateTime.now()),
+      operation.copyWith(
+        status: OperationStatus.synced,
+        resolvedEntityId: resolvedEntityId,
+        updatedAt: DateTime.now(),
+      ),
     );
   }
 
@@ -112,14 +133,17 @@ final class MediaOperationHandler extends Repository implements OperationHandler
   }
 
   /// Replaces the local placeholder (keyed by [localEntityId]) with the
-  /// uploaded id, preserving whatever `ownerType`/`ownerId`/filename/size the
-  /// placeholder was created with — the upload call itself doesn't return
-  /// any of that (it's owner-less), so this is the only place those values
-  /// are known. A missing placeholder (cache cleared out from under a
-  /// pending operation) is a no-op: the upload still succeeded server-side,
-  /// and the next `getMedia` fetch will reconcile the cache once the photo
-  /// is actually attached to something.
-  Future<void> _reconcileCache(String? localEntityId, String uploadedId, String? cachedPath) {
+  /// uploaded id, preserving whatever filename/size the placeholder was
+  /// created with — the upload call itself doesn't return any of that, so
+  /// this is the only place those values are known. A missing placeholder
+  /// (cache cleared out from under a pending operation) is a no-op: the
+  /// upload still succeeded server-side, and the next `getMedia` fetch
+  /// will pick it up once it's actually referenced by an apiary/hive.
+  Future<void> _reconcileCache(
+    String? localEntityId,
+    String uploadedId,
+    String? cachedPath,
+  ) {
     return localDataSource.modify((current) {
       final list = current ?? const <MediaResponse>[];
       MediaResponse? placeholder;
@@ -134,8 +158,6 @@ final class MediaOperationHandler extends Repository implements OperationHandler
       }
       final resolved = MediaResponse(
         id: uploadedId,
-        ownerType: placeholder.ownerType,
-        ownerId: placeholder.ownerId,
         originalFilename: placeholder.originalFilename,
         contentType: placeholder.contentType,
         sizeBytes: placeholder.sizeBytes,
@@ -143,7 +165,11 @@ final class MediaOperationHandler extends Repository implements OperationHandler
         updatedAt: DateTime.now(),
         localFilePath: cachedPath,
       );
-      return [for (final response in list) if (response.id != localEntityId) response, resolved];
+      return [
+        for (final response in list)
+          if (response.id != localEntityId) response,
+        resolved,
+      ];
     });
   }
 }

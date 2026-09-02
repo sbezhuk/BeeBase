@@ -4,8 +4,6 @@ import 'package:beebase/domain/entity/media_attachment.dart';
 extension MediaResponseX on MediaResponse {
   MediaAttachment toEntity() => MediaAttachment(
     id: id,
-    ownerType: ownerType,
-    ownerId: ownerId,
     originalFilename: originalFilename,
     contentType: contentType,
     sizeBytes: sizeBytes,

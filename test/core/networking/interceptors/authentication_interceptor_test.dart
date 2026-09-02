@@ -123,6 +123,50 @@ void main() {
       verifyNever(() => handler.next(any()));
     });
 
+    test(
+      'retries a multipart request with a fresh, unfinalized clone of the original FormData',
+      () async {
+        final formData = FormData.fromMap({'file': 'bytes'});
+        // Simulates the failed first attempt already having streamed this
+        // exact FormData to the wire, which is what marks it finalized.
+        await formData.finalize().drain<void>();
+        final requestOptions = RequestOptions(
+          path: '/api/v1/media',
+          data: formData,
+        );
+        final err = DioException(
+          requestOptions: requestOptions,
+          response: Response(requestOptions: requestOptions, statusCode: 401),
+        );
+        final handler = MockErrorInterceptorHandler();
+        when(
+          () => tokenRefresher.refresh(),
+        ).thenAnswer((_) async => 'new-token');
+        FormData? sentData;
+        when(() => retryDio.fetch<dynamic>(any())).thenAnswer((
+          invocation,
+        ) async {
+          final sentOptions =
+              invocation.positionalArguments.first as RequestOptions;
+          sentData = sentOptions.data as FormData;
+          // Would throw StateError here if this were still the original,
+          // already-finalized FormData instance.
+          await sentData!.finalize().drain<void>();
+          return Response(
+            requestOptions: requestOptions,
+            statusCode: 200,
+            data: 'ok',
+          );
+        });
+
+        await interceptor.onError(err, handler);
+
+        expect(sentData, isNot(same(formData)));
+        verify(() => handler.resolve(any())).called(1);
+        verifyNever(() => handler.next(any()));
+      },
+    );
+
     test('forwards the original error when refresh fails', () async {
       final requestOptions = RequestOptions(path: '/api/v1/auth/me');
       final err = DioException(

@@ -9,7 +9,6 @@ import 'package:beebase/core/services/session_service.dart';
 import 'package:beebase/core/storage/token_storage.dart';
 import 'package:beebase/data/data_source/media_data_source.dart';
 import 'package:beebase/data/models/media_response.dart';
-import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -29,8 +28,6 @@ void main() {
 
   final mediaResponse = MediaResponse(
     id: 'media-1',
-    ownerType: MediaOwnerType.apiary,
-    ownerId: 'apiary-1',
     originalFilename: 'photo.jpg',
     contentType: 'image/jpeg',
     sizeBytes: 1024,
@@ -58,38 +55,35 @@ void main() {
     dataSource = MediaDataSource(dioClient: outerDioClient, resolver: resolver);
   });
 
-  test(
-    'listMedia sends a repeated ids query param and parses the flat, '
-    'unpaginated {items: [...]} response',
-    () async {
-      when(
-        () => innerDioClient.get<Map<String, dynamic>>(
-          any(),
-          queryParameters: any(named: 'queryParameters'),
-        ),
-      ).thenAnswer(
-        (_) async => Response(
-          requestOptions: RequestOptions(),
-          data: {
-            'items': [mediaResponse.toJson()],
-          },
-        ),
-      );
+  test('listMedia sends a repeated ids query param and parses the flat, '
+      'unpaginated {items: [...]} response', () async {
+    when(
+      () => innerDioClient.get<Map<String, dynamic>>(
+        any(),
+        queryParameters: any(named: 'queryParameters'),
+      ),
+    ).thenAnswer(
+      (_) async => Response(
+        requestOptions: RequestOptions(),
+        data: {
+          'items': [mediaResponse.toJson()],
+        },
+      ),
+    );
 
-      final result = await dataSource.listMedia(ids: ['media-1', 'media-2']);
+    final result = await dataSource.listMedia(ids: ['media-1', 'media-2']);
 
-      expect(result.single.id, 'media-1');
-      final captured =
-          verify(
-                () => innerDioClient.get<Map<String, dynamic>>(
-                  ApiEndpoints.media.list,
-                  queryParameters: captureAny(named: 'queryParameters'),
-                ),
-              ).captured.single
-              as Map<String, dynamic>;
-      expect(captured['ids'], ['media-1', 'media-2']);
-    },
-  );
+    expect(result.single.id, 'media-1');
+    final captured =
+        verify(
+              () => innerDioClient.get<Map<String, dynamic>>(
+                ApiEndpoints.media.list,
+                queryParameters: captureAny(named: 'queryParameters'),
+              ),
+            ).captured.single
+            as Map<String, dynamic>;
+    expect(captured['ids'], ['media-1', 'media-2']);
+  });
 
   group('uploadMedia', () {
     late Directory tempDir;

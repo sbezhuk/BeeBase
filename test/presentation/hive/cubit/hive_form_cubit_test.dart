@@ -34,7 +34,13 @@ void main() {
   late HiveListRefreshNotifier refreshNotifier;
   late bool notified;
 
-  final hive = Hive(id: 'hive-1', apiaryId: apiaryId, name: 'Hive 1', createdAt: DateTime(2026), updatedAt: DateTime(2026));
+  final hive = Hive(
+    id: 'hive-1',
+    apiaryId: apiaryId,
+    name: 'Hive 1',
+    createdAt: DateTime(2026),
+    updatedAt: DateTime(2026),
+  );
 
   setUpAll(() {
     registerFallbackValue(MediaOwnerType.hive);
@@ -60,12 +66,22 @@ void main() {
             notes: any(named: 'notes'),
           ),
         ).thenAnswer((_) async => Right(hive));
-        return HiveFormCubit(writer: writer, apiaryId: apiaryId, refreshNotifier: refreshNotifier);
+        return HiveFormCubit(
+          writer: writer,
+          apiaryId: apiaryId,
+          refreshNotifier: refreshNotifier,
+        );
       },
       act: (cubit) => cubit.submit(name: 'Hive 1'),
       expect: () => [const HiveFormLoading(), HiveFormSuccess(hive)],
       verify: (_) {
-        verify(() => writer.createHive(apiaryId: apiaryId, name: 'Hive 1', notes: null)).called(1);
+        verify(
+          () => writer.createHive(
+            apiaryId: apiaryId,
+            name: 'Hive 1',
+            notes: null,
+          ),
+        ).called(1);
         verifyNever(
           () => writer.updateHive(
             apiaryId: any(named: 'apiaryId'),
@@ -86,11 +102,24 @@ void main() {
             name: any(named: 'name'),
             notes: any(named: 'notes'),
           ),
-        ).thenAnswer((_) async => Left(ServerFailure(code: 'name_required', message: 'name required')));
-        return HiveFormCubit(writer: writer, apiaryId: apiaryId, refreshNotifier: refreshNotifier);
+        ).thenAnswer(
+          (_) async => Left(
+            ServerFailure(code: 'name_required', message: 'name required'),
+          ),
+        );
+        return HiveFormCubit(
+          writer: writer,
+          apiaryId: apiaryId,
+          refreshNotifier: refreshNotifier,
+        );
       },
       act: (cubit) => cubit.submit(name: ''),
-      expect: () => [const HiveFormLoading(), HiveFormError(ServerFailure(code: 'name_required', message: 'name required'))],
+      expect: () => [
+        const HiveFormLoading(),
+        HiveFormError(
+          ServerFailure(code: 'name_required', message: 'name required'),
+        ),
+      ],
       verify: (_) => expect(notified, isFalse),
     );
   });
@@ -107,12 +136,24 @@ void main() {
             notes: any(named: 'notes'),
           ),
         ).thenAnswer((_) async => Right(hive));
-        return HiveFormCubit(writer: writer, apiaryId: apiaryId, refreshNotifier: refreshNotifier, initial: hive);
+        return HiveFormCubit(
+          writer: writer,
+          apiaryId: apiaryId,
+          refreshNotifier: refreshNotifier,
+          initial: hive,
+        );
       },
       act: (cubit) => cubit.submit(name: 'Updated Name'),
       expect: () => [const HiveFormLoading(), HiveFormSuccess(hive)],
       verify: (_) {
-        verify(() => writer.updateHive(apiaryId: apiaryId, id: 'hive-1', name: 'Updated Name', notes: null)).called(1);
+        verify(
+          () => writer.updateHive(
+            apiaryId: apiaryId,
+            id: 'hive-1',
+            name: 'Updated Name',
+            notes: null,
+          ),
+        ).called(1);
         expect(notified, isTrue);
       },
     );
@@ -138,109 +179,47 @@ void main() {
       ).thenAnswer((_) async => '/tmp/staged.jpg');
     });
 
-    test('flushes staged photos to the newly created hive before emitting Success', () async {
-      when(
-        () => imagePicker.pickImage(
-          source: any(named: 'source'),
-          maxWidth: any(named: 'maxWidth'),
-          imageQuality: any(named: 'imageQuality'),
-        ),
-      ).thenAnswer((_) async => XFile.fromData(Uint8List.fromList([1, 2, 3]), path: 'photo.jpg'));
-      final mediaAttachment = MediaAttachment(
-        id: 'media-1',
-        ownerType: MediaOwnerType.hive,
-        ownerId: 'hive-1',
-        originalFilename: 'photo.jpg',
-        contentType: 'image/jpeg',
-        sizeBytes: 3,
-        createdAt: DateTime(2026),
-        updatedAt: DateTime(2026),
-      );
-      when(
-        () => mediaWriter.attachMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
-          localFilePath: any(named: 'localFilePath'),
-          originalFilename: any(named: 'originalFilename'),
-          contentType: any(named: 'contentType'),
-          onProgress: any(named: 'onProgress'),
-        ),
-      ).thenAnswer((_) async => Right(mediaAttachment));
-      final mediaGalleryCubit = MediaGalleryCubit(
-        reader: mediaReader,
-        writer: mediaWriter,
-        localMediaStore: localMediaStore,
-        ownerType: MediaOwnerType.hive,
-        imagePicker: imagePicker,
-      );
-      await mediaGalleryCubit.pickFromGallery();
-      expect(mediaGalleryCubit.hasStagedPhotos, isTrue);
-
-      when(
-        () => writer.createHive(
-          apiaryId: apiaryId,
-          name: any(named: 'name'),
-          notes: any(named: 'notes'),
-        ),
-      ).thenAnswer((_) async => Right(hive));
-      final cubit = HiveFormCubit(writer: writer, apiaryId: apiaryId, refreshNotifier: refreshNotifier);
-
-      await cubit.submit(name: 'Hive 1', mediaGalleryCubit: mediaGalleryCubit);
-
-      expect(cubit.state, HiveFormSuccess(hive));
-      verify(
-        () => mediaWriter.attachMedia(
-          ownerType: MediaOwnerType.hive,
-          ownerId: hive.id,
-          localFilePath: any(named: 'localFilePath'),
-          originalFilename: any(named: 'originalFilename'),
-          contentType: any(named: 'contentType'),
-          onProgress: any(named: 'onProgress'),
-        ),
-      ).called(1);
-      await mediaGalleryCubit.close();
-    });
-
-    test('never calls attachMedia when the gallery cubit has no staged photos', () async {
-      final mediaGalleryCubit = MediaGalleryCubit(
-        reader: mediaReader,
-        writer: mediaWriter,
-        localMediaStore: localMediaStore,
-        ownerType: MediaOwnerType.hive,
-        imagePicker: imagePicker,
-      );
-      await mediaGalleryCubit.load();
-
-      when(
-        () => writer.createHive(
-          apiaryId: apiaryId,
-          name: any(named: 'name'),
-          notes: any(named: 'notes'),
-        ),
-      ).thenAnswer((_) async => Right(hive));
-      final cubit = HiveFormCubit(writer: writer, apiaryId: apiaryId, refreshNotifier: refreshNotifier);
-
-      await cubit.submit(name: 'Hive 1', mediaGalleryCubit: mediaGalleryCubit);
-
-      expect(cubit.state, HiveFormSuccess(hive));
-      verifyNever(
-        () => mediaWriter.attachMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
-          localFilePath: any(named: 'localFilePath'),
-          originalFilename: any(named: 'originalFilename'),
-          contentType: any(named: 'contentType'),
-          onProgress: any(named: 'onProgress'),
-        ),
-      );
-      await mediaGalleryCubit.close();
-    });
-  });
-
-  group('draft creation (ensureDraft)', () {
     test(
-      'ensureDraft creates the hive once and reuses it on a second call',
+      'flushes staged photos to the newly created hive before emitting Success',
       () async {
+        when(
+          () => imagePicker.pickImage(
+            source: any(named: 'source'),
+            maxWidth: any(named: 'maxWidth'),
+            imageQuality: any(named: 'imageQuality'),
+          ),
+        ).thenAnswer(
+          (_) async =>
+              XFile.fromData(Uint8List.fromList([1, 2, 3]), path: 'photo.jpg'),
+        );
+        final mediaAttachment = MediaAttachment(
+          id: 'media-1',
+          originalFilename: 'photo.jpg',
+          contentType: 'image/jpeg',
+          sizeBytes: 3,
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        );
+        when(
+          () => mediaWriter.attachMedia(
+            ownerType: any(named: 'ownerType'),
+            ownerId: any(named: 'ownerId'),
+            localFilePath: any(named: 'localFilePath'),
+            originalFilename: any(named: 'originalFilename'),
+            contentType: any(named: 'contentType'),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).thenAnswer((_) async => Right(mediaAttachment));
+        final mediaGalleryCubit = MediaGalleryCubit(
+          reader: mediaReader,
+          writer: mediaWriter,
+          localMediaStore: localMediaStore,
+          ownerType: MediaOwnerType.hive,
+          imagePicker: imagePicker,
+        );
+        await mediaGalleryCubit.pickFromGallery();
+        expect(mediaGalleryCubit.hasStagedPhotos, isTrue);
+
         when(
           () => writer.createHive(
             apiaryId: apiaryId,
@@ -248,72 +227,74 @@ void main() {
             notes: any(named: 'notes'),
           ),
         ).thenAnswer((_) async => Right(hive));
-        final cubit = HiveFormCubit(writer: writer, apiaryId: apiaryId, refreshNotifier: refreshNotifier);
+        final cubit = HiveFormCubit(
+          writer: writer,
+          apiaryId: apiaryId,
+          refreshNotifier: refreshNotifier,
+        );
 
-        final first = await cubit.ensureDraft(name: 'Hive 1');
-        final second = await cubit.ensureDraft(name: 'Hive 1');
+        await cubit.submit(
+          name: 'Hive 1',
+          mediaGalleryCubit: mediaGalleryCubit,
+        );
 
-        expect(first, hive.id);
-        expect(second, hive.id);
+        expect(cubit.state, HiveFormSuccess(hive));
         verify(
-          () => writer.createHive(
-            apiaryId: apiaryId,
-            name: any(named: 'name'),
-            notes: any(named: 'notes'),
+          () => mediaWriter.attachMedia(
+            ownerType: MediaOwnerType.hive,
+            ownerId: hive.id,
+            localFilePath: any(named: 'localFilePath'),
+            originalFilename: any(named: 'originalFilename'),
+            contentType: any(named: 'contentType'),
+            onProgress: any(named: 'onProgress'),
           ),
         ).called(1);
+        await mediaGalleryCubit.close();
       },
     );
 
-    test('ensureDraft returns null on failure, without throwing', () async {
-      when(
-        () => writer.createHive(
+    test(
+      'never calls attachMedia when the gallery cubit has no staged photos',
+      () async {
+        final mediaGalleryCubit = MediaGalleryCubit(
+          reader: mediaReader,
+          writer: mediaWriter,
+          localMediaStore: localMediaStore,
+          ownerType: MediaOwnerType.hive,
+          imagePicker: imagePicker,
+        );
+        await mediaGalleryCubit.load();
+
+        when(
+          () => writer.createHive(
+            apiaryId: apiaryId,
+            name: any(named: 'name'),
+            notes: any(named: 'notes'),
+          ),
+        ).thenAnswer((_) async => Right(hive));
+        final cubit = HiveFormCubit(
+          writer: writer,
           apiaryId: apiaryId,
-          name: any(named: 'name'),
-          notes: any(named: 'notes'),
-        ),
-      ).thenAnswer((_) async => Left(ServerFailure(code: 'unexpected', message: 'boom')));
-      final cubit = HiveFormCubit(writer: writer, apiaryId: apiaryId, refreshNotifier: refreshNotifier);
+          refreshNotifier: refreshNotifier,
+        );
 
-      final result = await cubit.ensureDraft(name: 'Hive 1');
+        await cubit.submit(
+          name: 'Hive 1',
+          mediaGalleryCubit: mediaGalleryCubit,
+        );
 
-      expect(result, isNull);
-    });
-
-    blocTest<HiveFormCubit, HiveFormState>(
-      'submit() after a successful ensureDraft updates that draft instead of creating a second hive',
-      build: () {
-        when(
-          () => writer.createHive(
-            apiaryId: apiaryId,
-            name: any(named: 'name'),
-            notes: any(named: 'notes'),
+        expect(cubit.state, HiveFormSuccess(hive));
+        verifyNever(
+          () => mediaWriter.attachMedia(
+            ownerType: any(named: 'ownerType'),
+            ownerId: any(named: 'ownerId'),
+            localFilePath: any(named: 'localFilePath'),
+            originalFilename: any(named: 'originalFilename'),
+            contentType: any(named: 'contentType'),
+            onProgress: any(named: 'onProgress'),
           ),
-        ).thenAnswer((_) async => Right(hive));
-        when(
-          () => writer.updateHive(
-            apiaryId: apiaryId,
-            id: any(named: 'id'),
-            name: any(named: 'name'),
-            notes: any(named: 'notes'),
-          ),
-        ).thenAnswer((_) async => Right(hive));
-        return HiveFormCubit(writer: writer, apiaryId: apiaryId, refreshNotifier: refreshNotifier);
-      },
-      act: (cubit) async {
-        await cubit.ensureDraft(name: 'Untitled Hive');
-        await cubit.submit(name: 'Hive 1');
-      },
-      expect: () => [const HiveFormLoading(), HiveFormSuccess(hive)],
-      verify: (_) {
-        verify(
-          () => writer.createHive(
-            apiaryId: apiaryId,
-            name: any(named: 'name'),
-            notes: any(named: 'notes'),
-          ),
-        ).called(1);
-        verify(() => writer.updateHive(apiaryId: apiaryId, id: hive.id, name: 'Hive 1', notes: null)).called(1);
+        );
+        await mediaGalleryCubit.close();
       },
     );
   });

@@ -1,5 +1,4 @@
 import 'package:beebase/domain/entity/media_attachment.dart';
-import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/domain/enum/local/media_sync_status.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -10,8 +9,6 @@ MediaAttachment _attachment({
 }) {
   return MediaAttachment(
     id: id,
-    ownerType: MediaOwnerType.apiary,
-    ownerId: 'apiary-1',
     originalFilename: 'photo.jpg',
     contentType: 'image/jpeg',
     sizeBytes: 1024,
@@ -41,7 +38,6 @@ void main() {
 
       expect(updated.syncStatus, MediaSyncStatus.failed);
       expect(updated.id, original.id);
-      expect(updated.ownerId, original.ownerId);
       expect(updated.originalFilename, original.originalFilename);
     });
 

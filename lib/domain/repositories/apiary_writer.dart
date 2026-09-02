@@ -31,4 +31,16 @@ abstract interface class IApiaryWriter {
     required String apiaryId,
     required String mediaId,
   });
+
+  /// Removes [mediaId] from [apiaryId]'s own `images` - the reverse of
+  /// [addApiaryImage]. Used by `MediaRepositoryImpl.removeMedia` via
+  /// `IOwnerImageWriter` right before the underlying file is hard-deleted,
+  /// so no stale reference is left behind to block a future
+  /// [addApiaryImage] call for this apiary - apiary-service validates
+  /// every id in `images` against media-service on every `PUT`, including
+  /// ones this client isn't otherwise touching in that call.
+  Future<Either<Failure, void>> removeApiaryImage({
+    required String apiaryId,
+    required String mediaId,
+  });
 }

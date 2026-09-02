@@ -53,8 +53,6 @@ void main() {
 
   final mediaResponse = MediaResponse(
     id: 'media-1',
-    ownerType: MediaOwnerType.apiary,
-    ownerId: 'apiary-1',
     originalFilename: 'photo.jpg',
     contentType: 'image/jpeg',
     sizeBytes: 1024,
@@ -139,6 +137,13 @@ void main() {
         mediaId: any(named: 'mediaId'),
       ),
     ).thenAnswer((_) async => const Right(MediaSyncStatus.synced));
+    when(
+      () => ownerImageWriter.removeImage(
+        ownerType: any(named: 'ownerType'),
+        ownerId: any(named: 'ownerId'),
+        mediaId: any(named: 'mediaId'),
+      ),
+    ).thenAnswer((_) async => const Right(null));
   });
 
   tearDown(() => tempDir.delete(recursive: true));
@@ -152,9 +157,7 @@ void main() {
         (_) => fail('expected Right'),
         (items) => expect(items, isEmpty),
       );
-      verifyNever(
-        () => dataSource.listMedia(ids: any(named: 'ids')),
-      );
+      verifyNever(() => dataSource.listMedia(ids: any(named: 'ids')));
     });
 
     test(
@@ -162,8 +165,6 @@ void main() {
       () async {
         final second = MediaResponse(
           id: 'media-2',
-          ownerType: MediaOwnerType.apiary,
-          ownerId: 'apiary-1',
           originalFilename: 'other.jpg',
           contentType: 'image/jpeg',
           sizeBytes: 512,
@@ -174,9 +175,7 @@ void main() {
           () => dataSource.listMedia(ids: ['media-2', 'media-1']),
         ).thenAnswer((_) async => [mediaResponse, second]);
 
-        final result = await repository.getMedia(
-          ids: ['media-2', 'media-1'],
-        );
+        final result = await repository.getMedia(ids: ['media-2', 'media-1']);
 
         result.fold((_) => fail('expected Right'), (items) {
           expect(items.map((attachment) => attachment.id), [
@@ -201,9 +200,7 @@ void main() {
     );
 
     test('does not fall back to the cache on a real server failure', () async {
-      when(
-        () => dataSource.listMedia(ids: any(named: 'ids')),
-      ).thenThrow(
+      when(() => dataSource.listMedia(ids: any(named: 'ids'))).thenThrow(
         const ServerException(
           statusCode: 403,
           code: 'forbidden',
@@ -225,8 +222,6 @@ void main() {
             mediaResponse,
             MediaResponse(
               id: 'media-2',
-              ownerType: MediaOwnerType.hive,
-              ownerId: 'hive-1',
               originalFilename: 'o.jpg',
               contentType: 'image/jpeg',
               sizeBytes: 1,
@@ -246,13 +241,16 @@ void main() {
       },
     );
 
-    test('fails when offline with nothing cached for the requested ids', () async {
-      when(() => connectivity.isOnline).thenAnswer((_) async => false);
+    test(
+      'fails when offline with nothing cached for the requested ids',
+      () async {
+        when(() => connectivity.isOnline).thenAnswer((_) async => false);
 
-      final result = await repository.getMedia(ids: ['media-1']);
+        final result = await repository.getMedia(ids: ['media-1']);
 
-      expect(result, isA<Left<Failure, dynamic>>());
-    });
+        expect(result, isA<Left<Failure, dynamic>>());
+      },
+    );
 
     test('never calls the network for a still-local, unsynced id, even '
         'while online — the server has never heard of it, so a photo already '
@@ -326,8 +324,6 @@ void main() {
       );
       final second = MediaResponse(
         id: 'media-2',
-        ownerType: MediaOwnerType.apiary,
-        ownerId: 'apiary-1',
         originalFilename: 'other.jpg',
         contentType: 'image/jpeg',
         sizeBytes: 512,
@@ -344,10 +340,7 @@ void main() {
 
       result.fold(
         (_) => fail('expected Right'),
-        (items) => expect(items.map((a) => a.id), [
-          'local-media-1',
-          'media-2',
-        ]),
+        (items) => expect(items.map((a) => a.id), ['local-media-1', 'media-2']),
       );
       verify(() => dataSource.listMedia(ids: ['media-2'])).called(1);
     });
@@ -595,38 +588,35 @@ void main() {
       expect(idempotencyKey, isNot(operation.id));
     });
 
-    test(
-      'still calls ownerImageWriter.addImage with the caller\'s (possibly '
-      'still-local) ownerId when it is itself still local — addImage is what '
-      'decides whether that needs queuing, not this repository',
-      () async {
-        when(() => connectivity.isOnline).thenAnswer((_) async => false);
-        when(
-          () => ownerImageWriter.addImage(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
-            mediaId: any(named: 'mediaId'),
-          ),
-        ).thenAnswer((_) async => const Right(MediaSyncStatus.pending));
+    test('still calls ownerImageWriter.addImage with the caller\'s (possibly '
+        'still-local) ownerId when it is itself still local — addImage is what '
+        'decides whether that needs queuing, not this repository', () async {
+      when(() => connectivity.isOnline).thenAnswer((_) async => false);
+      when(
+        () => ownerImageWriter.addImage(
+          ownerType: any(named: 'ownerType'),
+          ownerId: any(named: 'ownerId'),
+          mediaId: any(named: 'mediaId'),
+        ),
+      ).thenAnswer((_) async => const Right(MediaSyncStatus.pending));
 
-        final result = await repository.attachMedia(
+      final result = await repository.attachMedia(
+        ownerType: MediaOwnerType.apiary,
+        ownerId: 'local-apiary-1',
+        localFilePath: localFile.path,
+        originalFilename: 'photo.jpg',
+        contentType: 'image/jpeg',
+      );
+
+      expect(result, isA<Right<Failure, dynamic>>());
+      verify(
+        () => ownerImageWriter.addImage(
           ownerType: MediaOwnerType.apiary,
           ownerId: 'local-apiary-1',
-          localFilePath: localFile.path,
-          originalFilename: 'photo.jpg',
-          contentType: 'image/jpeg',
-        );
-
-        expect(result, isA<Right<Failure, dynamic>>());
-        verify(
-          () => ownerImageWriter.addImage(
-            ownerType: MediaOwnerType.apiary,
-            ownerId: 'local-apiary-1',
-            mediaId: any(named: 'mediaId'),
-          ),
-        ).called(1);
-      },
-    );
+          mediaId: any(named: 'mediaId'),
+        ),
+      ).called(1);
+    });
 
     test(
       'links under the owner\'s resolved real id once it has synced, even '
@@ -683,8 +673,6 @@ void main() {
       () async {
         final other = MediaResponse(
           id: 'media-2',
-          ownerType: MediaOwnerType.apiary,
-          ownerId: 'apiary-1',
           originalFilename: 'other.jpg',
           contentType: 'image/jpeg',
           sizeBytes: 8,
@@ -738,7 +726,11 @@ void main() {
           () => operationQueue.all(),
         ).thenAnswer((_) async => [pendingCreate]);
 
-        final result = await repository.removeMedia('local-pending-1');
+        final result = await repository.removeMedia(
+          ownerType: MediaOwnerType.apiary,
+          ownerId: 'apiary-1',
+          id: 'local-pending-1',
+        );
 
         expect(result, isA<Right<Failure, void>>());
         verifyNever(() => dataSource.deleteMedia(any()));
@@ -753,15 +745,57 @@ void main() {
       ).thenAnswer((_) async => [mediaResponse]);
       when(() => dataSource.deleteMedia('media-1')).thenAnswer((_) async {});
 
-      final result = await repository.removeMedia('media-1');
+      final result = await repository.removeMedia(
+        ownerType: MediaOwnerType.apiary,
+        ownerId: 'apiary-1',
+        id: 'media-1',
+      );
 
       expect(result, isA<Right<Failure, void>>());
+      verify(
+        () => ownerImageWriter.removeImage(
+          ownerType: MediaOwnerType.apiary,
+          ownerId: 'apiary-1',
+          mediaId: 'media-1',
+        ),
+      ).called(1);
       final update =
           verify(() => localDataSource.modify(captureAny())).captured.single
               as FutureOr<List<MediaResponse>> Function(List<MediaResponse>?);
       final written = await update([mediaResponse]);
       expect(written, isEmpty);
     });
+
+    test(
+      'detaches from the owner before deleting the file, and never deletes the file at all when the detach fails — '
+      'otherwise the owner is left referencing a now-deleted id, which apiary-service/hive-service reject the '
+      'owner\'s *next* unrelated image add against with image_not_found, silently blocking every future photo add',
+      () async {
+        when(
+          () => localDataSource.read(),
+        ).thenAnswer((_) async => [mediaResponse]);
+        when(
+          () => ownerImageWriter.removeImage(
+            ownerType: any(named: 'ownerType'),
+            ownerId: any(named: 'ownerId'),
+            mediaId: any(named: 'mediaId'),
+          ),
+        ).thenAnswer(
+          (_) async => Left(
+            ServerFailure(code: 'image_not_found', message: 'image not found'),
+          ),
+        );
+
+        final result = await repository.removeMedia(
+          ownerType: MediaOwnerType.apiary,
+          ownerId: 'apiary-1',
+          id: 'media-1',
+        );
+
+        expect(result, isA<Left<Failure, void>>());
+        verifyNever(() => dataSource.deleteMedia(any()));
+      },
+    );
 
     test(
       'treats a 404 as an already-completed delete and purges the stale local record',
@@ -777,7 +811,11 @@ void main() {
           ),
         );
 
-        final result = await repository.removeMedia('media-1');
+        final result = await repository.removeMedia(
+          ownerType: MediaOwnerType.apiary,
+          ownerId: 'apiary-1',
+          id: 'media-1',
+        );
 
         expect(result, isA<Right<Failure, void>>());
       },
@@ -791,7 +829,11 @@ void main() {
           () => localDataSource.read(),
         ).thenAnswer((_) async => [mediaResponse]);
 
-        final result = await repository.removeMedia('media-1');
+        final result = await repository.removeMedia(
+          ownerType: MediaOwnerType.apiary,
+          ownerId: 'apiary-1',
+          id: 'media-1',
+        );
 
         expect(result, isA<Right<Failure, void>>());
         verifyNever(() => dataSource.deleteMedia(any()));
@@ -811,12 +853,9 @@ extension on MediaResponse {
   MediaResponse copyWithLocalPath({
     required String id,
     required String localFilePath,
-    String? ownerId,
   }) {
     return MediaResponse(
       id: id,
-      ownerType: ownerType,
-      ownerId: ownerId ?? this.ownerId,
       originalFilename: originalFilename,
       contentType: contentType,
       sizeBytes: sizeBytes,

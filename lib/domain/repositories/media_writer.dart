@@ -13,5 +13,12 @@ abstract interface class IMediaWriter {
     void Function(double progress)? onProgress,
   });
 
-  Future<Either<Failure, void>> removeMedia(String id);
+  /// [ownerType]/[ownerId] identify whichever Apiary/Hive [id] is currently
+  /// attached to, so the underlying file's removal can also detach it from
+  /// that owner's own `images` - see `MediaRepositoryImpl.removeMedia`.
+  Future<Either<Failure, void>> removeMedia({
+    required MediaOwnerType ownerType,
+    required String ownerId,
+    required String id,
+  });
 }

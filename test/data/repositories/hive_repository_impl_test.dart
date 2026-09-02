@@ -318,13 +318,13 @@ void main() {
         (_) async => [
           OfflineOperation(
             id: 'photo-op-1',
-            entityType: 'media',
-            operationType: OperationType.create,
-            payload: {'owner_id': 'hive-1'},
+            entityType: 'hive',
+            operationType: OperationType.imageAdd,
+            payload: const {},
             status: OperationStatus.pending,
             createdAt: DateTime(2026),
             updatedAt: DateTime(2026),
-            localEntityId: 'local-photo-1',
+            localEntityId: 'hive-1',
           ),
         ],
       );
@@ -453,34 +453,6 @@ void main() {
       final result = await repository.getHive('hive-1');
 
       result.fold((_) => fail('expected Right'), (hive) => expect(hive.id, 'hive-1'));
-    });
-  });
-
-  group('getCachedHive', () {
-    test('returns the mapped hive straight from the cache, without calling the network', () async {
-      when(() => localDataSource.read()).thenAnswer((_) async => [hiveResponse]);
-
-      final result = await repository.getCachedHive('hive-1');
-
-      expect(result?.id, 'hive-1');
-      expect(result?.name, 'Hive 1');
-      verifyNever(() => dataSource.getHive(any()));
-    });
-
-    test('returns null when the id is not cached', () async {
-      when(() => localDataSource.read()).thenAnswer((_) async => [hiveResponse]);
-
-      final result = await repository.getCachedHive('missing-id');
-
-      expect(result, isNull);
-    });
-
-    test('returns null when nothing is cached at all', () async {
-      when(() => localDataSource.read()).thenAnswer((_) async => null);
-
-      final result = await repository.getCachedHive('hive-1');
-
-      expect(result, isNull);
     });
   });
 

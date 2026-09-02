@@ -13,7 +13,6 @@ import 'package:beebase/data/data_source/interface/local_data_source.dart';
 import 'package:beebase/data/data_source/interface/media_data_source.dart';
 import 'package:beebase/data/media/media_operation_handler.dart';
 import 'package:beebase/data/models/media_response.dart';
-import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -48,7 +47,10 @@ OfflineOperation _createOp({
   );
 }
 
-OfflineOperation _deleteOp({String id = 'op-1', String? localEntityId = 'media-1'}) {
+OfflineOperation _deleteOp({
+  String id = 'op-1',
+  String? localEntityId = 'media-1',
+}) {
   return OfflineOperation(
     id: id,
     entityType: 'media',
@@ -61,15 +63,9 @@ OfflineOperation _deleteOp({String id = 'op-1', String? localEntityId = 'media-1
   );
 }
 
-MediaResponse _placeholder({
-  String id = 'local-1',
-  MediaOwnerType ownerType = MediaOwnerType.apiary,
-  String ownerId = 'apiary-1',
-}) {
+MediaResponse _placeholder({String id = 'local-1'}) {
   return MediaResponse(
     id: id,
-    ownerType: ownerType,
-    ownerId: ownerId,
     originalFilename: 'photo.jpg',
     contentType: 'image/jpeg',
     sizeBytes: 2048,
@@ -130,7 +126,9 @@ void main() {
         'server when sent as the media_id form field — then adopts the '
         'staged file onto the uploaded id\'s cache path, replacing the '
         'placeholder in the local cache', () async {
-      when(() => localDataSource.read()).thenAnswer((_) async => [_placeholder()]);
+      when(
+        () => localDataSource.read(),
+      ).thenAnswer((_) async => [_placeholder()]);
       when(
         () => dataSource.uploadMedia(
           filePath: any(named: 'filePath'),
@@ -174,8 +172,6 @@ void main() {
               as FutureOr<List<MediaResponse>> Function(List<MediaResponse>?);
       final written = await update([_placeholder()]);
       expect(written.single.id, 'media-server-1');
-      expect(written.single.ownerType, MediaOwnerType.apiary);
-      expect(written.single.ownerId, 'apiary-1');
       expect(written.single.localFilePath, '/media/media-server-1.jpg');
     });
 
@@ -241,7 +237,9 @@ void main() {
     test(
       'marks the operation synced in the queue with the resolved (uploaded) id',
       () async {
-        when(() => localDataSource.read()).thenAnswer((_) async => [_placeholder()]);
+        when(
+          () => localDataSource.read(),
+        ).thenAnswer((_) async => [_placeholder()]);
         when(
           () => dataSource.uploadMedia(
             filePath: any(named: 'filePath'),
@@ -279,7 +277,11 @@ void main() {
     test('a 404 means the server already forgot the file — treated as an '
         'already-completed delete', () async {
       when(() => dataSource.deleteMedia(any())).thenThrow(
-        const ServerException(statusCode: 404, code: 'not_found', message: 'gone'),
+        const ServerException(
+          statusCode: 404,
+          code: 'not_found',
+          message: 'gone',
+        ),
       );
 
       final result = await handler.handle(_deleteOp(localEntityId: 'media-1'));
@@ -293,7 +295,11 @@ void main() {
 
     test('a non-404 ServerException is a permanent failure', () async {
       when(() => dataSource.deleteMedia(any())).thenThrow(
-        const ServerException(statusCode: 500, code: 'server_error', message: 'boom'),
+        const ServerException(
+          statusCode: 500,
+          code: 'server_error',
+          message: 'boom',
+        ),
       );
 
       final result = await handler.handle(_deleteOp(localEntityId: 'media-1'));
@@ -302,7 +308,9 @@ void main() {
     });
 
     test('classifies an InternalException as a retryable failure', () async {
-      when(() => dataSource.deleteMedia(any())).thenThrow(const InternalException(ErrorTextRaw('no connection')));
+      when(
+        () => dataSource.deleteMedia(any()),
+      ).thenThrow(const InternalException(ErrorTextRaw('no connection')));
 
       final result = await handler.handle(_deleteOp(localEntityId: 'media-1'));
 
@@ -325,11 +333,16 @@ void main() {
     expect(result, isA<OperationPermanentFailure>());
   });
 
-  test('imageAdd is not a media operation — only apiary/hive operations are ever queued as imageAdd', () async {
-    final imageAddOp = _createOp().copyWith(operationType: OperationType.imageAdd);
+  test(
+    'imageAdd is not a media operation — only apiary/hive operations are ever queued as imageAdd',
+    () async {
+      final imageAddOp = _createOp().copyWith(
+        operationType: OperationType.imageAdd,
+      );
 
-    final result = await handler.handle(imageAddOp);
+      final result = await handler.handle(imageAddOp);
 
-    expect(result, isA<OperationPermanentFailure>());
-  });
+      expect(result, isA<OperationPermanentFailure>());
+    },
+  );
 }

@@ -31,4 +31,16 @@ abstract interface class IHiveWriter {
     required String hiveId,
     required String mediaId,
   });
+
+  /// Removes [mediaId] from [hiveId]'s own `images` - the reverse of
+  /// [addHiveImage]. Used by `MediaRepositoryImpl.removeMedia` via
+  /// `IOwnerImageWriter` right before the underlying file is hard-deleted,
+  /// so no stale reference is left behind to block a future [addHiveImage]
+  /// call for this hive - hive-service validates every id in `images`
+  /// against media-service on every `PUT`, including ones this client
+  /// isn't otherwise touching in that call.
+  Future<Either<Failure, void>> removeHiveImage({
+    required String hiveId,
+    required String mediaId,
+  });
 }

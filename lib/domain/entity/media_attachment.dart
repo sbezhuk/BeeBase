@@ -1,12 +1,9 @@
 import 'package:beebase/core/offline/local_id_generator.dart';
-import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/domain/enum/local/media_sync_status.dart';
 
 final class MediaAttachment {
   const MediaAttachment({
     required this.id,
-    required this.ownerType,
-    required this.ownerId,
     required this.originalFilename,
     required this.contentType,
     required this.sizeBytes,
@@ -17,8 +14,6 @@ final class MediaAttachment {
   });
 
   final String id;
-  final MediaOwnerType ownerType;
-  final String ownerId;
   final String originalFilename;
   final String contentType;
   final int sizeBytes;
@@ -43,8 +38,6 @@ final class MediaAttachment {
   }) {
     return MediaAttachment(
       id: id,
-      ownerType: ownerType,
-      ownerId: ownerId,
       originalFilename: originalFilename,
       contentType: contentType,
       sizeBytes: sizeBytes,
@@ -60,8 +53,6 @@ final class MediaAttachment {
       identical(this, other) ||
       (other is MediaAttachment &&
           other.id == id &&
-          other.ownerType == ownerType &&
-          other.ownerId == ownerId &&
           other.originalFilename == originalFilename &&
           other.contentType == contentType &&
           other.sizeBytes == sizeBytes &&
@@ -73,8 +64,6 @@ final class MediaAttachment {
   @override
   int get hashCode => Object.hash(
     id,
-    ownerType,
-    ownerId,
     originalFilename,
     contentType,
     sizeBytes,

@@ -444,13 +444,13 @@ void main() {
         (_) async => [
           OfflineOperation(
             id: 'photo-op-1',
-            entityType: 'media',
-            operationType: OperationType.create,
-            payload: {'owner_id': 'apiary-1'},
+            entityType: 'apiary',
+            operationType: OperationType.imageAdd,
+            payload: const {},
             status: OperationStatus.pending,
             createdAt: DateTime(2026),
             updatedAt: DateTime(2026),
-            localEntityId: 'local-photo-1',
+            localEntityId: 'apiary-1',
           ),
         ],
       );

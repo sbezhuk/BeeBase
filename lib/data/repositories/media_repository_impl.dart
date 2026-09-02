@@ -32,7 +32,8 @@ import 'package:beebase/utils/either.dart';
 /// reads are filtered back down to just the currently-requested ids.
 const mediaCacheKey = 'cached_media';
 
-final class MediaRepositoryImpl extends Repository implements IMediaReader, IMediaWriter {
+final class MediaRepositoryImpl extends Repository
+    implements IMediaReader, IMediaWriter {
   MediaRepositoryImpl({
     required this.dataSource,
     required this.localDataSource,
@@ -88,7 +89,9 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
     if (!await connectivity.isOnline) {
       return _cachedForIdsOrFailure(
         ids,
-        const InternalFailure(ErrorTextKey('core.errors.unexpected_network_error')),
+        const InternalFailure(
+          ErrorTextKey('core.errors.unexpected_network_error'),
+        ),
         pendingOps,
       );
     }
@@ -97,21 +100,23 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
       final items = await dataSource.listMedia(ids: remoteIds);
       late List<MediaResponse> merged;
       await localDataSource.modify((current) {
-        merged = cacheMerger.mergeForIds(items, current ?? const [], ids: ids.toSet(), pendingOps: pendingOps);
+        merged = cacheMerger.mergeForIds(
+          items,
+          current ?? const [],
+          ids: ids.toSet(),
+          pendingOps: pendingOps,
+        );
         return merged;
       });
       return merged;
     });
 
-    return result.fold(
-      (failure) async {
-        if (failure is ServerFailure) {
-          return Left(failure);
-        }
-        return _cachedForIdsOrFailure(ids, failure, pendingOps);
-      },
-      (merged) async => Right(_orderedEntities(merged, ids, pendingOps)),
-    );
+    return result.fold((failure) async {
+      if (failure is ServerFailure) {
+        return Left(failure);
+      }
+      return _cachedForIdsOrFailure(ids, failure, pendingOps);
+    }, (merged) async => Right(_orderedEntities(merged, ids, pendingOps)));
   }
 
   @override
@@ -125,7 +130,10 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
       final list = current ?? const <MediaResponse>[];
       return [
         for (final response in list)
-          if (response.id == id) response.copyWith(localFilePath: localFilePath) else response,
+          if (response.id == id)
+            response.copyWith(localFilePath: localFilePath)
+          else
+            response,
       ];
     });
   }
@@ -148,7 +156,9 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
     required String contentType,
     void Function(double progress)? onProgress,
   }) async {
-    final resolvedOwnerId = LocalIdGenerator.isLocal(ownerId) ? await _resolvedOwnerIdIfSynced(ownerType, ownerId) : null;
+    final resolvedOwnerId = LocalIdGenerator.isLocal(ownerId)
+        ? await _resolvedOwnerIdIfSynced(ownerType, ownerId)
+        : null;
     final effectiveOwnerId = resolvedOwnerId ?? ownerId;
 
     if (!await connectivity.isOnline) {
@@ -175,13 +185,13 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
         originalFilename: originalFilename,
         contentType: contentType,
         idempotencyKey: IdempotencyKeyGenerator.generate(),
-        onSendProgress: onProgress == null ? null : (sent, total) => onProgress(total <= 0 ? 0 : sent / total),
+        onSendProgress: onProgress == null
+            ? null
+            : (sent, total) => onProgress(total <= 0 ? 0 : sent / total),
       );
       final now = DateTime.now();
       final placeholder = MediaResponse(
         id: uploadedId,
-        ownerType: ownerType,
-        ownerId: ownerId,
         originalFilename: originalFilename,
         contentType: contentType,
         sizeBytes: await File(localFilePath).length(),
@@ -189,25 +199,39 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
         updatedAt: now,
         localFilePath: localFilePath,
       );
-      await localDataSource.modify((current) => [...(current ?? const []), placeholder]);
+      await localDataSource.modify(
+        (current) => [...(current ?? const []), placeholder],
+      );
       return placeholder;
     });
 
-    return result.fold((failure) async {
-      if (failure is ServerFailure) {
-        return Left(failure);
-      }
-      return _attachOffline(
-        ownerType: ownerType,
-        ownerId: ownerId,
-        localFilePath: localFilePath,
-        originalFilename: originalFilename,
-        contentType: contentType,
-      );
-    }, (placeholder) async {
-      final addResult = await ownerImageWriter.addImage(ownerType: ownerType, ownerId: effectiveOwnerId, mediaId: placeholder.id);
-      return addResult.fold(Left.new, (syncStatus) => Future.value(Right(placeholder.toEntity().copyWith(syncStatus: syncStatus))));
-    });
+    return result.fold(
+      (failure) async {
+        if (failure is ServerFailure) {
+          return Left(failure);
+        }
+        return _attachOffline(
+          ownerType: ownerType,
+          ownerId: ownerId,
+          localFilePath: localFilePath,
+          originalFilename: originalFilename,
+          contentType: contentType,
+        );
+      },
+      (placeholder) async {
+        final addResult = await ownerImageWriter.addImage(
+          ownerType: ownerType,
+          ownerId: effectiveOwnerId,
+          mediaId: placeholder.id,
+        );
+        return addResult.fold(
+          Left.new,
+          (syncStatus) => Future.value(
+            Right(placeholder.toEntity().copyWith(syncStatus: syncStatus)),
+          ),
+        );
+      },
+    );
   }
 
   /// A never-synced local id is always removable, online or off — there's
@@ -217,15 +241,24 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
   /// still require connectivity to delete): `DELETE /media/{id}` is
   /// unaffected by `attach` moving internal-only, and queueing it is no
   /// riskier than any other queued operation - see [_deleteOffline].
+  /// [ownerType]/[ownerId] are only actually used by the online path (see
+  /// [_deleteOnline]) - [_deleteOffline] can't safely fetch-then-PUT an
+  /// owner it has no connectivity to reach, so a removal made offline still
+  /// risks leaving a stale reference behind until this gets revisited (see
+  /// [_deleteOffline]'s own doc).
   @override
-  Future<Either<Failure, void>> removeMedia(String id) async {
+  Future<Either<Failure, void>> removeMedia({
+    required MediaOwnerType ownerType,
+    required String ownerId,
+    required String id,
+  }) async {
     if (LocalIdGenerator.isLocal(id)) {
       return _deleteLocalOnly(id);
     }
     if (!await connectivity.isOnline) {
       return _deleteOffline(id);
     }
-    final result = await _deleteOnline(id);
+    final result = await _deleteOnline(ownerType, ownerId, id);
     return result.fold((failure) async {
       if (failure is ServerFailure) {
         return Left(failure);
@@ -239,15 +272,40 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
     return const Right(null);
   }
 
-  /// A 404 here means the server has already forgotten this photo — treated
-  /// as an already-completed delete, matching `ApiaryRepositoryImpl`'s policy
+  /// Detaches [id] from its owner's `images` *before* hard-deleting the
+  /// file, in that order deliberately: apiary-service/hive-service validate
+  /// every id in `images` against media-service on every `PUT`, so a photo
+  /// deleted first and detached second (or not at all) leaves the owner
+  /// referencing a now-nonexistent id — which then rejects the *next*
+  /// unrelated `addApiaryImage`/`addHiveImage` call for that same owner
+  /// with `image_not_found`, silently blocking every future photo add to
+  /// it. Detaching first means a failed detach simply fails the whole
+  /// remove (surfaced to the user as a retryable error) rather than ever
+  /// reaching that broken state. A 404 from the delete itself still means
+  /// an already-completed delete — matching `ApiaryRepositoryImpl`'s policy
   /// for the same case. See [on]'s `ignoreStatusCode`.
-  Future<Either<Failure, void>> _deleteOnline(String id) async {
-    final result = await on(() => dataSource.deleteMedia(id), ignoreStatusCode: 404, onIgnoredStatusCode: () {});
+  Future<Either<Failure, void>> _deleteOnline(
+    MediaOwnerType ownerType,
+    String ownerId,
+    String id,
+  ) async {
+    final detachResult = await ownerImageWriter.removeImage(
+      ownerType: ownerType,
+      ownerId: ownerId,
+      mediaId: id,
+    );
 
-    return result.fold((failure) async => Left(failure), (_) async {
-      await _purgeLocal(id);
-      return const Right(null);
+    return detachResult.fold(Left.new, (_) async {
+      final result = await on(
+        () => dataSource.deleteMedia(id),
+        ignoreStatusCode: 404,
+        onIgnoredStatusCode: () {},
+      );
+
+      return result.fold((failure) async => Left(failure), (_) async {
+        await _purgeLocal(id);
+        return const Right(null);
+      });
     });
   }
 
@@ -255,22 +313,18 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
   /// gone from any open gallery's view, so there's no risk of it
   /// reappearing from a cache-driven merge before the queued delete
   /// actually runs) and queues a `media` `delete` operation for
-  /// `MediaOperationHandler` to replay once online. [ownerId] rides along
-  /// in the payload purely so `combinedOperationStatus` can keep marking
-  /// the owning apiary/hive as "pending sync" until this delete confirms,
-  /// exactly like a pending photo *add* already does - the delete itself
-  /// (`DELETE /media/{id}`) doesn't need an owner at all.
+  /// `MediaOperationHandler` to replay once online. Unlike a pending photo
+  /// *add* (which marks its owning apiary/hive tile "pending sync" via
+  /// that entity's own queued `imageAdd` operation, keyed by the
+  /// apiary/hive's own id - see `combinedOperationStatus`), a pending
+  /// delete carries no owner id in its payload: media-service's response
+  /// no longer carries one to source it from, and `DELETE /media/{id}`
+  /// itself doesn't need one either. The owning tile simply won't show
+  /// "pending sync" for the brief window a queued delete is in flight.
   Future<Either<Failure, void>> _deleteOffline(String id) async {
     final now = DateTime.now();
-    String? ownerId;
     await localDataSource.modify((current) {
       final list = current ?? const <MediaResponse>[];
-      for (final response in list) {
-        if (response.id == id) {
-          ownerId = response.ownerId;
-          break;
-        }
-      }
       return list.where((response) => response.id != id).toList();
     });
     await operationQueue.enqueue(
@@ -278,7 +332,7 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
         id: LocalIdGenerator.generate(),
         entityType: mediaOperationEntityType,
         operationType: OperationType.delete,
-        payload: ownerId == null ? const {} : {'owner_id': ownerId},
+        payload: const {},
         status: OperationStatus.pending,
         createdAt: now,
         updatedAt: now,
@@ -313,7 +367,9 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
     final pending = await _pendingOperationFor(id);
     if (pending != null) {
       await operationQueue.remove(pending.id);
-      final dependents = (await operationQueue.all()).where((op) => op.dependsOnOperationId == pending.id);
+      final dependents = (await operationQueue.all()).where(
+        (op) => op.dependsOnOperationId == pending.id,
+      );
       for (final dependent in dependents) {
         await operationQueue.remove(dependent.id);
       }
@@ -340,8 +396,6 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
     final sizeBytes = await File(localFilePath).length();
     final placeholder = MediaResponse(
       id: localId,
-      ownerType: ownerType,
-      ownerId: ownerId,
       originalFilename: originalFilename,
       contentType: contentType,
       sizeBytes: sizeBytes,
@@ -353,7 +407,9 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
       cacheKey: mediaCacheKey,
       mutate: (current) => [...(current ?? const []), placeholder],
       toJson: (list) => list.map((response) => response.toJson()).toList(),
-      fromJson: (json) => (json as List<dynamic>).map((item) => MediaResponse.fromJson(item as Map<String, dynamic>)).toList(),
+      fromJson: (json) => (json as List<dynamic>)
+          .map((item) => MediaResponse.fromJson(item as Map<String, dynamic>))
+          .toList(),
       operation: OfflineOperation(
         id: LocalIdGenerator.generate(),
         entityType: mediaOperationEntityType,
@@ -370,15 +426,29 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
         localEntityId: localId,
       ),
     );
-    final addResult = await ownerImageWriter.addImage(ownerType: ownerType, ownerId: ownerId, mediaId: localId);
-    return addResult.fold(Left.new, (syncStatus) => Future.value(Right(placeholder.toEntity().copyWith(syncStatus: syncStatus))));
+    final addResult = await ownerImageWriter.addImage(
+      ownerType: ownerType,
+      ownerId: ownerId,
+      mediaId: localId,
+    );
+    return addResult.fold(
+      Left.new,
+      (syncStatus) => Future.value(
+        Right(placeholder.toEntity().copyWith(syncStatus: syncStatus)),
+      ),
+    );
   }
 
   /// The apiary/hive `create` operation for the owner identified by the
   /// local id [ownerId] — synced or not, `null` if none is found. Used by
   /// [_resolvedOwnerIdIfSynced].
-  Future<OfflineOperation?> _ownerCreateOperation(MediaOwnerType ownerType, String ownerId) async {
-    final expectedEntityType = ownerType == MediaOwnerType.apiary ? 'apiary' : 'hive';
+  Future<OfflineOperation?> _ownerCreateOperation(
+    MediaOwnerType ownerType,
+    String ownerId,
+  ) async {
+    final expectedEntityType = ownerType == MediaOwnerType.apiary
+        ? 'apiary'
+        : 'hive';
     final operations = await operationQueue.all();
     for (final operation in operations) {
       if (operation.entityType == expectedEntityType &&
@@ -397,18 +467,27 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
   /// bound once at construction time, never rebuilt just because its owner
   /// synced) transparently starts talking to the server under the right id
   /// the moment that id exists, without needing to know it changed.
-  Future<String?> _resolvedOwnerIdIfSynced(MediaOwnerType ownerType, String ownerId) async {
+  Future<String?> _resolvedOwnerIdIfSynced(
+    MediaOwnerType ownerType,
+    String ownerId,
+  ) async {
     final operation = await _ownerCreateOperation(ownerType, ownerId);
-    return operation?.status == OperationStatus.synced ? operation?.resolvedEntityId : null;
+    return operation?.status == OperationStatus.synced
+        ? operation?.resolvedEntityId
+        : null;
   }
 
   Future<List<OfflineOperation>> _mediaOperations() async {
-    return (await operationQueue.all()).where((operation) => operation.entityType == mediaOperationEntityType).toList();
+    return (await operationQueue.all())
+        .where((operation) => operation.entityType == mediaOperationEntityType)
+        .toList();
   }
 
   Future<OfflineOperation?> _pendingOperationFor(String id) async {
     final matches = (await _mediaOperations()).where(
-      (operation) => operation.localEntityId == id && operation.status != OperationStatus.synced,
+      (operation) =>
+          operation.localEntityId == id &&
+          operation.status != OperationStatus.synced,
     );
     if (matches.isEmpty) {
       return null;
@@ -443,7 +522,9 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
 
   Future<List<MediaResponse>> _cachedFor(List<String> ids) async {
     final requested = ids.toSet();
-    return ((await localDataSource.read()) ?? const []).where((response) => requested.contains(response.id)).toList();
+    return ((await localDataSource.read()) ?? const [])
+        .where((response) => requested.contains(response.id))
+        .toList();
   }
 
   /// [responses] filtered down to just [ids] and reordered to match — the
@@ -456,7 +537,10 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
     List<OfflineOperation> pendingOps,
   ) {
     final byId = {for (final response in responses) response.id: response};
-    final ordered = [for (final id in ids) if (byId[id] != null) byId[id]!];
+    final ordered = [
+      for (final id in ids)
+        if (byId[id] != null) byId[id]!,
+    ];
     return cacheMerger.toEntities(ordered, pendingOps);
   }
 }

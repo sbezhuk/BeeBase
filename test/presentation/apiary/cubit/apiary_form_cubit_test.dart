@@ -36,7 +36,12 @@ void main() {
   late ApiaryListRefreshNotifier refreshNotifier;
   late bool notified;
 
-  final apiary = Apiary(id: 'apiary-1', name: 'Back Garden', createdAt: DateTime(2026), updatedAt: DateTime(2026));
+  final apiary = Apiary(
+    id: 'apiary-1',
+    name: 'Back Garden',
+    createdAt: DateTime(2026),
+    updatedAt: DateTime(2026),
+  );
 
   setUpAll(() {
     registerFallbackValue(MediaOwnerType.apiary);
@@ -63,12 +68,22 @@ void main() {
             location: any(named: 'location'),
           ),
         ).thenAnswer((_) async => Right(apiary));
-        return ApiaryFormCubit(writer: writer, refreshNotifier: refreshNotifier, locationService: locationService);
+        return ApiaryFormCubit(
+          writer: writer,
+          refreshNotifier: refreshNotifier,
+          locationService: locationService,
+        );
       },
       act: (cubit) => cubit.submit(name: 'Back Garden'),
       expect: () => [const ApiaryFormLoading(), ApiaryFormSuccess(apiary)],
       verify: (_) {
-        verify(() => writer.createApiary(name: 'Back Garden', description: null, location: null)).called(1);
+        verify(
+          () => writer.createApiary(
+            name: 'Back Garden',
+            description: null,
+            location: null,
+          ),
+        ).called(1);
         verifyNever(
           () => writer.updateApiary(
             id: any(named: 'id'),
@@ -88,11 +103,24 @@ void main() {
             description: any(named: 'description'),
             location: any(named: 'location'),
           ),
-        ).thenAnswer((_) async => Left(ServerFailure(code: 'name_required', message: 'name required')));
-        return ApiaryFormCubit(writer: writer, refreshNotifier: refreshNotifier, locationService: locationService);
+        ).thenAnswer(
+          (_) async => Left(
+            ServerFailure(code: 'name_required', message: 'name required'),
+          ),
+        );
+        return ApiaryFormCubit(
+          writer: writer,
+          refreshNotifier: refreshNotifier,
+          locationService: locationService,
+        );
       },
       act: (cubit) => cubit.submit(name: ''),
-      expect: () => [const ApiaryFormLoading(), ApiaryFormError(ServerFailure(code: 'name_required', message: 'name required'))],
+      expect: () => [
+        const ApiaryFormLoading(),
+        ApiaryFormError(
+          ServerFailure(code: 'name_required', message: 'name required'),
+        ),
+      ],
       verify: (_) => expect(notified, isFalse),
     );
   });
@@ -119,7 +147,14 @@ void main() {
       act: (cubit) => cubit.submit(name: 'Updated Name'),
       expect: () => [const ApiaryFormLoading(), ApiaryFormSuccess(apiary)],
       verify: (_) {
-        verify(() => writer.updateApiary(id: 'apiary-1', name: 'Updated Name', description: null, location: null)).called(1);
+        verify(
+          () => writer.updateApiary(
+            id: 'apiary-1',
+            name: 'Updated Name',
+            description: null,
+            location: null,
+          ),
+        ).called(1);
         expect(notified, isTrue);
       },
     );
@@ -145,107 +180,47 @@ void main() {
       ).thenAnswer((_) async => '/tmp/staged.jpg');
     });
 
-    test('flushes staged photos to the newly created apiary before emitting Success', () async {
-      when(
-        () => imagePicker.pickImage(
-          source: any(named: 'source'),
-          maxWidth: any(named: 'maxWidth'),
-          imageQuality: any(named: 'imageQuality'),
-        ),
-      ).thenAnswer((_) async => XFile.fromData(Uint8List.fromList([1, 2, 3]), path: 'photo.jpg'));
-      final mediaAttachment = MediaAttachment(
-        id: 'media-1',
-        ownerType: MediaOwnerType.apiary,
-        ownerId: 'apiary-1',
-        originalFilename: 'photo.jpg',
-        contentType: 'image/jpeg',
-        sizeBytes: 3,
-        createdAt: DateTime(2026),
-        updatedAt: DateTime(2026),
-      );
-      when(
-        () => mediaWriter.attachMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
-          localFilePath: any(named: 'localFilePath'),
-          originalFilename: any(named: 'originalFilename'),
-          contentType: any(named: 'contentType'),
-          onProgress: any(named: 'onProgress'),
-        ),
-      ).thenAnswer((_) async => Right(mediaAttachment));
-      final mediaGalleryCubit = MediaGalleryCubit(
-        reader: mediaReader,
-        writer: mediaWriter,
-        localMediaStore: localMediaStore,
-        ownerType: MediaOwnerType.apiary,
-        imagePicker: imagePicker,
-      );
-      await mediaGalleryCubit.pickFromGallery();
-      expect(mediaGalleryCubit.hasStagedPhotos, isTrue);
-
-      when(
-        () => writer.createApiary(
-          name: any(named: 'name'),
-          description: any(named: 'description'),
-          location: any(named: 'location'),
-        ),
-      ).thenAnswer((_) async => Right(apiary));
-      final cubit = ApiaryFormCubit(writer: writer, refreshNotifier: refreshNotifier, locationService: locationService);
-
-      await cubit.submit(name: 'Back Garden', mediaGalleryCubit: mediaGalleryCubit);
-
-      expect(cubit.state, ApiaryFormSuccess(apiary));
-      verify(
-        () => mediaWriter.attachMedia(
-          ownerType: MediaOwnerType.apiary,
-          ownerId: apiary.id,
-          localFilePath: any(named: 'localFilePath'),
-          originalFilename: any(named: 'originalFilename'),
-          contentType: any(named: 'contentType'),
-          onProgress: any(named: 'onProgress'),
-        ),
-      ).called(1);
-      await mediaGalleryCubit.close();
-    });
-
-    test('never calls attachMedia when the gallery cubit has no staged photos', () async {
-      final mediaGalleryCubit = MediaGalleryCubit(
-        reader: mediaReader,
-        writer: mediaWriter,
-        localMediaStore: localMediaStore,
-        ownerType: MediaOwnerType.apiary,
-        imagePicker: imagePicker,
-      );
-      await mediaGalleryCubit.load();
-
-      when(
-        () => writer.createApiary(
-          name: any(named: 'name'),
-          description: any(named: 'description'),
-          location: any(named: 'location'),
-        ),
-      ).thenAnswer((_) async => Right(apiary));
-      final cubit = ApiaryFormCubit(writer: writer, refreshNotifier: refreshNotifier, locationService: locationService);
-
-      await cubit.submit(name: 'Back Garden', mediaGalleryCubit: mediaGalleryCubit);
-
-      expect(cubit.state, ApiaryFormSuccess(apiary));
-      verifyNever(
-        () => mediaWriter.attachMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
-          localFilePath: any(named: 'localFilePath'),
-          originalFilename: any(named: 'originalFilename'),
-          contentType: any(named: 'contentType'),
-          onProgress: any(named: 'onProgress'),
-        ),
-      );
-      await mediaGalleryCubit.close();
-    });
-
     test(
-      'ensureDraft creates the apiary once and reuses it on a second call',
+      'flushes staged photos to the newly created apiary before emitting Success',
       () async {
+        when(
+          () => imagePicker.pickImage(
+            source: any(named: 'source'),
+            maxWidth: any(named: 'maxWidth'),
+            imageQuality: any(named: 'imageQuality'),
+          ),
+        ).thenAnswer(
+          (_) async =>
+              XFile.fromData(Uint8List.fromList([1, 2, 3]), path: 'photo.jpg'),
+        );
+        final mediaAttachment = MediaAttachment(
+          id: 'media-1',
+          originalFilename: 'photo.jpg',
+          contentType: 'image/jpeg',
+          sizeBytes: 3,
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        );
+        when(
+          () => mediaWriter.attachMedia(
+            ownerType: any(named: 'ownerType'),
+            ownerId: any(named: 'ownerId'),
+            localFilePath: any(named: 'localFilePath'),
+            originalFilename: any(named: 'originalFilename'),
+            contentType: any(named: 'contentType'),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).thenAnswer((_) async => Right(mediaAttachment));
+        final mediaGalleryCubit = MediaGalleryCubit(
+          reader: mediaReader,
+          writer: mediaWriter,
+          localMediaStore: localMediaStore,
+          ownerType: MediaOwnerType.apiary,
+          imagePicker: imagePicker,
+        );
+        await mediaGalleryCubit.pickFromGallery();
+        expect(mediaGalleryCubit.hasStagedPhotos, isTrue);
+
         when(
           () => writer.createApiary(
             name: any(named: 'name'),
@@ -253,41 +228,44 @@ void main() {
             location: any(named: 'location'),
           ),
         ).thenAnswer((_) async => Right(apiary));
-        final cubit = ApiaryFormCubit(writer: writer, refreshNotifier: refreshNotifier, locationService: locationService);
+        final cubit = ApiaryFormCubit(
+          writer: writer,
+          refreshNotifier: refreshNotifier,
+          locationService: locationService,
+        );
 
-        final first = await cubit.ensureDraft(name: 'Back Garden');
-        final second = await cubit.ensureDraft(name: 'Back Garden');
+        await cubit.submit(
+          name: 'Back Garden',
+          mediaGalleryCubit: mediaGalleryCubit,
+        );
 
-        expect(first, apiary.id);
-        expect(second, apiary.id);
+        expect(cubit.state, ApiaryFormSuccess(apiary));
         verify(
-          () => writer.createApiary(
-            name: any(named: 'name'),
-            description: any(named: 'description'),
-            location: any(named: 'location'),
+          () => mediaWriter.attachMedia(
+            ownerType: MediaOwnerType.apiary,
+            ownerId: apiary.id,
+            localFilePath: any(named: 'localFilePath'),
+            originalFilename: any(named: 'originalFilename'),
+            contentType: any(named: 'contentType'),
+            onProgress: any(named: 'onProgress'),
           ),
         ).called(1);
+        await mediaGalleryCubit.close();
       },
     );
 
-    test('ensureDraft returns null on failure, without throwing', () async {
-      when(
-        () => writer.createApiary(
-          name: any(named: 'name'),
-          description: any(named: 'description'),
-          location: any(named: 'location'),
-        ),
-      ).thenAnswer((_) async => Left(ServerFailure(code: 'unexpected', message: 'boom')));
-      final cubit = ApiaryFormCubit(writer: writer, refreshNotifier: refreshNotifier, locationService: locationService);
+    test(
+      'never calls attachMedia when the gallery cubit has no staged photos',
+      () async {
+        final mediaGalleryCubit = MediaGalleryCubit(
+          reader: mediaReader,
+          writer: mediaWriter,
+          localMediaStore: localMediaStore,
+          ownerType: MediaOwnerType.apiary,
+          imagePicker: imagePicker,
+        );
+        await mediaGalleryCubit.load();
 
-      final result = await cubit.ensureDraft(name: 'Back Garden');
-
-      expect(result, isNull);
-    });
-
-    blocTest<ApiaryFormCubit, ApiaryFormState>(
-      'submit() after a successful ensureDraft updates that draft instead of creating a second apiary',
-      build: () {
         when(
           () => writer.createApiary(
             name: any(named: 'name'),
@@ -295,30 +273,29 @@ void main() {
             location: any(named: 'location'),
           ),
         ).thenAnswer((_) async => Right(apiary));
-        when(
-          () => writer.updateApiary(
-            id: any(named: 'id'),
-            name: any(named: 'name'),
-            description: any(named: 'description'),
-            location: any(named: 'location'),
+        final cubit = ApiaryFormCubit(
+          writer: writer,
+          refreshNotifier: refreshNotifier,
+          locationService: locationService,
+        );
+
+        await cubit.submit(
+          name: 'Back Garden',
+          mediaGalleryCubit: mediaGalleryCubit,
+        );
+
+        expect(cubit.state, ApiaryFormSuccess(apiary));
+        verifyNever(
+          () => mediaWriter.attachMedia(
+            ownerType: any(named: 'ownerType'),
+            ownerId: any(named: 'ownerId'),
+            localFilePath: any(named: 'localFilePath'),
+            originalFilename: any(named: 'originalFilename'),
+            contentType: any(named: 'contentType'),
+            onProgress: any(named: 'onProgress'),
           ),
-        ).thenAnswer((_) async => Right(apiary));
-        return ApiaryFormCubit(writer: writer, refreshNotifier: refreshNotifier, locationService: locationService);
-      },
-      act: (cubit) async {
-        await cubit.ensureDraft(name: 'Untitled Apiary');
-        await cubit.submit(name: 'Back Garden');
-      },
-      expect: () => [const ApiaryFormLoading(), ApiaryFormSuccess(apiary)],
-      verify: (_) {
-        verify(
-          () => writer.createApiary(
-            name: any(named: 'name'),
-            description: any(named: 'description'),
-            location: any(named: 'location'),
-          ),
-        ).called(1);
-        verify(() => writer.updateApiary(id: apiary.id, name: 'Back Garden', description: null, location: null)).called(1);
+        );
+        await mediaGalleryCubit.close();
       },
     );
 
@@ -330,7 +307,11 @@ void main() {
           location: any(named: 'location'),
         ),
       ).thenAnswer((_) async => Right(apiary));
-      final cubit = ApiaryFormCubit(writer: writer, refreshNotifier: refreshNotifier, locationService: locationService);
+      final cubit = ApiaryFormCubit(
+        writer: writer,
+        refreshNotifier: refreshNotifier,
+        locationService: locationService,
+      );
 
       await cubit.submit(name: 'Back Garden');
 

@@ -18,7 +18,29 @@ final class OwnerImageWriter implements IOwnerImageWriter {
     required String ownerId,
     required String mediaId,
   }) => switch (ownerType) {
-    MediaOwnerType.apiary => apiaryWriter.addApiaryImage(apiaryId: ownerId, mediaId: mediaId),
-    MediaOwnerType.hive => hiveWriter.addHiveImage(hiveId: ownerId, mediaId: mediaId),
+    MediaOwnerType.apiary => apiaryWriter.addApiaryImage(
+      apiaryId: ownerId,
+      mediaId: mediaId,
+    ),
+    MediaOwnerType.hive => hiveWriter.addHiveImage(
+      hiveId: ownerId,
+      mediaId: mediaId,
+    ),
+  };
+
+  @override
+  Future<Either<Failure, void>> removeImage({
+    required MediaOwnerType ownerType,
+    required String ownerId,
+    required String mediaId,
+  }) => switch (ownerType) {
+    MediaOwnerType.apiary => apiaryWriter.removeApiaryImage(
+      apiaryId: ownerId,
+      mediaId: mediaId,
+    ),
+    MediaOwnerType.hive => hiveWriter.removeHiveImage(
+      hiveId: ownerId,
+      mediaId: mediaId,
+    ),
   };
 }

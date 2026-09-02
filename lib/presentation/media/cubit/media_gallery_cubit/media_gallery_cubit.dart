@@ -175,6 +175,8 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
   Future<void> remove(String localId) => emitRemove(
     writer,
     localMediaStore,
+    ownerType,
+    _ownerId,
     localId,
     _deferChanges,
     _notifyOwnerListChanged,
