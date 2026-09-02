@@ -59,16 +59,20 @@ final class MediaOperationHandler extends Repository implements OperationHandler
       return OperationRetryableFailure('media.errors.owner_not_synced'.tr());
     }
 
-    final result = await on(
-      () => dataSource.uploadMedia(
-        ownerType: request.ownerType,
-        ownerId: ownerId,
+    // Upload (owner-less, keyed by the request's stable idempotency key so a
+    // retried sync never creates a second file) then attach to the resolved
+    // owner — media-service exposes these as two calls; attach is itself
+    // idempotent per owner, so re-running both on a retry after a partial
+    // failure is safe.
+    final result = await on(() async {
+      final uploadedId = await dataSource.uploadMedia(
         filePath: request.localFilePath,
         originalFilename: request.originalFilename,
         contentType: request.contentType,
         idempotencyKey: request.idempotencyKey,
-      ),
-    );
+      );
+      return dataSource.attachMedia(mediaId: uploadedId, ownerType: request.ownerType, ownerId: ownerId);
+    });
 
     return result.fold(_classify, (response) async {
       // Adopts (renames) the already-on-disk staged file onto the

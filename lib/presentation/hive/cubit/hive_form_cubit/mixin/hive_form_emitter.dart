@@ -15,8 +15,8 @@ mixin HiveFormEmitter on Cubit<HiveFormState> {
         ? await writer.createHive(apiaryId: apiaryId, name: name, notes: notes)
         : await writer.updateHive(apiaryId: apiaryId, id: initial.id, name: name, notes: notes);
     await result.fold((failure) async => emit(HiveFormError(failure)), (hive) async {
-      if (mediaGalleryCubit != null && mediaGalleryCubit.hasStagedPhotos) {
-        await mediaGalleryCubit.attachTo(MediaOwnerType.hive, hive.id);
+      if (mediaGalleryCubit != null && mediaGalleryCubit.hasPendingChanges) {
+        await mediaGalleryCubit.commitChanges(MediaOwnerType.hive, hive.id);
       }
       refreshNotifier.notify();
       emit(HiveFormSuccess(hive));

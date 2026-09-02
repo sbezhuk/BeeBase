@@ -282,23 +282,34 @@ void main() {
         );
       });
 
-      final capturedUploads = <String>[];
+      var uploadCount = 0;
       when(
         () => mediaDataSource.uploadMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
           filePath: any(named: 'filePath'),
           originalFilename: any(named: 'originalFilename'),
           contentType: any(named: 'contentType'),
           idempotencyKey: any(named: 'idempotencyKey'),
         ),
+      ).thenAnswer((_) async {
+        uploadCount++;
+        return 'srv-media-$uploadCount';
+      });
+
+      final capturedUploads = <String>[];
+      when(
+        () => mediaDataSource.attachMedia(
+          mediaId: any(named: 'mediaId'),
+          ownerType: any(named: 'ownerType'),
+          ownerId: any(named: 'ownerId'),
+        ),
       ).thenAnswer((invocation) async {
+        final mediaId = invocation.namedArguments[#mediaId] as String;
         final ownerType =
             invocation.namedArguments[#ownerType] as MediaOwnerType;
         final ownerId = invocation.namedArguments[#ownerId] as String;
         capturedUploads.add('$ownerType:$ownerId');
         return MediaResponse(
-          id: 'srv-media-${capturedUploads.length}',
+          id: mediaId,
           ownerType: ownerType,
           ownerId: ownerId,
           originalFilename: 'photo.jpg',

@@ -447,16 +447,22 @@ void main() {
 
   group('attachMedia', () {
     test(
-      'uploads and returns the mapped attachment, preserving the local file path in the cache entry',
+      'uploads then attaches, returning the mapped attachment and preserving the local file path in the cache entry',
       () async {
         when(
           () => dataSource.uploadMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
             filePath: any(named: 'filePath'),
             originalFilename: any(named: 'originalFilename'),
             contentType: any(named: 'contentType'),
+            idempotencyKey: any(named: 'idempotencyKey'),
             onSendProgress: any(named: 'onSendProgress'),
+          ),
+        ).thenAnswer((_) async => 'media-1');
+        when(
+          () => dataSource.attachMedia(
+            mediaId: any(named: 'mediaId'),
+            ownerType: any(named: 'ownerType'),
+            ownerId: any(named: 'ownerId'),
           ),
         ).thenAnswer((_) async => mediaResponse);
 
@@ -472,6 +478,13 @@ void main() {
           expect(attachment.id, 'media-1');
           expect(attachment.localFilePath, localFile.path);
         });
+        verify(
+          () => dataSource.attachMedia(
+            mediaId: 'media-1',
+            ownerType: MediaOwnerType.apiary,
+            ownerId: 'apiary-1',
+          ),
+        ).called(1);
         verifyNever(
           () => offlineMutationStore
               .saveWithPendingOperation<List<MediaResponse>>(
@@ -490,11 +503,10 @@ void main() {
       () async {
         when(
           () => dataSource.uploadMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
             filePath: any(named: 'filePath'),
             originalFilename: any(named: 'originalFilename'),
             contentType: any(named: 'contentType'),
+            idempotencyKey: any(named: 'idempotencyKey'),
             onSendProgress: any(named: 'onSendProgress'),
           ),
         ).thenThrow(
@@ -542,11 +554,10 @@ void main() {
       () async {
         when(
           () => dataSource.uploadMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
             filePath: any(named: 'filePath'),
             originalFilename: any(named: 'originalFilename'),
             contentType: any(named: 'contentType'),
+            idempotencyKey: any(named: 'idempotencyKey'),
             onSendProgress: any(named: 'onSendProgress'),
           ),
         ).thenThrow(const InternalException(ErrorTextRaw('no connection')));
@@ -596,8 +607,6 @@ void main() {
         });
         verifyNever(
           () => dataSource.uploadMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
             filePath: any(named: 'filePath'),
             originalFilename: any(named: 'originalFilename'),
             contentType: any(named: 'contentType'),
@@ -734,8 +743,6 @@ void main() {
         expect(result, isA<Right<Failure, dynamic>>());
         verifyNever(
           () => dataSource.uploadMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
             filePath: any(named: 'filePath'),
             originalFilename: any(named: 'originalFilename'),
             contentType: any(named: 'contentType'),
@@ -758,7 +765,7 @@ void main() {
     );
 
     test(
-      'uploads under the owner\'s resolved real id once it has synced, even '
+      'attaches under the owner\'s resolved real id once it has synced, even '
       'though the caller still passes the stale local id it was built with',
       () async {
         when(() => operationQueue.all()).thenAnswer(
@@ -778,12 +785,18 @@ void main() {
         );
         when(
           () => dataSource.uploadMedia(
-            ownerType: MediaOwnerType.apiary,
-            ownerId: 'srv-apiary-1',
             filePath: any(named: 'filePath'),
             originalFilename: any(named: 'originalFilename'),
             contentType: any(named: 'contentType'),
+            idempotencyKey: any(named: 'idempotencyKey'),
             onSendProgress: any(named: 'onSendProgress'),
+          ),
+        ).thenAnswer((_) async => 'media-1');
+        when(
+          () => dataSource.attachMedia(
+            mediaId: 'media-1',
+            ownerType: MediaOwnerType.apiary,
+            ownerId: 'srv-apiary-1',
           ),
         ).thenAnswer(
           (_) async => mediaResponse.copyWithLocalPath(
@@ -803,13 +816,10 @@ void main() {
 
         expect(result, isA<Right<Failure, dynamic>>());
         verify(
-          () => dataSource.uploadMedia(
+          () => dataSource.attachMedia(
+            mediaId: 'media-1',
             ownerType: MediaOwnerType.apiary,
             ownerId: 'srv-apiary-1',
-            filePath: any(named: 'filePath'),
-            originalFilename: any(named: 'originalFilename'),
-            contentType: any(named: 'contentType'),
-            onSendProgress: any(named: 'onSendProgress'),
           ),
         ).called(1);
       },

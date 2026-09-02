@@ -22,16 +22,22 @@ part 'state/media_gallery_error.dart';
 part 'mixin/media_gallery_emitter.dart';
 
 /// Reusable photo-attachment cubit shared by the Apiary and Hive create/edit
-/// flows. [ownerId] switches between two modes at construction, though a
-/// create form transitions from the first into the second the moment a
-/// photo is picked (see [configureDraftCreation]):
+/// flows and the details page. [ownerId] switches between two modes at
+/// construction, though a create form transitions from the first into the
+/// second the moment a photo is picked (see [configureDraftCreation]):
 ///  - `null` — staging mode, used by a create form before the parent entity
 ///    exists. A pick uploads immediately once [configureDraftCreation]'s
 ///    callback resolves an owner id (materializing the parent as a draft if
-///    needed); it's only held locally, pending [attachTo] on submit, if that
-///    callback is unset or fails to resolve one.
-///  - non-null — live mode, used by the edit form and the details page.
-///    Picks upload/attach immediately.
+///    needed); it's only held locally, pending [commitChanges] on submit, if
+///    that callback is unset or fails to resolve one.
+///  - non-null — live mode by default (the details page: picks/removes take
+///    effect immediately, there's no Save to gate on), but the edit form
+///    switches it into *deferred* mode via [deferChangesUntilCommit] right
+///    after construction: picks/removes still update [state] immediately for
+///    a responsive UI, but neither uploads nor deletes anything server-side
+///    until [commitChanges] runs — called only once the form's own Save
+///    succeeds — so an edit abandoned without saving never touches the
+///    server, matching how every other field on that form already behaves.
 final class MediaGalleryCubit extends Cubit<MediaGalleryState>
     with MediaGalleryEmitter {
   // `ownerId` stays a plain named param rather than `this._ownerId` — a
@@ -60,7 +66,10 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
        _notifyOwnerListChanged = notifyOwnerListChanged,
        super(const MediaGalleryLoading()) {
     _ownerListChangesSubscription = ownerListChanges?.listen((_) {
-      if (!isStaging) load();
+      // A reload while deferred would fetch the server's current attached
+      // set and clobber whatever staged picks/pending removals this edit
+      // session has accumulated but not yet committed.
+      if (!isStaging && !_deferChanges) load();
     });
   }
 
@@ -74,12 +83,17 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
 
   String? _ownerId;
 
+  /// Set by [deferChangesUntilCommit] — see the class doc's "deferred mode"
+  /// paragraph.
+  bool _deferChanges = false;
+
   /// Lets a create-mode form page supply a way to materialize the parent
   /// Apiary/Hive — as a real or local-offline id — the first time a photo
   /// is picked, so the upload can start immediately instead of waiting for
-  /// staged photos to be flushed via [attachTo] on submit. Configured after
-  /// construction (see `configureDraftCreation`) because the page's form
-  /// field values it reads aren't available yet when this cubit is built.
+  /// staged photos to be flushed via [commitChanges] on submit. Configured
+  /// after construction (see `configureDraftCreation`) because the page's
+  /// form field values it reads aren't available yet when this cubit is
+  /// built.
   Future<String?> Function()? _ensureOwnerId;
 
   bool get isStaging => _ownerId == null;
@@ -92,12 +106,22 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
         );
   }
 
+  /// Whether [commitChanges] has anything to actually do — a staged pick, a
+  /// deferred removal, or both.
+  bool get hasPendingChanges => hasStagedPhotos || hasPendingRemovals;
+
   /// Initial load — a no-op straight to an empty list in staging mode, or a
-  /// fetch of already-attached photos in live mode.
+  /// fetch of already-attached photos in live/deferred mode.
   Future<void> load() => emitLoad(reader, ownerType, _ownerId);
 
   void configureDraftCreation(Future<String?> Function() ensureOwnerId) {
     _ensureOwnerId = ensureOwnerId;
+  }
+
+  /// Switches this gallery into deferred mode (see the class doc) — called
+  /// once, right after construction, by the edit form only.
+  void deferChangesUntilCommit() {
+    _deferChanges = true;
   }
 
   Future<void> pickFromGallery() => _pick(ImageSource.gallery);
@@ -111,6 +135,7 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
       writer,
       ownerType,
       _ownerId,
+      _deferChanges,
       source,
       _notifyOwnerListChanged,
       _ensureOwnerId,
@@ -118,21 +143,26 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
     if (resolvedOwnerId != null) _ownerId = resolvedOwnerId;
   }
 
-  /// Flushes every staged file through [IMediaWriter.attachMedia] once the
-  /// parent Apiary/Hive this gallery belongs to has a real (or
-  /// local-offline) id — called by the form cubit right after a successful
-  /// create.
-  Future<void> attachTo(MediaOwnerType ownerType, String ownerId) {
+  /// Flushes every staged pick and every deferred removal (see the class
+  /// doc's "deferred mode" paragraph) against the parent Apiary/Hive's real
+  /// (or local-offline) id — called by the form cubit right after a
+  /// successful create/update.
+  Future<void> commitChanges(MediaOwnerType ownerType, String ownerId) {
     assert(
       ownerType == this.ownerType,
-      'attachTo was called with a different owner type than this gallery was built for.',
+      'commitChanges was called with a different owner type than this gallery was built for.',
     );
     _ownerId = ownerId;
-    return emitAttachStaged(writer, ownerType, ownerId);
+    return emitCommitChanges(writer, ownerType, ownerId);
   }
 
-  Future<void> remove(String localId) =>
-      emitRemove(writer, localMediaStore, localId, _notifyOwnerListChanged);
+  Future<void> remove(String localId) => emitRemove(
+    writer,
+    localMediaStore,
+    localId,
+    _deferChanges,
+    _notifyOwnerListChanged,
+  );
 
   Future<void> retry(String localId) =>
       emitRetry(writer, ownerType, _ownerId, localId, _notifyOwnerListChanged);

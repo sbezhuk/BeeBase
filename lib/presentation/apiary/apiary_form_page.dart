@@ -88,6 +88,11 @@ final class _ApiaryFormPageState extends State<ApiaryFormPage> {
           lon: _longitude,
         );
       });
+    } else {
+      // This apiary already exists, so picks/removes could upload/delete
+      // immediately — deferred mode keeps them purely local until Save
+      // succeeds, matching every other field on this form.
+      context.read<MediaGalleryCubit>().deferChangesUntilCommit();
     }
   }
 

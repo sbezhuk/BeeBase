@@ -21,7 +21,8 @@ import 'package:mocktail/mocktail.dart';
 
 class MockMediaDataSource extends Mock implements IMediaDataSource {}
 
-class MockMediaLocalDataSource extends Mock implements LocalDataSource<List<MediaResponse>> {}
+class MockMediaLocalDataSource extends Mock
+    implements LocalDataSource<List<MediaResponse>> {}
 
 class MockLocalMediaStore extends Mock implements LocalMediaStore {}
 
@@ -97,7 +98,9 @@ void main() {
     );
 
     when(() => localDataSource.modify(any())).thenAnswer((invocation) async {
-      final update = invocation.positionalArguments.single as FutureOr<List<MediaResponse>> Function(List<MediaResponse>?);
+      final update =
+          invocation.positionalArguments.single
+              as FutureOr<List<MediaResponse>> Function(List<MediaResponse>?);
       await update(await localDataSource.read());
     });
     when(() => localMediaStore.delete(any())).thenAnswer((_) async {});
@@ -107,7 +110,9 @@ void main() {
         id: any(named: 'id'),
         extension: any(named: 'extension'),
       ),
-    ).thenAnswer((invocation) async => '/media/${invocation.namedArguments[#id]}.jpg');
+    ).thenAnswer(
+      (invocation) async => '/media/${invocation.namedArguments[#id]}.jpg',
+    );
     when(() => operationQueue.update(any())).thenAnswer((_) async {});
   });
 
@@ -124,38 +129,60 @@ void main() {
     test('uploads with the request\'s idempotency key — never the local '
         'operation id, which is `local-`-prefixed and gets rejected by the '
         'server when sent as the media_id form field (unlike Apiary/Hive, '
-        'where the idempotency key only ever travels as an opaque header)', () async {
+        'where the idempotency key only ever travels as an opaque header) — '
+        'then attaches the uploaded id to the resolved owner', () async {
       when(() => localDataSource.read()).thenAnswer((_) async => []);
       when(
         () => dataSource.uploadMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
           filePath: any(named: 'filePath'),
           originalFilename: any(named: 'originalFilename'),
           contentType: any(named: 'contentType'),
           idempotencyKey: any(named: 'idempotencyKey'),
         ),
+      ).thenAnswer((_) async => 'media-server-1');
+      when(
+        () => dataSource.attachMedia(
+          mediaId: any(named: 'mediaId'),
+          ownerType: any(named: 'ownerType'),
+          ownerId: any(named: 'ownerId'),
+        ),
       ).thenAnswer((_) async => serverResponse);
 
-      final result = await handler.handle(_createOp(id: 'op-99', idempotencyKey: 'ab12cd34-ef56-4789-a012-3456789abcde'));
+      final result = await handler.handle(
+        _createOp(
+          id: 'op-99',
+          idempotencyKey: 'ab12cd34-ef56-4789-a012-3456789abcde',
+        ),
+      );
 
       expect(result, isA<OperationSuccess>());
       expect((result as OperationSuccess).resolvedEntityId, 'media-server-1');
       verify(
         () => dataSource.uploadMedia(
-          ownerType: MediaOwnerType.apiary,
-          ownerId: 'apiary-1',
           filePath: '/tmp/photo.jpg',
           originalFilename: 'photo.jpg',
           contentType: 'image/jpeg',
           idempotencyKey: 'ab12cd34-ef56-4789-a012-3456789abcde',
         ),
       ).called(1);
+      verify(
+        () => dataSource.attachMedia(
+          mediaId: 'media-server-1',
+          ownerType: MediaOwnerType.apiary,
+          ownerId: 'apiary-1',
+        ),
+      ).called(1);
       // Adopted (renamed) onto the server id's deterministic cache path,
       // not deleted — see LocalMediaStore.adopt — so the photo stays
       // available offline right after syncing instead of needing a
       // redundant re-download.
-      verify(() => localMediaStore.adopt('/tmp/photo.jpg', id: 'media-server-1', extension: 'jpg')).called(1);
+      verify(
+        () => localMediaStore.adopt(
+          '/tmp/photo.jpg',
+          id: 'media-server-1',
+          extension: 'jpg',
+        ),
+      ).called(1);
       verifyNever(() => localMediaStore.delete(any()));
       final update =
           verify(() => localDataSource.modify(captureAny())).captured.single
@@ -170,15 +197,23 @@ void main() {
       when(() => localDataSource.read()).thenAnswer((_) async => []);
       when(
         () => dataSource.uploadMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
           filePath: any(named: 'filePath'),
           originalFilename: any(named: 'originalFilename'),
           contentType: any(named: 'contentType'),
           idempotencyKey: any(named: 'idempotencyKey'),
         ),
+      ).thenAnswer((_) async => 'media-server-1');
+      when(
+        () => dataSource.attachMedia(
+          mediaId: any(named: 'mediaId'),
+          ownerType: any(named: 'ownerType'),
+          ownerId: any(named: 'ownerId'),
+        ),
       ).thenAnswer((_) async => serverResponse);
-      final notified = expectLater(apiaryRefreshNotifier.onChanged, emits(anything));
+      final notified = expectLater(
+        apiaryRefreshNotifier.onChanged,
+        emits(anything),
+      );
 
       await handler.handle(_createOp(ownerType: 'APIARY'));
 
@@ -190,12 +225,17 @@ void main() {
       when(() => localDataSource.read()).thenAnswer((_) async => []);
       when(
         () => dataSource.uploadMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
           filePath: any(named: 'filePath'),
           originalFilename: any(named: 'originalFilename'),
           contentType: any(named: 'contentType'),
           idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      ).thenAnswer((_) async => 'media-server-2');
+      when(
+        () => dataSource.attachMedia(
+          mediaId: any(named: 'mediaId'),
+          ownerType: any(named: 'ownerType'),
+          ownerId: any(named: 'ownerId'),
         ),
       ).thenAnswer(
         (_) async => MediaResponse(
@@ -209,7 +249,10 @@ void main() {
           updatedAt: DateTime(2026),
         ),
       );
-      final notified = expectLater(hiveRefreshNotifier.onChanged, emits(anything));
+      final notified = expectLater(
+        hiveRefreshNotifier.onChanged,
+        emits(anything),
+      );
 
       await handler.handle(_createOp(ownerType: 'HIVE', ownerId: 'hive-1'));
 
@@ -232,57 +275,68 @@ void main() {
       );
       when(
         () => dataSource.uploadMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
           filePath: any(named: 'filePath'),
           originalFilename: any(named: 'originalFilename'),
           contentType: any(named: 'contentType'),
           idempotencyKey: any(named: 'idempotencyKey'),
         ),
+      ).thenAnswer((_) async => 'media-server-1');
+      when(
+        () => dataSource.attachMedia(
+          mediaId: any(named: 'mediaId'),
+          ownerType: any(named: 'ownerType'),
+          ownerId: any(named: 'ownerId'),
+        ),
       ).thenAnswer((_) async => serverResponse);
 
-      await handler.handle(_createOp(ownerId: 'local-apiary-1', dependsOnOperationId: 'dep-op'));
+      await handler.handle(
+        _createOp(ownerId: 'local-apiary-1', dependsOnOperationId: 'dep-op'),
+      );
 
       verify(
-        () => dataSource.uploadMedia(
+        () => dataSource.attachMedia(
+          mediaId: 'media-server-1',
           ownerType: MediaOwnerType.apiary,
           ownerId: 'apiary-real-42',
-          filePath: any(named: 'filePath'),
-          originalFilename: any(named: 'originalFilename'),
-          contentType: any(named: 'contentType'),
-          idempotencyKey: any(named: 'idempotencyKey'),
         ),
       ).called(1);
     });
 
-    test('is a retryable failure when the owner dependency has not synced yet', () async {
-      when(() => operationQueue.find('dep-op')).thenAnswer((_) async => null);
+    test(
+      'is a retryable failure when the owner dependency has not synced yet',
+      () async {
+        when(() => operationQueue.find('dep-op')).thenAnswer((_) async => null);
 
-      final result = await handler.handle(_createOp(ownerId: 'local-apiary-1', dependsOnOperationId: 'dep-op'));
+        final result = await handler.handle(
+          _createOp(ownerId: 'local-apiary-1', dependsOnOperationId: 'dep-op'),
+        );
 
-      expect(result, isA<OperationRetryableFailure>());
-      verifyNever(
-        () => dataSource.uploadMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
-          filePath: any(named: 'filePath'),
-          originalFilename: any(named: 'originalFilename'),
-          contentType: any(named: 'contentType'),
-        ),
-      );
-    });
+        expect(result, isA<OperationRetryableFailure>());
+        verifyNever(
+          () => dataSource.uploadMedia(
+            filePath: any(named: 'filePath'),
+            originalFilename: any(named: 'originalFilename'),
+            contentType: any(named: 'contentType'),
+          ),
+        );
+      },
+    );
 
     test('classifies a ServerException as a permanent failure', () async {
       when(
         () => dataSource.uploadMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
           filePath: any(named: 'filePath'),
           originalFilename: any(named: 'originalFilename'),
           contentType: any(named: 'contentType'),
           idempotencyKey: any(named: 'idempotencyKey'),
         ),
-      ).thenThrow(const ServerException(statusCode: 415, code: 'unsupported_file_type', message: 'bad file'));
+      ).thenThrow(
+        const ServerException(
+          statusCode: 415,
+          code: 'unsupported_file_type',
+          message: 'bad file',
+        ),
+      );
 
       final result = await handler.handle(_createOp());
 
@@ -294,8 +348,6 @@ void main() {
     test('classifies an InternalException as a retryable failure', () async {
       when(
         () => dataSource.uploadMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
           filePath: any(named: 'filePath'),
           originalFilename: any(named: 'originalFilename'),
           contentType: any(named: 'contentType'),
@@ -308,25 +360,66 @@ void main() {
       expect(result, isA<OperationRetryableFailure>());
     });
 
-    test('marks the operation synced in the queue before notifying, so a live refresh sees it as already synced', () async {
-      when(() => localDataSource.read()).thenAnswer((_) async => []);
-      when(
-        () => dataSource.uploadMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
-          filePath: any(named: 'filePath'),
-          originalFilename: any(named: 'originalFilename'),
-          contentType: any(named: 'contentType'),
-          idempotencyKey: any(named: 'idempotencyKey'),
-        ),
-      ).thenAnswer((_) async => serverResponse);
+    test(
+      'classifies a ServerException from the follow-up attach call as a permanent failure too',
+      () async {
+        when(
+          () => dataSource.uploadMedia(
+            filePath: any(named: 'filePath'),
+            originalFilename: any(named: 'originalFilename'),
+            contentType: any(named: 'contentType'),
+            idempotencyKey: any(named: 'idempotencyKey'),
+          ),
+        ).thenAnswer((_) async => 'media-server-1');
+        when(
+          () => dataSource.attachMedia(
+            mediaId: any(named: 'mediaId'),
+            ownerType: any(named: 'ownerType'),
+            ownerId: any(named: 'ownerId'),
+          ),
+        ).thenThrow(
+          const ServerException(
+            statusCode: 404,
+            code: 'apiary_not_found',
+            message: 'not found',
+          ),
+        );
 
-      await handler.handle(_createOp());
+        final result = await handler.handle(_createOp());
 
-      final syncedUpdate = verify(() => operationQueue.update(captureAny())).captured.single as OfflineOperation;
-      expect(syncedUpdate.status, OperationStatus.synced);
-      expect(syncedUpdate.resolvedEntityId, 'media-server-1');
-    });
+        expect(result, isA<OperationPermanentFailure>());
+      },
+    );
+
+    test(
+      'marks the operation synced in the queue before notifying, so a live refresh sees it as already synced',
+      () async {
+        when(() => localDataSource.read()).thenAnswer((_) async => []);
+        when(
+          () => dataSource.uploadMedia(
+            filePath: any(named: 'filePath'),
+            originalFilename: any(named: 'originalFilename'),
+            contentType: any(named: 'contentType'),
+            idempotencyKey: any(named: 'idempotencyKey'),
+          ),
+        ).thenAnswer((_) async => 'media-server-1');
+        when(
+          () => dataSource.attachMedia(
+            mediaId: any(named: 'mediaId'),
+            ownerType: any(named: 'ownerType'),
+            ownerId: any(named: 'ownerId'),
+          ),
+        ).thenAnswer((_) async => serverResponse);
+
+        await handler.handle(_createOp());
+
+        final syncedUpdate =
+            verify(() => operationQueue.update(captureAny())).captured.single
+                as OfflineOperation;
+        expect(syncedUpdate.status, OperationStatus.synced);
+        expect(syncedUpdate.resolvedEntityId, 'media-server-1');
+      },
+    );
   });
 
   test('update operations are not supported', () async {

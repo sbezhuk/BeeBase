@@ -170,7 +170,7 @@ void main() {
     );
 
     test(
-      'attachTo flushes staged items through attachMedia and updates their status to the result',
+      'commitChanges flushes staged items through attachMedia and updates their status to the result',
       () async {
         stubPick();
         stubAttach(Right(attachment));
@@ -178,7 +178,7 @@ void main() {
         await cubit.pickFromGallery();
         expect(cubit.hasStagedPhotos, isTrue);
 
-        await cubit.attachTo(MediaOwnerType.apiary, 'apiary-1');
+        await cubit.commitChanges(MediaOwnerType.apiary, 'apiary-1');
 
         final state = cubit.state as MediaGalleryLoaded;
         expect(state.items.single.status, MediaGalleryItemStatus.synced);
@@ -199,7 +199,7 @@ void main() {
     );
 
     test(
-      'a failed attachTo upload marks the item failed with an error message',
+      'a failed commitChanges upload marks the item failed with an error message',
       () async {
         stubPick();
         stubAttach(
@@ -208,7 +208,7 @@ void main() {
         final cubit = buildCubit();
         await cubit.pickFromGallery();
 
-        await cubit.attachTo(MediaOwnerType.apiary, 'apiary-1');
+        await cubit.commitChanges(MediaOwnerType.apiary, 'apiary-1');
 
         final state = cubit.state as MediaGalleryLoaded;
         expect(state.items.single.status, MediaGalleryItemStatus.failed);
@@ -532,6 +532,168 @@ void main() {
         await removeFuture;
         expect((cubit.state as MediaGalleryLoaded).items, isEmpty);
         await cubit.close();
+      },
+    );
+  });
+
+  group('deferred mode (deferChangesUntilCommit — the edit form)', () {
+    test(
+      'a pick stages locally without calling attachMedia even though ownerId is already known',
+      () async {
+        stubPick();
+        final cubit = buildCubit(ownerId: 'apiary-1');
+        cubit.deferChangesUntilCommit();
+
+        await cubit.pickFromGallery();
+
+        final state = cubit.state as MediaGalleryLoaded;
+        expect(state.items.single.status, MediaGalleryItemStatus.staged);
+        expect(cubit.hasStagedPhotos, isTrue);
+        expect(cubit.hasPendingChanges, isTrue);
+        verifyNever(
+          () => writer.attachMedia(
+            ownerType: any(named: 'ownerType'),
+            ownerId: any(named: 'ownerId'),
+            localFilePath: any(named: 'localFilePath'),
+            originalFilename: any(named: 'originalFilename'),
+            contentType: any(named: 'contentType'),
+            onProgress: any(named: 'onProgress'),
+          ),
+        );
+        await cubit.close();
+      },
+    );
+
+    test(
+      'removing an already-attached photo hides it immediately without calling removeMedia',
+      () async {
+        when(
+          () => reader.getMedia(
+            ownerType: any(named: 'ownerType'),
+            ownerId: any(named: 'ownerId'),
+            page: any(named: 'page'),
+            limit: any(named: 'limit'),
+          ),
+        ).thenAnswer(
+          (_) async => Right(Page(items: [attachment], hasNext: false)),
+        );
+        final cubit = buildCubit(ownerId: 'apiary-1');
+        cubit.deferChangesUntilCommit();
+        await cubit.load();
+
+        await cubit.remove('media-1');
+
+        expect((cubit.state as MediaGalleryLoaded).items, isEmpty);
+        expect(cubit.hasPendingChanges, isTrue);
+        verifyNever(() => writer.removeMedia(any()));
+        await cubit.close();
+      },
+    );
+
+    test(
+      'removing a photo picked in this same deferred session (never uploaded) just drops it locally, same as staged mode',
+      () async {
+        stubPick();
+        final cubit = buildCubit(ownerId: 'apiary-1');
+        cubit.deferChangesUntilCommit();
+        await cubit.pickFromGallery();
+        final localId =
+            (cubit.state as MediaGalleryLoaded).items.single.localId;
+
+        await cubit.remove(localId);
+
+        expect((cubit.state as MediaGalleryLoaded).items, isEmpty);
+        expect(cubit.hasPendingChanges, isFalse);
+        verify(() => localMediaStore.delete(any())).called(1);
+        verifyNever(() => writer.removeMedia(any()));
+        await cubit.close();
+      },
+    );
+
+    test(
+      'commitChanges uploads every staged pick and deletes every deferred removal',
+      () async {
+        when(
+          () => reader.getMedia(
+            ownerType: any(named: 'ownerType'),
+            ownerId: any(named: 'ownerId'),
+            page: any(named: 'page'),
+            limit: any(named: 'limit'),
+          ),
+        ).thenAnswer(
+          (_) async => Right(Page(items: [attachment], hasNext: false)),
+        );
+        when(
+          () => writer.removeMedia('media-1'),
+        ).thenAnswer((_) async => const Right(null));
+        final newAttachment = MediaAttachment(
+          id: 'media-2',
+          ownerType: MediaOwnerType.apiary,
+          ownerId: 'apiary-1',
+          originalFilename: 'photo.jpg',
+          contentType: 'image/jpeg',
+          sizeBytes: 4,
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        );
+        stubPick();
+        stubAttach(Right(newAttachment));
+        final cubit = buildCubit(ownerId: 'apiary-1');
+        cubit.deferChangesUntilCommit();
+        await cubit.load();
+        await cubit.remove('media-1');
+        await cubit.pickFromGallery();
+        expect(cubit.hasPendingChanges, isTrue);
+
+        await cubit.commitChanges(MediaOwnerType.apiary, 'apiary-1');
+
+        expect(cubit.hasPendingChanges, isFalse);
+        verify(() => writer.removeMedia('media-1')).called(1);
+        verify(
+          () => writer.attachMedia(
+            ownerType: MediaOwnerType.apiary,
+            ownerId: 'apiary-1',
+            localFilePath: any(named: 'localFilePath'),
+            originalFilename: 'photo.jpg',
+            contentType: any(named: 'contentType'),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).called(1);
+        final state = cubit.state as MediaGalleryLoaded;
+        expect(state.items.single.status, MediaGalleryItemStatus.synced);
+        await cubit.close();
+      },
+    );
+
+    test(
+      'a signal on ownerListChanges is a no-op while deferred, even though ownerId is already known — '
+      'a reload would clobber staged picks/pending removals the user has not saved yet',
+      () async {
+        final controller = StreamController<void>.broadcast();
+        final cubit = MediaGalleryCubit(
+          reader: reader,
+          writer: writer,
+          localMediaStore: localMediaStore,
+          ownerType: MediaOwnerType.apiary,
+          ownerId: 'apiary-1',
+          imagePicker: imagePicker,
+          ownerListChanges: controller.stream,
+        );
+        cubit.deferChangesUntilCommit();
+
+        controller.add(null);
+        await Future<void>.delayed(Duration.zero);
+
+        verifyNever(
+          () => reader.getMedia(
+            ownerType: any(named: 'ownerType'),
+            ownerId: any(named: 'ownerId'),
+            page: any(named: 'page'),
+            limit: any(named: 'limit'),
+          ),
+        );
+        await cubit.close();
+        await controller.close();
       },
     );
   });

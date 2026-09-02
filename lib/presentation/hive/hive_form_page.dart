@@ -74,6 +74,11 @@ final class _HiveFormPageState extends State<HiveFormPage> {
           notes: description.isEmpty ? null : description,
         );
       });
+    } else {
+      // This hive already exists, so picks/removes could upload/delete
+      // immediately — deferred mode keeps them purely local until Save
+      // succeeds, matching every other field on this form.
+      context.read<MediaGalleryCubit>().deferChangesUntilCommit();
     }
   }
 

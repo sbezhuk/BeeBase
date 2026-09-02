@@ -7,6 +7,16 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
   /// and one disk write instead of racing two independent ones.
   final Map<String, Future<String?>> _inFlightDownloads = {};
 
+  /// Ids of already-attached photos the user removed while `deferChanges`
+  /// was on (the edit form) — hidden from [state] immediately for a
+  /// responsive UI, but not actually deleted server-side until
+  /// [emitCommitChanges] runs. Dropped for good (never deleted) if the form
+  /// is abandoned without saving, since this cubit — and this field with it
+  /// — is torn down along with the page.
+  final Set<String> _pendingRemovalIds = {};
+
+  bool get hasPendingRemovals => _pendingRemovalIds.isNotEmpty;
+
   Future<String?> resolveItemDisplayPath(
     IMediaReader reader,
     LocalMediaStore localMediaStore,
@@ -125,12 +135,20 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
   /// the form is submitted). The caller is responsible for remembering a
   /// non-null result so later picks in the same session skip straight to
   /// live mode.
+  ///
+  /// When [deferChanges] is on (the edit form — `ownerId` is already known,
+  /// unlike the create form's staging-until-a-draft-exists window), the pick
+  /// always stays `staged` and this returns `ownerId` unchanged without
+  /// uploading anything — [emitCommitChanges] is what actually uploads it,
+  /// called only once the form's own Save succeeds, so a picked photo never
+  /// reaches the server for an edit the user abandons.
   Future<String?> emitPick(
     ImagePicker picker,
     LocalMediaStore localMediaStore,
     IMediaWriter writer,
     MediaOwnerType ownerType,
     String? ownerId,
+    bool deferChanges,
     ImageSource source,
     VoidCallback? notifyOwnerListChanged,
     Future<String?> Function()? ensureOwnerId,
@@ -160,6 +178,8 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
       status: MediaGalleryItemStatus.staged,
     );
     _addItem(staged);
+
+    if (deferChanges) return ownerId;
 
     final resolvedOwnerId = ownerId ?? await ensureOwnerId?.call();
     if (resolvedOwnerId == null) return null;
@@ -193,6 +213,28 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
     }
   }
 
+  /// Flushes everything accumulated while `deferChanges` was on: uploads and
+  /// attaches every still-`staged` pick (via [emitAttachStaged]), then
+  /// deletes every photo the user removed during that same window (see
+  /// [_pendingRemovalIds]) — called once by the owning form cubit right
+  /// after a successful create/update. A removal failure here is silently
+  /// dropped rather than surfaced: the form has already succeeded and its
+  /// page is on its way out, so there's no tile left to show a retry on —
+  /// the photo simply stays attached server-side until removed again from
+  /// the details page.
+  Future<void> emitCommitChanges(
+    IMediaWriter writer,
+    MediaOwnerType ownerType,
+    String ownerId,
+  ) async {
+    await emitAttachStaged(writer, ownerType, ownerId);
+    final pending = _pendingRemovalIds.toList();
+    _pendingRemovalIds.clear();
+    for (final id in pending) {
+      await writer.removeMedia(id);
+    }
+  }
+
   Future<void> emitRetry(
     IMediaWriter writer,
     MediaOwnerType ownerType,
@@ -207,10 +249,19 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
     await _upload(writer, ownerType, ownerId, item, notifyOwnerListChanged);
   }
 
+  /// When [deferChanges] is on (the edit form) and [localId] identifies an
+  /// already-attached photo, the actual delete is deferred: the item just
+  /// disappears from [state] immediately (so the UI reacts exactly as it
+  /// always has) while its id is remembered in [_pendingRemovalIds] for
+  /// [emitCommitChanges] to actually delete once the form's Save succeeds —
+  /// so removing a photo during an edit the user abandons never reaches the
+  /// server. A `staged` item (picked but never uploaded, deferred or not)
+  /// always just drops locally — there's nothing server-side to defer.
   Future<void> emitRemove(
     IMediaWriter writer,
     LocalMediaStore localMediaStore,
     String localId,
+    bool deferChanges,
     VoidCallback? notifyOwnerListChanged,
   ) async {
     final current = state;
@@ -230,6 +281,13 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
 
     final attachment = item.attachment;
     if (attachment == null) return;
+
+    if (deferChanges) {
+      _pendingRemovalIds.add(attachment.id);
+      _removeItem(localId);
+      return;
+    }
+
     _updateItem(
       localId,
       (existing) => existing.copyWith(status: MediaGalleryItemStatus.removing),

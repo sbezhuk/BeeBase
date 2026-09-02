@@ -3,6 +3,7 @@ import 'package:beebase/core/networking/http/dio_client.dart';
 import 'package:beebase/core/networking/interceptors/authentication_interceptor.dart';
 import 'package:beebase/core/networking/interceptors/interceptor_resolver.dart';
 import 'package:beebase/data/data_source/interface/media_data_source.dart';
+import 'package:beebase/data/models/attach_media_request.dart';
 import 'package:beebase/data/models/media_list_request.dart';
 import 'package:beebase/data/models/media_response.dart';
 import 'package:beebase/data/models/media_upload_form_request.dart';
@@ -41,9 +42,7 @@ final class MediaDataSource implements IMediaDataSource {
   }
 
   @override
-  Future<MediaResponse> uploadMedia({
-    required MediaOwnerType ownerType,
-    required String ownerId,
+  Future<String> uploadMedia({
     required String filePath,
     required String originalFilename,
     required String contentType,
@@ -51,11 +50,7 @@ final class MediaDataSource implements IMediaDataSource {
     void Function(int sent, int total)? onSendProgress,
   }) async {
     final formData = dio.FormData.fromMap({
-      ...MediaUploadFormRequest(
-        ownerType: ownerType,
-        ownerId: ownerId,
-        mediaId: idempotencyKey,
-      ).toJson(),
+      ...MediaUploadFormRequest(mediaId: idempotencyKey).toJson(),
       'file': await dio.MultipartFile.fromFile(
         filePath,
         filename: originalFilename,
@@ -66,6 +61,19 @@ final class MediaDataSource implements IMediaDataSource {
       ApiEndpoints.media.list,
       data: formData,
       onSendProgress: onSendProgress,
+    );
+    return response.data!['id'] as String;
+  }
+
+  @override
+  Future<MediaResponse> attachMedia({
+    required String mediaId,
+    required MediaOwnerType ownerType,
+    required String ownerId,
+  }) async {
+    final response = await _dioClient.post<Map<String, dynamic>>(
+      ApiEndpoints.media.attach(mediaId),
+      data: AttachMediaRequest(ownerType: ownerType, ownerId: ownerId).toJson(),
     );
     return MediaResponse.fromJson(response.data!);
   }

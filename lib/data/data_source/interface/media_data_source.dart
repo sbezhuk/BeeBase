@@ -10,14 +10,24 @@ abstract interface class IMediaDataSource {
     required PageRequest request,
   });
 
-  Future<MediaResponse> uploadMedia({
-    required MediaOwnerType ownerType,
-    required String ownerId,
+  /// Uploads a file on its own, owned only by the caller — no apiary or hive
+  /// needs to exist yet, and this never attaches it to one. Returns the
+  /// uploaded file's id; use [attachMedia] afterward to link it to an owner.
+  Future<String> uploadMedia({
     required String filePath,
     required String originalFilename,
     required String contentType,
     String? idempotencyKey,
     void Function(int sent, int total)? onSendProgress,
+  });
+
+  /// Links an already-uploaded file (see [uploadMedia]) to an apiary or a
+  /// hive the caller owns. Idempotent: calling it again with the same owner
+  /// succeeds without error.
+  Future<MediaResponse> attachMedia({
+    required String mediaId,
+    required MediaOwnerType ownerType,
+    required String ownerId,
   });
 
   Future<List<int>> downloadMedia(String id);

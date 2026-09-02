@@ -119,7 +119,7 @@ void main() {
     tearDown(() => tempDir.delete(recursive: true));
 
     test(
-      'posts multipart form data (including the idempotency key) and maps the response',
+      'posts multipart form data (including the idempotency key) and returns the uploaded id',
       () async {
         when(
           () => innerDioClient.post<Map<String, dynamic>>(
@@ -135,15 +135,13 @@ void main() {
         );
 
         final result = await dataSource.uploadMedia(
-          ownerType: MediaOwnerType.apiary,
-          ownerId: 'apiary-1',
           filePath: file.path,
           originalFilename: 'photo.jpg',
           contentType: 'image/jpeg',
           idempotencyKey: 'op-1',
         );
 
-        expect(result.id, 'media-1');
+        expect(result, 'media-1');
         final captured =
             verify(
                   () => innerDioClient.post<Map<String, dynamic>>(
@@ -154,9 +152,9 @@ void main() {
                 ).captured.single
                 as FormData;
         final fields = Map.fromEntries(captured.fields);
-        expect(fields['owner_type'], 'APIARY');
-        expect(fields['owner_id'], 'apiary-1');
         expect(fields['media_id'], 'op-1');
+        expect(fields.containsKey('owner_type'), isFalse);
+        expect(fields.containsKey('owner_id'), isFalse);
         expect(captured.files.single.key, 'file');
       },
     );
@@ -176,8 +174,6 @@ void main() {
       );
 
       await dataSource.uploadMedia(
-        ownerType: MediaOwnerType.hive,
-        ownerId: 'hive-1',
         filePath: file.path,
         originalFilename: 'photo.jpg',
         contentType: 'image/jpeg',
@@ -194,8 +190,44 @@ void main() {
               as FormData;
       final fields = Map.fromEntries(captured.fields);
       expect(fields.containsKey('media_id'), isFalse);
-      expect(fields['owner_type'], 'HIVE');
     });
+  });
+
+  group('attachMedia', () {
+    test(
+      'posts owner_type/owner_id to the attach endpoint and maps the response',
+      () async {
+        when(
+          () => innerDioClient.post<Map<String, dynamic>>(
+            any(),
+            data: any(named: 'data'),
+          ),
+        ).thenAnswer(
+          (_) async => Response(
+            requestOptions: RequestOptions(),
+            data: mediaResponse.toJson(),
+          ),
+        );
+
+        final result = await dataSource.attachMedia(
+          mediaId: 'media-1',
+          ownerType: MediaOwnerType.apiary,
+          ownerId: 'apiary-1',
+        );
+
+        expect(result.id, 'media-1');
+        final captured =
+            verify(
+                  () => innerDioClient.post<Map<String, dynamic>>(
+                    ApiEndpoints.media.attach('media-1'),
+                    data: captureAny(named: 'data'),
+                  ),
+                ).captured.single
+                as Map<String, dynamic>;
+        expect(captured['owner_type'], 'APIARY');
+        expect(captured['owner_id'], 'apiary-1');
+      },
+    );
   });
 
   test('downloadMedia fetches raw bytes from the download endpoint', () async {

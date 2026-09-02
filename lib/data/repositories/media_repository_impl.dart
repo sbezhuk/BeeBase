@@ -185,14 +185,21 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
     }
 
     final result = await on(() async {
-      final response = await dataSource.uploadMedia(
-        ownerType: ownerType,
-        ownerId: effectiveOwnerId,
+      // Media-service uploads are owner-less (an apiary/hive doesn't need to
+      // exist yet, and upload never accepts one) — attaching is a separate
+      // call, made here immediately after so the caller still sees this as
+      // one atomic "upload and attach" action. Both legs are idempotent
+      // (a stable client-generated media_id on upload; attach itself is
+      // idempotent per owner), so a retry after a partial failure here is
+      // safe and won't leave a duplicate media record behind.
+      final uploadedId = await dataSource.uploadMedia(
         filePath: localFilePath,
         originalFilename: originalFilename,
         contentType: contentType,
+        idempotencyKey: IdempotencyKeyGenerator.generate(),
         onSendProgress: onProgress == null ? null : (sent, total) => onProgress(total <= 0 ? 0 : sent / total),
       );
+      final response = await dataSource.attachMedia(mediaId: uploadedId, ownerType: ownerType, ownerId: effectiveOwnerId);
       final withLocalCopy = MediaResponse(
         id: response.id,
         ownerType: response.ownerType,

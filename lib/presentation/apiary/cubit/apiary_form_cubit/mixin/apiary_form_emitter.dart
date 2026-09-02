@@ -17,8 +17,8 @@ mixin ApiaryFormEmitter on Cubit<ApiaryFormState> {
         ? await writer.createApiary(name: name, description: description, location: location, lat: lat, lon: lon)
         : await writer.updateApiary(id: initial.id, name: name, description: description, location: location, lat: lat, lon: lon);
     await result.fold((failure) async => emit(ApiaryFormError(failure)), (apiary) async {
-      if (mediaGalleryCubit != null && mediaGalleryCubit.hasStagedPhotos) {
-        await mediaGalleryCubit.attachTo(MediaOwnerType.apiary, apiary.id);
+      if (mediaGalleryCubit != null && mediaGalleryCubit.hasPendingChanges) {
+        await mediaGalleryCubit.commitChanges(MediaOwnerType.apiary, apiary.id);
       }
       refreshNotifier.notify();
       emit(ApiaryFormSuccess(apiary));
