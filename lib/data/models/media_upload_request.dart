@@ -1,16 +1,16 @@
-import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'media_upload_request.g.dart';
 
 /// Payload of a queued media `create` [OfflineOperation] — built once in
-/// `MediaRepositoryImpl._attachOffline` and read back by
-/// `MediaOperationHandler` when `SyncEngine` drains the queue.
+/// `MediaRepositoryImpl` and read back by `MediaOperationHandler` when
+/// `SyncEngine` drains the queue. Deliberately owner-less: uploading a file
+/// never needs an apiary/hive to exist, so this operation has no
+/// [OfflineOperation.dependsOnOperationId] either — linking the uploaded id
+/// to an owner is a separate, later step (see `OperationType.imageAdd`).
 @JsonSerializable()
 final class MediaUploadRequest {
   const MediaUploadRequest({
-    required this.ownerType,
-    required this.ownerId,
     required this.localFilePath,
     required this.originalFilename,
     required this.contentType,
@@ -19,12 +19,6 @@ final class MediaUploadRequest {
 
   factory MediaUploadRequest.fromJson(Map<String, dynamic> json) =>
       _$MediaUploadRequestFromJson(json);
-
-  @JsonKey(name: 'owner_type')
-  final MediaOwnerType ownerType;
-
-  @JsonKey(name: 'owner_id')
-  final String ownerId;
 
   @JsonKey(name: 'local_file_path')
   final String localFilePath;

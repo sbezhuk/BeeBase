@@ -352,6 +352,7 @@ final class InspectionRepositoryImpl extends Repository
           .toList(),
       entityType: _inspectionEntityType,
       entityId: id,
+      matchingOperationTypes: const {OperationType.create, OperationType.update},
       operation: () => OfflineOperation(
         id: LocalIdGenerator.generate(),
         entityType: _inspectionEntityType,

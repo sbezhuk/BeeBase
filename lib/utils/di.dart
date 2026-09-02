@@ -44,6 +44,7 @@ import 'package:beebase/data/repositories/authentication_repository_impl.dart';
 import 'package:beebase/data/repositories/hive_repository_impl.dart';
 import 'package:beebase/data/repositories/inspection_repository_impl.dart';
 import 'package:beebase/data/repositories/media_repository_impl.dart';
+import 'package:beebase/data/repositories/owner_image_writer.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/entity/hive.dart';
 import 'package:beebase/domain/entity/inspection.dart';
@@ -57,6 +58,7 @@ import 'package:beebase/domain/repositories/inspection_reader.dart';
 import 'package:beebase/domain/repositories/inspection_writer.dart';
 import 'package:beebase/domain/repositories/media_reader.dart';
 import 'package:beebase/domain/repositories/media_writer.dart';
+import 'package:beebase/domain/repositories/owner_image_writer.dart';
 import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_delete_cubit/apiary_delete_cubit.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_details_cubit/apiary_details_cubit.dart';
@@ -206,14 +208,7 @@ Future<void> initDi() async {
     () => InspectionOperationHandler(dataSource: di(), localDataSource: di(), refreshNotifier: di(), operationQueue: di()),
   );
   di.registerLazySingleton<MediaOperationHandler>(
-    () => MediaOperationHandler(
-      dataSource: di(),
-      localDataSource: di(),
-      localMediaStore: di(),
-      operationQueue: di(),
-      apiaryRefreshNotifier: di(),
-      hiveRefreshNotifier: di(),
-    ),
+    () => MediaOperationHandler(dataSource: di(), localDataSource: di(), localMediaStore: di(), operationQueue: di()),
   );
   di.registerLazySingleton<OperationRegistry>(
     () => OperationRegistry({
@@ -253,6 +248,7 @@ Future<void> initDi() async {
   );
   di.registerLazySingleton<IHiveReader>(() => di<HiveRepositoryImpl>());
   di.registerLazySingleton<IHiveWriter>(() => di<HiveRepositoryImpl>());
+  di.registerLazySingleton<IOwnerImageWriter>(() => OwnerImageWriter(apiaryWriter: di(), hiveWriter: di()));
   di.registerLazySingleton<InspectionRepositoryImpl>(
     () => InspectionRepositoryImpl(
       dataSource: di(),
@@ -272,6 +268,7 @@ Future<void> initDi() async {
       connectivity: di(),
       operationQueue: di(),
       offlineMutationStore: di(),
+      ownerImageWriter: di(),
     ),
   );
   di.registerLazySingleton<IMediaReader>(() => di<MediaRepositoryImpl>());

@@ -5,5 +5,4 @@ final class MediaEndpoints {
   String get list => '/api/v1/media';
   String byId(String id) => '/api/v1/media/$id';
   String download(String id) => '/api/v1/media/$id/download';
-  String attach(String id) => '/api/v1/media/$id/attach';
 }

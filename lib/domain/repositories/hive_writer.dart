@@ -1,5 +1,6 @@
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/entity/hive.dart';
+import 'package:beebase/domain/enum/local/media_sync_status.dart';
 import 'package:beebase/utils/either.dart';
 
 abstract interface class IHiveWriter {
@@ -21,4 +22,13 @@ abstract interface class IHiveWriter {
   });
 
   Future<Either<Failure, void>> deleteHive(String id);
+
+  /// Links [mediaId] (already uploaded, but not yet attached to anything)
+  /// to [hiveId] - the only way to attach media now that media-service's
+  /// own attach endpoint is internal-only. Used by `MediaRepositoryImpl`
+  /// via `IOwnerImageWriter`, never called directly by UI code.
+  Future<Either<Failure, MediaSyncStatus>> addHiveImage({
+    required String hiveId,
+    required String mediaId,
+  });
 }

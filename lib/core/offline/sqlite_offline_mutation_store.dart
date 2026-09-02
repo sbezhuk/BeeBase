@@ -5,6 +5,7 @@ import 'package:beebase/core/offline/offline_operation.dart';
 import 'package:beebase/core/offline/offline_operation_row_mapper.dart';
 import 'package:beebase/core/offline/offline_operations_change_notifier.dart';
 import 'package:beebase/core/offline/operation_status.dart';
+import 'package:beebase/core/offline/operation_type.dart';
 import 'package:beebase/core/storage/app_database.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -48,6 +49,7 @@ final class SqliteOfflineMutationStore implements OfflineMutationStore {
     required T Function(Object? json) fromJson,
     required String entityType,
     required String entityId,
+    required Set<OperationType> matchingOperationTypes,
     required OfflineOperation Function() operation,
     required OfflineOperation Function(OfflineOperation existing) mergeInto,
   }) async {
@@ -61,10 +63,16 @@ final class SqliteOfflineMutationStore implements OfflineMutationStore {
         'value': jsonEncode(toJson(next)),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
 
+      final typePlaceholders = List.filled(matchingOperationTypes.length, '?').join(', ');
       final pendingRows = await txn.query(
         'offline_operations',
-        where: 'entity_type = ? AND local_entity_id = ? AND status != ?',
-        whereArgs: [entityType, entityId, OperationStatus.synced.name],
+        where: 'entity_type = ? AND local_entity_id = ? AND status != ? AND operation_type IN ($typePlaceholders)',
+        whereArgs: [
+          entityType,
+          entityId,
+          OperationStatus.synced.name,
+          ...matchingOperationTypes.map((type) => type.name),
+        ],
         orderBy: 'created_at DESC',
         limit: 1,
       );

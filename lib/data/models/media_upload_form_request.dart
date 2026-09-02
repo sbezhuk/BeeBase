@@ -6,8 +6,10 @@ part 'media_upload_form_request.g.dart';
 /// separately by the data source since building a `MultipartFile` is async
 /// and isn't representable as plain JSON. Upload is owner-less: media-service
 /// requires no apiary/hive to exist yet and never accepts one here — an
-/// upload is linked to an owner afterward via `POST /media/{id}/attach` (see
-/// `AttachMediaRequest`).
+/// upload is linked to an owner afterward via the owning apiary/hive's own
+/// `images` field on `PUT` (see `ApiaryRepositoryImpl.addApiaryImage`/
+/// `HiveRepositoryImpl.addHiveImage`), since media-service's own attach
+/// endpoint is internal-only now.
 @JsonSerializable(includeIfNull: false)
 final class MediaUploadFormRequest {
   const MediaUploadFormRequest({this.mediaId});

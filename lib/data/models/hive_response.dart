@@ -11,6 +11,7 @@ final class HiveResponse {
     this.notes,
     required this.createdAt,
     required this.updatedAt,
+    this.images = const [],
   });
 
   factory HiveResponse.fromJson(Map<String, dynamic> json) =>
@@ -26,6 +27,15 @@ final class HiveResponse {
 
   @JsonKey(name: 'created_at')
   final DateTime createdAt;
+
+  /// Media ids currently attached to this hive — computed live from
+  /// media-service on every server read, never stored on the hive row
+  /// itself, so this is only as fresh as the last fetch. Defaults to `[]`
+  /// for a response rebuilt locally from a plain field-edit request (see
+  /// `HiveRequestX.toResponse`), which never carries a caller-supplied
+  /// value for it.
+  @JsonKey(defaultValue: <String>[])
+  final List<String> images;
 
   @JsonKey(name: 'updated_at')
   final DateTime updatedAt;

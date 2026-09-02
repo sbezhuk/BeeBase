@@ -3,7 +3,6 @@ import 'package:beebase/core/networking/http/dio_client.dart';
 import 'package:beebase/core/networking/interceptors/authentication_interceptor.dart';
 import 'package:beebase/core/networking/interceptors/interceptor_resolver.dart';
 import 'package:beebase/data/data_source/interface/media_data_source.dart';
-import 'package:beebase/data/models/attach_media_request.dart';
 import 'package:beebase/data/models/media_list_request.dart';
 import 'package:beebase/data/models/media_response.dart';
 import 'package:beebase/data/models/media_upload_form_request.dart';
@@ -63,19 +62,6 @@ final class MediaDataSource implements IMediaDataSource {
       onSendProgress: onSendProgress,
     );
     return response.data!['id'] as String;
-  }
-
-  @override
-  Future<MediaResponse> attachMedia({
-    required String mediaId,
-    required MediaOwnerType ownerType,
-    required String ownerId,
-  }) async {
-    final response = await _dioClient.post<Map<String, dynamic>>(
-      ApiEndpoints.media.attach(mediaId),
-      data: AttachMediaRequest(ownerType: ownerType, ownerId: ownerId).toJson(),
-    );
-    return MediaResponse.fromJson(response.data!);
   }
 
   @override

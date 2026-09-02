@@ -45,6 +45,9 @@ final class InspectionOperationHandler extends Repository implements OperationHa
       OperationType.delete => Future.value(
         const OperationPermanentFailure('Offline delete is not supported yet.'),
       ),
+      OperationType.imageAdd => Future.value(
+        const OperationPermanentFailure('Inspections do not support image attachments.'),
+      ),
     };
   }
 

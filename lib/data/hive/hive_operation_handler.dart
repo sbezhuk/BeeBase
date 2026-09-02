@@ -42,6 +42,7 @@ final class HiveOperationHandler extends Repository implements OperationHandler 
     return switch (operation.operationType) {
       OperationType.create => _handleCreate(operation),
       OperationType.update => _handleUpdate(operation),
+      OperationType.imageAdd => _handleImageAdd(operation),
       OperationType.delete => Future.value(const OperationPermanentFailure('Offline delete is not supported yet.')),
     };
   }
@@ -89,6 +90,67 @@ final class HiveOperationHandler extends Repository implements OperationHandler 
     }
     final dependency = await operationQueue.find(dependsOnOperationId);
     return dependency?.resolvedEntityId;
+  }
+
+  /// Links one already-uploaded media id to this hive, replaying
+  /// `HiveRepositoryImpl.addHiveImage`'s queued half. Requires both:
+  ///  - the photo's own upload to have synced ([OfflineOperation.
+  ///    dependsOnOperationId] always points at that `media` `create`
+  ///    operation - see `MediaRepositoryImpl._attachOffline`), so there's a
+  ///    real media id to send; and
+  ///  - this hive's own id to be real (see [_resolveRealSelfId]) - it may
+  ///    itself still be local if the photo was picked before this hive's
+  ///    own `create` synced.
+  /// Neither check is `SyncEngine`'s job: it only ever verifies the single
+  /// `dependsOnOperationId` dependency (the upload), so the hive's own
+  /// readiness is re-checked here, mirroring [_resolveApiaryId]'s identical
+  /// pattern for this hive depending on its own apiary.
+  Future<OperationResult> _handleImageAdd(OfflineOperation operation) async {
+    final mediaId = await _resolveDependencyId(operation.dependsOnOperationId);
+    if (mediaId == null) {
+      return const OperationRetryableFailure('The photo upload has not synced yet.');
+    }
+    final hiveId = await _resolveRealSelfId(operation.localEntityId);
+    if (hiveId == null) {
+      return const OperationRetryableFailure('This hive has not synced yet.');
+    }
+
+    final result = await on(() async {
+      final current = await dataSource.getHive(hiveId);
+      final request = HiveRequest(name: current.name, notes: current.notes, images: {...current.images, mediaId}.toList());
+      return dataSource.updateHive(hiveId, request);
+    });
+
+    return result.fold(_classify, (response) async {
+      await _reconcileCache(hiveId, response);
+      await _markSynced(operation, resolvedEntityId: mediaId);
+      refreshNotifier.notify();
+      return OperationSuccess(resolvedEntityId: mediaId);
+    });
+  }
+
+  /// The real, server-assigned id for the hive identified by the local id
+  /// [rawId] once its own `create` operation has synced - `null` while
+  /// still pending/failed, or if [rawId] was never local to begin with (in
+  /// which case it's returned unchanged).
+  Future<String?> _resolveRealSelfId(String? rawId) async {
+    if (rawId == null) return null;
+    if (!LocalIdGenerator.isLocal(rawId)) {
+      return rawId;
+    }
+    final operations = await operationQueue.all();
+    for (final op in operations) {
+      if (op.entityType == 'hive' && op.localEntityId == rawId && op.operationType == OperationType.create) {
+        return op.status == OperationStatus.synced ? op.resolvedEntityId : null;
+      }
+    }
+    return null;
+  }
+
+  Future<String?> _resolveDependencyId(String? dependsOnOperationId) async {
+    if (dependsOnOperationId == null) return null;
+    final dependency = await operationQueue.find(dependsOnOperationId);
+    return dependency?.status == OperationStatus.synced ? dependency?.resolvedEntityId : null;
   }
 
   Future<OperationResult> _handleUpdate(OfflineOperation operation) async {
@@ -161,6 +223,11 @@ final class HiveOperationHandler extends Repository implements OperationHandler 
   /// edited again after this request was sent), with the newer field values
   /// under the server's id instead of the now-stale response fields.
   Future<void> _reconcileCache(String? localEntityId, HiveResponse serverResponse, {Map<String, dynamic>? latestPayload}) {
+    // images always comes from serverResponse, never from latestPayload: a
+    // field-edit's own request payload never carries one (see
+    // [HiveRequest.images]), so serverResponse.images - the hive's actual
+    // attached set as of the request that just completed - is the best
+    // available answer, superseding retarget or not.
     final resolved = latestPayload == null
         ? serverResponse
         : HiveRequest.fromJson(latestPayload).toResponse(
@@ -168,6 +235,7 @@ final class HiveOperationHandler extends Repository implements OperationHandler 
             apiaryId: latestPayload[_payloadApiaryIdKey] as String,
             createdAt: serverResponse.createdAt,
             updatedAt: DateTime.now(),
+            images: serverResponse.images,
           );
     return localDataSource.modify((current) {
       final withoutPlaceholder = (current ?? const []).where((response) => response.id != localEntityId);

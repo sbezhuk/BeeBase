@@ -17,6 +17,7 @@ import 'package:beebase/data/repositories/apiary_cache_merger.dart';
 import 'package:beebase/data/repositories/owner_operation_status.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/enum/local/apiary_sync_status.dart';
+import 'package:beebase/domain/enum/local/media_sync_status.dart';
 import 'package:beebase/domain/repositories/apiary_reader.dart';
 import 'package:beebase/domain/repositories/apiary_writer.dart';
 import 'package:beebase/domain/repositories/repository.dart';
@@ -163,6 +164,10 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
       return _updateOffline(id: id, name: name, description: description, location: location, lat: lat, lon: lon);
     }
 
+    // images is never set here: a plain field edit never touches attached
+    // media, and omitting the key (see [ApiaryRequest.images]) is exactly
+    // what tells apiary-service to leave it alone. Attaching new media goes
+    // through [addApiaryImage] instead.
     final request = ApiaryRequest(name: name, description: description, location: location, lat: lat, lon: lon);
     final result = await on(() async {
       final response = await dataSource.updateApiary(id, request);
@@ -186,6 +191,89 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
       }
       return _updateOffline(id: id, name: name, description: description, location: location, lat: lat, lon: lon);
     }, (apiary) => Future.value(Right(apiary)));
+  }
+
+  /// Links [mediaId] (already uploaded to media-service, but not yet
+  /// attached to anything) to [apiaryId] by fetching the apiary's current
+  /// state, merging the id into its `images`, and PUTting it back - the
+  /// only way to attach media now that media-service's own `attach`
+  /// endpoint is internal-only (see `MediaRepositoryImpl.attachMedia`,
+  /// the sole caller of this method via `IOwnerImageWriter`).
+  ///
+  /// Goes offline whenever [apiaryId] or [mediaId] is still a local,
+  /// not-yet-synced placeholder, or there's already a pending operation for
+  /// this apiary, or there's no connectivity - the same conservative rule
+  /// [updateApiary] applies, for the same reason: this can't safely fetch
+  /// "the current state" of an apiary the server doesn't know about yet, or
+  /// reference a media id it hasn't heard of yet.
+  @override
+  Future<Either<Failure, MediaSyncStatus>> addApiaryImage({required String apiaryId, required String mediaId}) async {
+    final pending = await _pendingOperationFor(apiaryId);
+    if (pending != null || LocalIdGenerator.isLocal(apiaryId) || LocalIdGenerator.isLocal(mediaId) || !await connectivity.isOnline) {
+      return _queueImageAdd(apiaryId: apiaryId, mediaId: mediaId);
+    }
+
+    final result = await on(() async {
+      final current = await dataSource.getApiary(apiaryId);
+      final request = ApiaryRequest(
+        name: current.name,
+        description: current.description,
+        location: current.location,
+        lat: current.lat,
+        lon: current.lon,
+        images: {...current.images, mediaId}.toList(),
+      );
+      final updated = await dataSource.updateApiary(apiaryId, request);
+      await localDataSource.modify(
+        (list) => [for (final existing in list ?? const <ApiaryResponse>[]) if (existing.id != apiaryId) existing, updated],
+      );
+    });
+
+    return result.fold((failure) async {
+      if (failure is ServerFailure) {
+        return Left(failure);
+      }
+      return _queueImageAdd(apiaryId: apiaryId, mediaId: mediaId);
+    }, (_) => Future.value(const Right(MediaSyncStatus.synced)));
+  }
+
+  Future<Either<Failure, MediaSyncStatus>> _queueImageAdd({required String apiaryId, required String mediaId}) async {
+    final now = DateTime.now();
+    final dependsOnOperationId = LocalIdGenerator.isLocal(mediaId) ? await _pendingMediaCreateOperationId(mediaId) : null;
+    if (LocalIdGenerator.isLocal(mediaId) && dependsOnOperationId == null) {
+      // Invariant violated: a local media id should always have a pending
+      // upload operation behind it (see `MediaRepositoryImpl._attachOffline`).
+      return const Left(InternalFailure(ErrorTextKey('core.errors.unexpected_network_error')));
+    }
+    await operationQueue.enqueue(
+      OfflineOperation(
+        id: LocalIdGenerator.generate(),
+        entityType: _apiaryEntityType,
+        operationType: OperationType.imageAdd,
+        payload: const {},
+        status: OperationStatus.pending,
+        createdAt: now,
+        updatedAt: now,
+        localEntityId: apiaryId,
+        dependsOnOperationId: dependsOnOperationId,
+      ),
+    );
+    return const Right(MediaSyncStatus.pending);
+  }
+
+  /// The still-pending (or already-processed but not-yet-synced) `create`
+  /// operation's id for the media identified by the local id [mediaId] -
+  /// `null` if none is found.
+  Future<String?> _pendingMediaCreateOperationId(String mediaId) async {
+    final operations = await operationQueue.all();
+    for (final operation in operations) {
+      if (operation.entityType == mediaOperationEntityType &&
+          operation.localEntityId == mediaId &&
+          operation.operationType == OperationType.create) {
+        return operation.id;
+      }
+    }
+    return null;
   }
 
   /// A never-synced local entity is always deletable, online or off — there's
@@ -310,7 +398,11 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
             break;
           }
         }
-        final response = request.toResponse(id: id, createdAt: match?.createdAt ?? now, updatedAt: now);
+        // images: match?.images preserves whatever was last known to be
+        // attached - this request never carries a value for it (see
+        // [ApiaryRequest.images]), so without this, a plain field edit
+        // would wipe the cached images list rather than leaving it alone.
+        final response = request.toResponse(id: id, createdAt: match?.createdAt ?? now, updatedAt: now, images: match?.images ?? const []);
         updatedResponse = response;
         return [
           for (final existing in list)
@@ -322,6 +414,11 @@ final class ApiaryRepositoryImpl extends Repository implements IApiaryReader, IA
       fromJson: (json) => (json as List<dynamic>).map((item) => ApiaryResponse.fromJson(item as Map<String, dynamic>)).toList(),
       entityType: _apiaryEntityType,
       entityId: id,
+      // Never the outstanding pending operation this looks up: an
+      // `imageAdd` op tied to this same apiary (see
+      // `ApiaryOperationHandler`) has its own dependency and identity that
+      // this plain field edit must not clobber.
+      matchingOperationTypes: const {OperationType.create, OperationType.update},
       operation: () => OfflineOperation(
         id: LocalIdGenerator.generate(),
         entityType: _apiaryEntityType,

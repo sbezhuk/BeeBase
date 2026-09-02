@@ -17,6 +17,7 @@ import 'package:beebase/data/repositories/hive_cache_merger.dart';
 import 'package:beebase/data/repositories/owner_operation_status.dart';
 import 'package:beebase/domain/entity/hive.dart';
 import 'package:beebase/domain/enum/local/hive_sync_status.dart';
+import 'package:beebase/domain/enum/local/media_sync_status.dart';
 import 'package:beebase/domain/repositories/hive_reader.dart';
 import 'package:beebase/domain/repositories/hive_writer.dart';
 import 'package:beebase/domain/repositories/repository.dart';
@@ -226,6 +227,82 @@ final class HiveRepositoryImpl extends Repository implements IHiveReader, IHiveW
     return const Right(null);
   }
 
+  /// Links [mediaId] (already uploaded to media-service, but not yet
+  /// attached to anything) to [hiveId] by fetching the hive's current
+  /// state, merging the id into its `images`, and PUTting it back - the
+  /// only way to attach media now that media-service's own `attach`
+  /// endpoint is internal-only (see `MediaRepositoryImpl.attachMedia`, the
+  /// sole caller of this method via `IOwnerImageWriter`).
+  ///
+  /// Goes offline whenever [hiveId] or [mediaId] is still a local,
+  /// not-yet-synced placeholder, or there's already a pending operation for
+  /// this hive, or there's no connectivity - the same conservative rule
+  /// [updateHive] applies, for the same reason: this can't safely fetch
+  /// "the current state" of a hive the server doesn't know about yet, or
+  /// reference a media id it hasn't heard of yet.
+  @override
+  Future<Either<Failure, MediaSyncStatus>> addHiveImage({required String hiveId, required String mediaId}) async {
+    final pending = await _pendingOperationFor(hiveId);
+    if (pending != null || LocalIdGenerator.isLocal(hiveId) || LocalIdGenerator.isLocal(mediaId) || !await connectivity.isOnline) {
+      return _queueImageAdd(hiveId: hiveId, mediaId: mediaId);
+    }
+
+    final result = await on(() async {
+      final current = await dataSource.getHive(hiveId);
+      final request = HiveRequest(name: current.name, notes: current.notes, images: {...current.images, mediaId}.toList());
+      final updated = await dataSource.updateHive(hiveId, request);
+      await localDataSource.modify(
+        (list) => [for (final existing in list ?? const <HiveResponse>[]) if (existing.id != hiveId) existing, updated],
+      );
+    });
+
+    return result.fold((failure) async {
+      if (failure is ServerFailure) {
+        return Left(failure);
+      }
+      return _queueImageAdd(hiveId: hiveId, mediaId: mediaId);
+    }, (_) => Future.value(const Right(MediaSyncStatus.synced)));
+  }
+
+  Future<Either<Failure, MediaSyncStatus>> _queueImageAdd({required String hiveId, required String mediaId}) async {
+    final now = DateTime.now();
+    final dependsOnOperationId = LocalIdGenerator.isLocal(mediaId) ? await _pendingMediaCreateOperationId(mediaId) : null;
+    if (LocalIdGenerator.isLocal(mediaId) && dependsOnOperationId == null) {
+      // Invariant violated: a local media id should always have a pending
+      // upload operation behind it (see `MediaRepositoryImpl._attachOffline`).
+      return const Left(InternalFailure(ErrorTextKey('core.errors.unexpected_network_error')));
+    }
+    await operationQueue.enqueue(
+      OfflineOperation(
+        id: LocalIdGenerator.generate(),
+        entityType: _hiveEntityType,
+        operationType: OperationType.imageAdd,
+        payload: const {},
+        status: OperationStatus.pending,
+        createdAt: now,
+        updatedAt: now,
+        localEntityId: hiveId,
+        dependsOnOperationId: dependsOnOperationId,
+      ),
+    );
+    return const Right(MediaSyncStatus.pending);
+  }
+
+  /// The still-pending (or already-processed but not-yet-synced) `create`
+  /// operation's id for the media identified by the local id [mediaId] -
+  /// `null` if none is found.
+  Future<String?> _pendingMediaCreateOperationId(String mediaId) async {
+    final operations = await operationQueue.all();
+    for (final operation in operations) {
+      if (operation.entityType == mediaOperationEntityType &&
+          operation.localEntityId == mediaId &&
+          operation.operationType == OperationType.create) {
+        return operation.id;
+      }
+    }
+    return null;
+  }
+
   /// A 404 here means the server has already forgotten this entity — a stale
   /// local record left behind by, e.g., a previous sync that succeeded
   /// server-side but never reconciled locally, or a delete from another
@@ -336,7 +413,17 @@ final class HiveRepositoryImpl extends Repository implements IHiveReader, IHiveW
             break;
           }
         }
-        final response = request.toResponse(id: id, apiaryId: apiaryId, createdAt: match?.createdAt ?? now, updatedAt: now);
+        // images: match?.images preserves whatever was last known to be
+        // attached - this request never carries a value for it (see
+        // [HiveRequest.images]), so without this, a plain field edit would
+        // wipe the cached images list rather than leaving it alone.
+        final response = request.toResponse(
+          id: id,
+          apiaryId: apiaryId,
+          createdAt: match?.createdAt ?? now,
+          updatedAt: now,
+          images: match?.images ?? const [],
+        );
         updatedResponse = response;
         return [
           for (final existing in list)
@@ -348,6 +435,11 @@ final class HiveRepositoryImpl extends Repository implements IHiveReader, IHiveW
       fromJson: (json) => (json as List<dynamic>).map((item) => HiveResponse.fromJson(item as Map<String, dynamic>)).toList(),
       entityType: _hiveEntityType,
       entityId: id,
+      // Never the outstanding pending operation this looks up: an
+      // `imageAdd` op tied to this same hive (see `HiveOperationHandler`)
+      // has its own dependency and identity that this plain field edit
+      // must not clobber.
+      matchingOperationTypes: const {OperationType.create, OperationType.update},
       operation: () => OfflineOperation(
         id: LocalIdGenerator.generate(),
         entityType: _hiveEntityType,
