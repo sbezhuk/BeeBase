@@ -203,7 +203,7 @@ void main() {
           );
       expect(LocalIdGenerator.isLocal(apiary.id), isTrue);
 
-      (await mediaRepository.attachMedia(
+      final apiaryPhoto = (await mediaRepository.attachMedia(
         ownerType: MediaOwnerType.apiary,
         ownerId: apiary.id,
         localFilePath: apiaryPhotoFile.path,
@@ -212,8 +212,17 @@ void main() {
       )).fold(
         (failure) =>
             throw StateError('apiary photo attach failed offline: $failure'),
-        (_) {},
+        (value) => value,
       );
+
+      // Regression coverage for BEEB-27: the cached apiary must immediately
+      // reflect the newly attached photo, not just the operation queue —
+      // `MediaGalleryCubit.resolveImages` (and therefore what's shown right
+      // after the upload) reads exactly this cached entity's `images`.
+      final apiaryAfterAttach = await apiaryRepository.getCachedApiary(
+        apiary.id,
+      );
+      expect(apiaryAfterAttach?.images, contains(apiaryPhoto.id));
 
       final hive =
           (await hiveRepository.createHive(
@@ -226,7 +235,7 @@ void main() {
           );
       expect(LocalIdGenerator.isLocal(hive.id), isTrue);
 
-      (await mediaRepository.attachMedia(
+      final hivePhoto = (await mediaRepository.attachMedia(
         ownerType: MediaOwnerType.hive,
         ownerId: hive.id,
         localFilePath: hivePhotoFile.path,
@@ -235,8 +244,11 @@ void main() {
       )).fold(
         (failure) =>
             throw StateError('hive photo attach failed offline: $failure'),
-        (_) {},
+        (value) => value,
       );
+
+      final hiveAfterAttach = await hiveRepository.getCachedHive(hive.id);
+      expect(hiveAfterAttach?.images, contains(hivePhoto.id));
 
       // Each photo attach queues two operations: the owner-less upload
       // itself, and a separate `imageAdd` (see `ApiaryRepositoryImpl.

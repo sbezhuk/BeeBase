@@ -20,6 +20,7 @@ import 'package:beebase/data/models/paginated_response.dart';
 import 'package:beebase/data/models/pagination_meta.dart';
 import 'package:beebase/data/repositories/apiary_repository_impl.dart';
 import 'package:beebase/domain/enum/local/apiary_sync_status.dart';
+import 'package:beebase/domain/enum/local/media_sync_status.dart';
 import 'package:beebase/utils/either.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -713,6 +714,35 @@ void main() {
       result.fold((_) => fail('expected Right'), (apiary) => expect(apiary.name, 'Second Edit While Online'));
       verifyNever(() => dataSource.updateApiary(any(), any()));
     });
+  });
+
+  group('addApiaryImage', () {
+    test(
+      'queues an imageAdd operation and immediately merges the media id into the cached apiary '
+      'while offline, so getCachedApiary reflects the new photo before it syncs',
+      () async {
+        when(() => connectivity.isOnline).thenAnswer((_) async => false);
+        when(() => localDataSource.read()).thenAnswer((_) async => [apiaryResponse]);
+
+        final result = await repository.addApiaryImage(apiaryId: 'apiary-1', mediaId: 'media-1');
+
+        expect(result, isA<Right<Failure, MediaSyncStatus>>());
+        result.fold((_) => fail('expected Right'), (status) => expect(status, MediaSyncStatus.pending));
+        verifyNever(() => dataSource.updateApiary(any(), any()));
+
+        final capturedOperation =
+            verify(() => operationQueue.enqueue(captureAny())).captured.single as OfflineOperation;
+        expect(capturedOperation.entityType, 'apiary');
+        expect(capturedOperation.operationType, OperationType.imageAdd);
+        expect(capturedOperation.localEntityId, 'apiary-1');
+
+        final update =
+            verify(() => localDataSource.modify(captureAny())).captured.single
+                as FutureOr<List<ApiaryResponse>> Function(List<ApiaryResponse>?);
+        final merged = await update([apiaryResponse]);
+        expect(merged.single.images, ['media-1']);
+      },
+    );
   });
 
   group('deleteApiary', () {

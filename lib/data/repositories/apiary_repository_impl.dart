@@ -381,6 +381,31 @@ final class ApiaryRepositoryImpl extends Repository
         dependsOnOperationId: dependsOnOperationId,
       ),
     );
+    // Without this, `getCachedApiary` (and therefore
+    // `MediaGalleryCubit.resolveImages`) keeps returning the pre-photo
+    // `images` list until this operation syncs and `ApiaryOperationHandler.
+    // _reconcileCache` writes the real response back - so the reload the
+    // upload itself triggers via `notifyOwnerListChanged` would otherwise
+    // wipe the just-attached photo straight back out of the gallery.
+    await localDataSource.modify(
+      (list) => [
+        for (final existing in list ?? const <ApiaryResponse>[])
+          if (existing.id != apiaryId)
+            existing
+          else
+            ApiaryResponse(
+              id: existing.id,
+              name: existing.name,
+              description: existing.description,
+              location: existing.location,
+              lat: existing.lat,
+              lon: existing.lon,
+              createdAt: existing.createdAt,
+              updatedAt: existing.updatedAt,
+              images: {...existing.images, mediaId}.toList(),
+            ),
+      ],
+    );
     return const Right(MediaSyncStatus.pending);
   }
 

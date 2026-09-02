@@ -413,6 +413,29 @@ final class HiveRepositoryImpl extends Repository
         dependsOnOperationId: dependsOnOperationId,
       ),
     );
+    // Without this, `getCachedHive` (and therefore
+    // `MediaGalleryCubit.resolveImages`) keeps returning the pre-photo
+    // `images` list until this operation syncs and `HiveOperationHandler.
+    // _reconcileCache` writes the real response back - so the reload the
+    // upload itself triggers via `notifyOwnerListChanged` would otherwise
+    // wipe the just-attached photo straight back out of the gallery.
+    await localDataSource.modify(
+      (list) => [
+        for (final existing in list ?? const <HiveResponse>[])
+          if (existing.id != hiveId)
+            existing
+          else
+            HiveResponse(
+              id: existing.id,
+              apiaryId: existing.apiaryId,
+              name: existing.name,
+              notes: existing.notes,
+              createdAt: existing.createdAt,
+              updatedAt: existing.updatedAt,
+              images: {...existing.images, mediaId}.toList(),
+            ),
+      ],
+    );
     return const Right(MediaSyncStatus.pending);
   }
 

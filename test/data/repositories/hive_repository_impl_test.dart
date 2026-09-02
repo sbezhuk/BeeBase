@@ -20,6 +20,7 @@ import 'package:beebase/data/models/paginated_response.dart';
 import 'package:beebase/data/models/pagination_meta.dart';
 import 'package:beebase/data/repositories/hive_repository_impl.dart';
 import 'package:beebase/domain/enum/local/hive_sync_status.dart';
+import 'package:beebase/domain/enum/local/media_sync_status.dart';
 import 'package:beebase/utils/either.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -618,6 +619,35 @@ void main() {
 
       result.fold((_) => fail('expected Right'), (hive) => expect(hive.syncStatus, HiveSyncStatus.pending));
     });
+  });
+
+  group('addHiveImage', () {
+    test(
+      'queues an imageAdd operation and immediately merges the media id into the cached hive '
+      'while offline, so getCachedHive reflects the new photo before it syncs',
+      () async {
+        when(() => connectivity.isOnline).thenAnswer((_) async => false);
+        when(() => localDataSource.read()).thenAnswer((_) async => [hiveResponse]);
+
+        final result = await repository.addHiveImage(hiveId: 'hive-1', mediaId: 'media-1');
+
+        expect(result, isA<Right<Failure, MediaSyncStatus>>());
+        result.fold((_) => fail('expected Right'), (status) => expect(status, MediaSyncStatus.pending));
+        verifyNever(() => dataSource.updateHive(any(), any()));
+
+        final capturedOperation =
+            verify(() => operationQueue.enqueue(captureAny())).captured.single as OfflineOperation;
+        expect(capturedOperation.entityType, 'hive');
+        expect(capturedOperation.operationType, OperationType.imageAdd);
+        expect(capturedOperation.localEntityId, 'hive-1');
+
+        final update =
+            verify(() => localDataSource.modify(captureAny())).captured.single
+                as FutureOr<List<HiveResponse>> Function(List<HiveResponse>?);
+        final merged = await update([hiveResponse]);
+        expect(merged.single.images, ['media-1']);
+      },
+    );
   });
 
   group('deleteHive', () {
