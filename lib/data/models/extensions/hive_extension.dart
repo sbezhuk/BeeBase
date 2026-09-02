@@ -10,6 +10,7 @@ extension HiveResponseX on HiveResponse {
     notes: notes,
     createdAt: createdAt,
     updatedAt: updatedAt,
+    images: images,
   );
 }
 

@@ -10,8 +10,7 @@ import 'package:beebase/presentation/connectivity/cubit/connectivity_cubit/conne
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/presentation/media/widget/media_gallery_section.dart';
 import 'package:beebase/utils/either.dart';
-import 'package:beebase/utils/pagination/page.dart';
-import 'package:flutter/material.dart' hide Page;
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -84,13 +83,8 @@ void main() {
 
   Future<void> pumpGallery(WidgetTester tester, MediaAttachment attachment) async {
     when(
-      () => reader.getMedia(
-        ownerType: any(named: 'ownerType'),
-        ownerId: any(named: 'ownerId'),
-        page: any(named: 'page'),
-        limit: any(named: 'limit'),
-      ),
-    ).thenAnswer((_) async => Right(Page(items: [attachment], hasNext: false)));
+      () => reader.getMedia(ids: any(named: 'ids')),
+    ).thenAnswer((_) async => Right([attachment]));
     when(() => reader.cacheDownloadedMedia(any(), any())).thenAnswer((_) async {});
 
     galleryCubit = MediaGalleryCubit(
@@ -99,6 +93,7 @@ void main() {
       localMediaStore: const LocalMediaStore(),
       ownerType: MediaOwnerType.apiary,
       ownerId: 'apiary-1',
+      resolveImages: (_) async => [attachment.id],
     );
     await galleryCubit.load();
 

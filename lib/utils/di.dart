@@ -337,6 +337,16 @@ Future<void> initDi() async {
         MediaOwnerType.apiary => di<ApiaryListRefreshNotifier>().onChanged,
         MediaOwnerType.hive => di<HiveListRefreshNotifier>().onChanged,
       },
+      // Apiary/hive-service is now the source of truth for "which media ids
+      // belong to me" (see `ApiaryResponse.images`/`HiveResponse.images`) —
+      // a gallery reload sources its `ids` from here instead of asking
+      // media-service "what's attached to owner X" the old owner-scoped way.
+      // A cache read (never `null` on a cache miss — see [Apiary.images]'s
+      // default), so this never needs its own network round trip.
+      resolveImages: switch (ownerType) {
+        MediaOwnerType.apiary => (id) async => (await di<IApiaryReader>().getCachedApiary(id))?.images ?? const [],
+        MediaOwnerType.hive => (id) async => (await di<IHiveReader>().getCachedHive(id))?.images ?? const [],
+      },
     ),
   );
   // #endregion

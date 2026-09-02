@@ -29,12 +29,12 @@ final class ApiaryResponse {
   @JsonKey(name: 'created_at')
   final DateTime createdAt;
 
-  /// Media ids currently attached to this apiary — computed live from
-  /// media-service on every server read, never stored on the apiary row
-  /// itself, so this is only as fresh as the last fetch. Defaults to `[]`
-  /// for a response rebuilt locally from a plain field-edit request (see
-  /// `ApiaryRequestX.toResponse`), which never carries a caller-supplied
-  /// value for it.
+  /// Media ids currently attached to this apiary — apiary-service's own
+  /// source of truth (a local column there), returned on every read/write
+  /// response rather than queried live from media-service. Only as fresh as
+  /// the last fetch. Defaults to `[]` for a response rebuilt locally from a
+  /// plain field-edit request (see `ApiaryRequestX.toResponse`), which never
+  /// carries a caller-supplied value for it.
   @JsonKey(defaultValue: <String>[])
   final List<String> images;
 

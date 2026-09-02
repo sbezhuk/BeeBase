@@ -16,7 +16,6 @@ import 'package:beebase/data/data_source/interface/media_data_source.dart';
 import 'package:beebase/data/models/extensions/media_extension.dart';
 import 'package:beebase/data/models/media_response.dart';
 import 'package:beebase/data/models/media_upload_request.dart';
-import 'package:beebase/data/models/page_request.dart';
 import 'package:beebase/data/repositories/media_cache_merger.dart';
 import 'package:beebase/data/repositories/owner_operation_status.dart';
 import 'package:beebase/domain/entity/media_attachment.dart';
@@ -26,12 +25,11 @@ import 'package:beebase/domain/repositories/media_writer.dart';
 import 'package:beebase/domain/repositories/owner_image_writer.dart';
 import 'package:beebase/domain/repositories/repository.dart';
 import 'package:beebase/utils/either.dart';
-import 'package:beebase/utils/pagination/page.dart';
 
 /// Cache key both this repository and its DI registration of
 /// `LocalDataSource<List<MediaResponse>>` agree on. One global cache holds
 /// media across every owner — see [MediaCacheMerger]/[getMedia] for how
-/// reads are filtered back down to a single `(ownerType, ownerId)`.
+/// reads are filtered back down to just the currently-requested ids.
 const mediaCacheKey = 'cached_media';
 
 final class MediaRepositoryImpl extends Repository implements IMediaReader, IMediaWriter {
@@ -59,70 +57,50 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
   final IOwnerImageWriter ownerImageWriter;
   final MediaCacheMerger cacheMerger;
 
-  /// [ownerId] may itself still be a local, not-yet-synced placeholder (its
-  /// Apiary/Hive was created offline). There is nothing the server can tell
-  /// us about an id it has never seen — worse, sending it anyway gets
-  /// rejected outright (a `ServerFailure`), which without this check would
-  /// surface as a hard error and wipe out an otherwise-perfectly-good,
-  /// already-visible local photo. So a still-local *effective* owner id
-  /// short-circuits straight to the cache, online or not.
+  /// Some of [ids] may themselves still be local, not-yet-synced placeholders
+  /// (a photo picked while offline, or before its owner's own `create` has
+  /// synced — see `MediaGalleryEmitter._attachOffline`/[attachMedia]). There
+  /// is nothing the server can tell us about an id it has never seen — worse,
+  /// sending it anyway gets rejected outright (a `ServerFailure`), which
+  /// without this split would surface as a hard error and wipe out an
+  /// otherwise-perfectly-good, already-visible local photo. So every local id
+  /// is served from the cache only; only the real/synced ids are ever sent to
+  /// the server, and their response gets merged back into the cache.
   ///
-  /// If [ownerId]'s own owner has *already* synced (its `create` operation
-  /// resolved to a real server id since the last time this was called — see
-  /// [_resolvedOwnerIdIfSynced]), the network call below uses that resolved
-  /// id instead of the stale one the caller passed in — the caller (a
-  /// `MediaGalleryCubit` bound to whatever id its owner had at construction
-  /// time) has no way to know its owner has since been re-issued a real id,
-  /// and has no reason to be rebuilt just to find out. [ownerIds] carries
-  /// both the original and the resolved id into the cache lookups below, so
-  /// a photo attached under the old id before its own sync has run is still
-  /// found — see [MediaCacheMerger.mergeFirstPage] for why that matters.
+  /// media-service's `GET /api/v1/media` has no pagination of its own
+  /// anymore — the response is always the complete answer for [ids], never a
+  /// page — so this returns a plain list rather than a [Page].
   @override
-  Future<Either<Failure, Page<MediaAttachment>>> getMedia({
-    required MediaOwnerType ownerType,
-    required String ownerId,
-    required int page,
-    required int limit,
+  Future<Either<Failure, List<MediaAttachment>>> getMedia({
+    required List<String> ids,
   }) async {
-    final pendingOps = await _mediaOperations();
-    final resolvedOwnerId = LocalIdGenerator.isLocal(ownerId) ? await _resolvedOwnerIdIfSynced(ownerType, ownerId) : null;
-    final effectiveOwnerId = resolvedOwnerId ?? ownerId;
-    final ownerIds = {ownerId, ?resolvedOwnerId};
+    if (ids.isEmpty) {
+      return const Right([]);
+    }
 
-    if (LocalIdGenerator.isLocal(effectiveOwnerId)) {
-      return _localOwnerPage(ownerType, ownerIds, pendingOps);
+    final pendingOps = await _mediaOperations();
+    final remoteIds = ids.where((id) => !LocalIdGenerator.isLocal(id)).toList();
+
+    if (remoteIds.isEmpty) {
+      return _cachedForIdsOrEmpty(ids, pendingOps);
     }
 
     if (!await connectivity.isOnline) {
-      return _cachedPageOrFailure(
-        ownerType,
-        ownerIds,
+      return _cachedForIdsOrFailure(
+        ids,
         const InternalFailure(ErrorTextKey('core.errors.unexpected_network_error')),
         pendingOps,
       );
     }
 
     final result = await on(() async {
-      final paginated = await dataSource.listMedia(
-        ownerType: ownerType,
-        ownerId: effectiveOwnerId,
-        request: PageRequest(page: page, limit: limit),
-      );
+      final items = await dataSource.listMedia(ids: remoteIds);
       late List<MediaResponse> merged;
       await localDataSource.modify((current) {
-        final oldCache = current ?? const [];
-        merged = page <= 1
-            ? cacheMerger.mergeFirstPage(
-                paginated.items,
-                oldCache,
-                ownerType: ownerType,
-                ownerIds: ownerIds,
-                pendingOps: pendingOps,
-              )
-            : cacheMerger.appendPage(paginated.items, oldCache);
+        merged = cacheMerger.mergeForIds(items, current ?? const [], ids: ids.toSet(), pendingOps: pendingOps);
         return merged;
       });
-      return (merged, paginated.pagination.hasNext);
+      return merged;
     });
 
     return result.fold(
@@ -130,15 +108,9 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
         if (failure is ServerFailure) {
           return Left(failure);
         }
-        return _cachedPageOrFailure(ownerType, ownerIds, failure, pendingOps);
+        return _cachedForIdsOrFailure(ids, failure, pendingOps);
       },
-      (data) async {
-        final (merged, hasNext) = data;
-        final forOwner = merged
-            .where((response) => response.ownerType == ownerType && ownerIds.contains(response.ownerId))
-            .toList();
-        return Right(Page(items: cacheMerger.toEntities(forOwner, pendingOps), hasNext: hasNext));
-      },
+      (merged) async => Right(_orderedEntities(merged, ids, pendingOps)),
     );
   }
 
@@ -444,36 +416,47 @@ final class MediaRepositoryImpl extends Repository implements IMediaReader, IMed
     return matches.reduce((a, b) => a.updatedAt.isAfter(b.updatedAt) ? a : b);
   }
 
-  Future<Either<Failure, Page<MediaAttachment>>> _cachedPageOrFailure(
-    MediaOwnerType ownerType,
-    Set<String> ownerIds,
+  Future<Either<Failure, List<MediaAttachment>>> _cachedForIdsOrFailure(
+    List<String> ids,
     Failure failure,
     List<OfflineOperation> pendingOps,
   ) async {
-    final cached = await _cachedFor(ownerType, ownerIds);
+    final cached = await _cachedFor(ids);
     if (cached.isEmpty) {
       return Left(failure);
     }
-    return Right(Page(items: cacheMerger.toEntities(cached, pendingOps), hasNext: false));
+    return Right(_orderedEntities(cached, ids, pendingOps));
   }
 
-  /// Same cache lookup as [_cachedPageOrFailure], but for an owner that is
-  /// itself still an unsynced local placeholder: there is no server truth to
+  /// Same cache lookup as [_cachedForIdsOrFailure], but for a request made up
+  /// entirely of still-local, not-yet-synced ids: there is no server truth to
   /// fall back to failing over from, so the cache — even an empty one,
-  /// meaning genuinely no photos yet — is treated as the complete answer
+  /// meaning genuinely nothing cached yet — is treated as the complete answer
   /// rather than a failure.
-  Future<Either<Failure, Page<MediaAttachment>>> _localOwnerPage(
-    MediaOwnerType ownerType,
-    Set<String> ownerIds,
+  Future<Either<Failure, List<MediaAttachment>>> _cachedForIdsOrEmpty(
+    List<String> ids,
     List<OfflineOperation> pendingOps,
   ) async {
-    final cached = await _cachedFor(ownerType, ownerIds);
-    return Right(Page(items: cacheMerger.toEntities(cached, pendingOps), hasNext: false));
+    final cached = await _cachedFor(ids);
+    return Right(_orderedEntities(cached, ids, pendingOps));
   }
 
-  Future<List<MediaResponse>> _cachedFor(MediaOwnerType ownerType, Set<String> ownerIds) async {
-    return ((await localDataSource.read()) ?? const [])
-        .where((response) => response.ownerType == ownerType && ownerIds.contains(response.ownerId))
-        .toList();
+  Future<List<MediaResponse>> _cachedFor(List<String> ids) async {
+    final requested = ids.toSet();
+    return ((await localDataSource.read()) ?? const []).where((response) => requested.contains(response.id)).toList();
+  }
+
+  /// [responses] filtered down to just [ids] and reordered to match — the
+  /// cache/merge result may hold rows for other owners too (it's one global
+  /// cache, see [MediaCacheMerger]) and isn't guaranteed to already be in
+  /// [ids]'s order.
+  List<MediaAttachment> _orderedEntities(
+    List<MediaResponse> responses,
+    List<String> ids,
+    List<OfflineOperation> pendingOps,
+  ) {
+    final byId = {for (final response in responses) response.id: response};
+    final ordered = [for (final id in ids) if (byId[id] != null) byId[id]!];
+    return cacheMerger.toEntities(ordered, pendingOps);
   }
 }

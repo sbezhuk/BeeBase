@@ -19,8 +19,11 @@ final class ApiaryRequest {
   /// untouched — [includeIfNull] omits the key entirely in that case, which
   /// is what apiary-service's `PUT` distinguishes from an explicit `[]`
   /// (detach everything). Never sent on create: apiary-service's create
-  /// endpoint has no `images` field, so a caller must create first and PUT
-  /// separately to attach photos.
+  /// endpoint accepts an `images` field now, but this client still creates
+  /// first and PUTs separately to attach photos (see
+  /// `ApiaryRepositoryImpl.addApiaryImage`) rather than sending them inline
+  /// — that flow was already correct before create supported `images` and
+  /// there's no requirement to change it.
   @JsonKey(includeIfNull: false)
   final List<String>? images;
 

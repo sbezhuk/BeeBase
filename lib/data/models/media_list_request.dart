@@ -1,22 +1,20 @@
-import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'media_list_request.g.dart';
 
-/// Owner-scope query parameters for `GET /media` — merged with [PageRequest]
-/// at the call site since pagination is generic across every list endpoint.
+/// `ids`-filter query parameters for `GET /media` — serialized as a repeated
+/// `ids=<uuid>&ids=<uuid>` query string (Dio's default `ListFormat.multi`
+/// expands a `List<String>` query value that way), matching media-service's
+/// `r.URL.Query()["ids"]` parsing. No longer paginated — this endpoint's
+/// result size is naturally bounded by the ids count itself.
 @JsonSerializable()
 final class MediaListRequest {
-  const MediaListRequest({required this.ownerType, required this.ownerId});
+  const MediaListRequest({required this.ids});
 
   factory MediaListRequest.fromJson(Map<String, dynamic> json) =>
       _$MediaListRequestFromJson(json);
 
-  @JsonKey(name: 'owner_type')
-  final MediaOwnerType ownerType;
-
-  @JsonKey(name: 'owner_id')
-  final String ownerId;
+  final List<String> ids;
 
   Map<String, dynamic> toJson() => _$MediaListRequestToJson(this);
 }

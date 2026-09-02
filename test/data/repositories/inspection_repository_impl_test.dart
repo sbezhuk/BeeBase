@@ -155,6 +155,7 @@ void main() {
         fromJson: any(named: 'fromJson'),
         entityType: any(named: 'entityType'),
         entityId: any(named: 'entityId'),
+        matchingOperationTypes: any(named: 'matchingOperationTypes'),
         operation: any(named: 'operation'),
         mergeInto: any(named: 'mergeInto'),
       ),

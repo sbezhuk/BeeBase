@@ -1,14 +1,11 @@
 import 'package:beebase/data/models/media_response.dart';
-import 'package:beebase/data/models/page_request.dart';
-import 'package:beebase/data/models/paginated_response.dart';
-import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 
 abstract interface class IMediaDataSource {
-  Future<PaginatedResponse<MediaResponse>> listMedia({
-    required MediaOwnerType ownerType,
-    required String ownerId,
-    required PageRequest request,
-  });
+  /// Only the caller's own media among [ids] comes back, in request order,
+  /// with unknown/foreign/duplicate ids silently omitted/collapsed — never
+  /// paginated (see media-service's `GET /api/v1/media`), so this always
+  /// returns the complete answer in one call.
+  Future<List<MediaResponse>> listMedia({required List<String> ids});
 
   /// Uploads a file on its own, owned only by the caller — no apiary or hive
   /// needs to exist yet, and this never attaches it to one. Returns the

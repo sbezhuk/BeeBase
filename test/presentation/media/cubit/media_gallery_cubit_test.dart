@@ -11,7 +11,6 @@ import 'package:beebase/domain/repositories/media_writer.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_item.dart';
 import 'package:beebase/utils/either.dart';
-import 'package:beebase/utils/pagination/page.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
@@ -74,7 +73,10 @@ void main() {
     ).thenAnswer((_) async {});
   });
 
-  MediaGalleryCubit buildCubit({String? ownerId}) {
+  MediaGalleryCubit buildCubit({
+    String? ownerId,
+    List<String> images = const [],
+  }) {
     return MediaGalleryCubit(
       reader: reader,
       writer: writer,
@@ -82,6 +84,7 @@ void main() {
       ownerType: MediaOwnerType.apiary,
       ownerId: ownerId,
       imagePicker: imagePicker,
+      resolveImages: (_) async => images,
     );
   }
 
@@ -119,12 +122,7 @@ void main() {
       act: (cubit) => cubit.load(),
       expect: () => [const MediaGalleryLoaded([])],
       verify: (_) => verifyNever(
-        () => reader.getMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
-          page: any(named: 'page'),
-          limit: any(named: 'limit'),
-        ),
+        () => reader.getMedia(ids: any(named: 'ids')),
       ),
     );
 
@@ -335,16 +333,9 @@ void main() {
       'load() fetches already-attached photos and maps their sync status',
       build: () {
         when(
-          () => reader.getMedia(
-            ownerType: MediaOwnerType.apiary,
-            ownerId: 'apiary-1',
-            page: 1,
-            limit: 100,
-          ),
-        ).thenAnswer(
-          (_) async => Right(Page(items: [attachment], hasNext: false)),
-        );
-        return buildCubit(ownerId: 'apiary-1');
+          () => reader.getMedia(ids: ['media-1']),
+        ).thenAnswer((_) async => Right([attachment]));
+        return buildCubit(ownerId: 'apiary-1', images: ['media-1']);
       },
       act: (cubit) => cubit.load(),
       expect: () => [
@@ -364,7 +355,7 @@ void main() {
       'triggered by ownerListChanges after an upload) does not re-emit '
       'MediaGalleryLoading — that would flash the gallery/preview blank for '
       'a moment even though it already has correct data to show. Uses a '
-      'genuinely different second page so the fold-through-to-Loaded '
+      'genuinely different second result so the fold-through-to-Loaded '
       'emission isn\'t itself swallowed by MediaGalleryLoaded\'s value '
       'equality (a same-content refresh legitimately emits nothing at all).',
       build: () {
@@ -380,20 +371,15 @@ void main() {
           updatedAt: DateTime(2026),
         );
         when(
-          () => reader.getMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
-            page: any(named: 'page'),
-            limit: any(named: 'limit'),
-          ),
+          () => reader.getMedia(ids: any(named: 'ids')),
         ).thenAnswer((_) async {
           callCount++;
           final items = callCount == 1
               ? [attachment]
               : [attachment, secondAttachment];
-          return Right(Page(items: items, hasNext: false));
+          return Right(items);
         });
-        return buildCubit(ownerId: 'apiary-1');
+        return buildCubit(ownerId: 'apiary-1', images: ['media-1', 'media-2']);
       },
       act: (cubit) async {
         await cubit.load();
@@ -413,17 +399,12 @@ void main() {
       'a failed load emits MediaGalleryError',
       build: () {
         when(
-          () => reader.getMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
-            page: any(named: 'page'),
-            limit: any(named: 'limit'),
-          ),
+          () => reader.getMedia(ids: any(named: 'ids')),
         ).thenAnswer(
           (_) async =>
               const Left(InternalFailure(ErrorTextRaw('no connection'))),
         );
-        return buildCubit(ownerId: 'apiary-1');
+        return buildCubit(ownerId: 'apiary-1', images: ['media-1']);
       },
       act: (cubit) => cubit.load(),
       expect: () => [const MediaGalleryLoading(), isA<MediaGalleryError>()],
@@ -455,19 +436,12 @@ void main() {
       'remove() on a synced item calls removeMedia and drops it from the list on success',
       () async {
         when(
-          () => reader.getMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
-            page: any(named: 'page'),
-            limit: any(named: 'limit'),
-          ),
-        ).thenAnswer(
-          (_) async => Right(Page(items: [attachment], hasNext: false)),
-        );
+          () => reader.getMedia(ids: any(named: 'ids')),
+        ).thenAnswer((_) async => Right([attachment]));
         when(
           () => writer.removeMedia('media-1'),
         ).thenAnswer((_) async => const Right(null));
-        final cubit = buildCubit(ownerId: 'apiary-1');
+        final cubit = buildCubit(ownerId: 'apiary-1', images: ['media-1']);
         await cubit.load();
 
         await cubit.remove('media-1');
@@ -505,20 +479,13 @@ void main() {
       'remove() on a synced item shows a removing status while the request is in flight',
       () async {
         when(
-          () => reader.getMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
-            page: any(named: 'page'),
-            limit: any(named: 'limit'),
-          ),
-        ).thenAnswer(
-          (_) async => Right(Page(items: [attachment], hasNext: false)),
-        );
+          () => reader.getMedia(ids: any(named: 'ids')),
+        ).thenAnswer((_) async => Right([attachment]));
         final removeCompleter = Completer<Either<Failure, void>>();
         when(
           () => writer.removeMedia('media-1'),
         ).thenAnswer((_) => removeCompleter.future);
-        final cubit = buildCubit(ownerId: 'apiary-1');
+        final cubit = buildCubit(ownerId: 'apiary-1', images: ['media-1']);
         await cubit.load();
 
         final removeFuture = cubit.remove('media-1');
@@ -568,16 +535,9 @@ void main() {
       'removing an already-attached photo hides it immediately without calling removeMedia',
       () async {
         when(
-          () => reader.getMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
-            page: any(named: 'page'),
-            limit: any(named: 'limit'),
-          ),
-        ).thenAnswer(
-          (_) async => Right(Page(items: [attachment], hasNext: false)),
-        );
-        final cubit = buildCubit(ownerId: 'apiary-1');
+          () => reader.getMedia(ids: any(named: 'ids')),
+        ).thenAnswer((_) async => Right([attachment]));
+        final cubit = buildCubit(ownerId: 'apiary-1', images: ['media-1']);
         cubit.deferChangesUntilCommit();
         await cubit.load();
 
@@ -614,15 +574,8 @@ void main() {
       'commitChanges uploads every staged pick and deletes every deferred removal',
       () async {
         when(
-          () => reader.getMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
-            page: any(named: 'page'),
-            limit: any(named: 'limit'),
-          ),
-        ).thenAnswer(
-          (_) async => Right(Page(items: [attachment], hasNext: false)),
-        );
+          () => reader.getMedia(ids: any(named: 'ids')),
+        ).thenAnswer((_) async => Right([attachment]));
         when(
           () => writer.removeMedia('media-1'),
         ).thenAnswer((_) async => const Right(null));
@@ -638,7 +591,7 @@ void main() {
         );
         stubPick();
         stubAttach(Right(newAttachment));
-        final cubit = buildCubit(ownerId: 'apiary-1');
+        final cubit = buildCubit(ownerId: 'apiary-1', images: ['media-1']);
         cubit.deferChangesUntilCommit();
         await cubit.load();
         await cubit.remove('media-1');
@@ -684,14 +637,7 @@ void main() {
         controller.add(null);
         await Future<void>.delayed(Duration.zero);
 
-        verifyNever(
-          () => reader.getMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
-            page: any(named: 'page'),
-            limit: any(named: 'limit'),
-          ),
-        );
+        verifyNever(() => reader.getMedia(ids: any(named: 'ids')));
         await cubit.close();
         await controller.close();
       },
@@ -895,15 +841,8 @@ void main() {
         stubPick();
         stubAttach(Right(attachment));
         when(
-          () => reader.getMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
-            page: any(named: 'page'),
-            limit: any(named: 'limit'),
-          ),
-        ).thenAnswer(
-          (_) async => Right(Page(items: [attachment], hasNext: false)),
-        );
+          () => reader.getMedia(ids: any(named: 'ids')),
+        ).thenAnswer((_) async => Right([attachment]));
         final cubit = MediaGalleryCubit(
           reader: reader,
           writer: writer,
@@ -958,15 +897,8 @@ void main() {
       () async {
         var notified = 0;
         when(
-          () => reader.getMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
-            page: any(named: 'page'),
-            limit: any(named: 'limit'),
-          ),
-        ).thenAnswer(
-          (_) async => Right(Page(items: [attachment], hasNext: false)),
-        );
+          () => reader.getMedia(ids: any(named: 'ids')),
+        ).thenAnswer((_) async => Right([attachment]));
         when(
           () => writer.removeMedia('media-1'),
         ).thenAnswer((_) async => const Right(null));
@@ -978,6 +910,7 @@ void main() {
           ownerId: 'apiary-1',
           imagePicker: imagePicker,
           notifyOwnerListChanged: () => notified++,
+          resolveImages: (_) async => ['media-1'],
         );
         await cubit.load();
 
@@ -991,15 +924,8 @@ void main() {
     test('a signal on ownerListChanges reloads a live-mode cubit', () async {
       final controller = StreamController<void>.broadcast();
       when(
-        () => reader.getMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
-          page: any(named: 'page'),
-          limit: any(named: 'limit'),
-        ),
-      ).thenAnswer(
-        (_) async => Right(Page(items: [attachment], hasNext: false)),
-      );
+        () => reader.getMedia(ids: ['media-1']),
+      ).thenAnswer((_) async => Right([attachment]));
       final cubit = MediaGalleryCubit(
         reader: reader,
         writer: writer,
@@ -1008,19 +934,13 @@ void main() {
         ownerId: 'apiary-1',
         imagePicker: imagePicker,
         ownerListChanges: controller.stream,
+        resolveImages: (_) async => ['media-1'],
       );
 
       controller.add(null);
       await Future<void>.delayed(Duration.zero);
 
-      verify(
-        () => reader.getMedia(
-          ownerType: MediaOwnerType.apiary,
-          ownerId: 'apiary-1',
-          page: 1,
-          limit: 100,
-        ),
-      ).called(1);
+      verify(() => reader.getMedia(ids: ['media-1'])).called(1);
       await cubit.close();
       await controller.close();
     });
@@ -1041,14 +961,7 @@ void main() {
         controller.add(null);
         await Future<void>.delayed(Duration.zero);
 
-        verifyNever(
-          () => reader.getMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
-            page: any(named: 'page'),
-            limit: any(named: 'limit'),
-          ),
-        );
+        verifyNever(() => reader.getMedia(ids: any(named: 'ids')));
         await cubit.close();
         await controller.close();
       },
@@ -1065,22 +978,15 @@ void main() {
     // network round trip, making the close-before-resume race easy to hit.
     test('load() resuming after close() does not throw', () async {
       final getMediaCompleter =
-          Completer<Either<Failure, Page<MediaAttachment>>>();
+          Completer<Either<Failure, List<MediaAttachment>>>();
       when(
-        () => reader.getMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
-          page: any(named: 'page'),
-          limit: any(named: 'limit'),
-        ),
+        () => reader.getMedia(ids: any(named: 'ids')),
       ).thenAnswer((_) => getMediaCompleter.future);
-      final cubit = buildCubit(ownerId: 'apiary-1');
+      final cubit = buildCubit(ownerId: 'apiary-1', images: ['media-1']);
 
       final loadFuture = cubit.load();
       await cubit.close();
-      getMediaCompleter.complete(
-        Right(Page(items: [attachment], hasNext: false)),
-      );
+      getMediaCompleter.complete(Right([attachment]));
 
       await expectLater(loadFuture, completes);
     });
@@ -1110,20 +1016,13 @@ void main() {
 
     test('remove() resuming after close() does not throw', () async {
       when(
-        () => reader.getMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
-          page: any(named: 'page'),
-          limit: any(named: 'limit'),
-        ),
-      ).thenAnswer(
-        (_) async => Right(Page(items: [attachment], hasNext: false)),
-      );
+        () => reader.getMedia(ids: any(named: 'ids')),
+      ).thenAnswer((_) async => Right([attachment]));
       final removeCompleter = Completer<Either<Failure, void>>();
       when(
         () => writer.removeMedia('media-1'),
       ).thenAnswer((_) => removeCompleter.future);
-      final cubit = buildCubit(ownerId: 'apiary-1');
+      final cubit = buildCubit(ownerId: 'apiary-1', images: ['media-1']);
       await cubit.load();
 
       final removeFuture = cubit.remove('media-1');

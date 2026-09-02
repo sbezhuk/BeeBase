@@ -12,6 +12,7 @@ extension ApiaryResponseX on ApiaryResponse {
     lon: lon,
     createdAt: createdAt,
     updatedAt: updatedAt,
+    images: images,
   );
 }
 

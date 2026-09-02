@@ -6,9 +6,6 @@ import 'package:beebase/data/data_source/interface/media_data_source.dart';
 import 'package:beebase/data/models/media_list_request.dart';
 import 'package:beebase/data/models/media_response.dart';
 import 'package:beebase/data/models/media_upload_form_request.dart';
-import 'package:beebase/data/models/page_request.dart';
-import 'package:beebase/data/models/paginated_response.dart';
-import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:dio/dio.dart' as dio;
 
 final class MediaDataSource implements IMediaDataSource {
@@ -22,22 +19,15 @@ final class MediaDataSource implements IMediaDataSource {
   final DioClient _dioClient;
 
   @override
-  Future<PaginatedResponse<MediaResponse>> listMedia({
-    required MediaOwnerType ownerType,
-    required String ownerId,
-    required PageRequest request,
-  }) async {
+  Future<List<MediaResponse>> listMedia({required List<String> ids}) async {
     final response = await _dioClient.get<Map<String, dynamic>>(
       ApiEndpoints.media.list,
-      queryParameters: {
-        ...MediaListRequest(ownerType: ownerType, ownerId: ownerId).toJson(),
-        ...request.toJson(),
-      },
+      queryParameters: MediaListRequest(ids: ids).toJson(),
     );
-    return PaginatedResponse.fromJson(
-      response.data!,
-      (json) => MediaResponse.fromJson(json as Map<String, dynamic>),
-    );
+    final items = response.data!['items'] as List<dynamic>;
+    return items
+        .map((item) => MediaResponse.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   @override

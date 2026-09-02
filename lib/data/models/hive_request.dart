@@ -21,9 +21,12 @@ final class HiveRequest {
   /// hive. `null` (the default) leaves currently attached media untouched
   /// — [includeIfNull] omits the key entirely in that case, which is what
   /// hive-service's `PUT` distinguishes from an explicit `[]` (detach
-  /// everything). Never sent on create: hive-service's create endpoint has
-  /// no `images` field, so a caller must create first and PUT separately to
-  /// attach photos.
+  /// everything). Never sent on create: hive-service's create endpoint
+  /// accepts an `images` field now, but this client still creates first and
+  /// PUTs separately to attach photos (see
+  /// `HiveRepositoryImpl.addHiveImage`) rather than sending them inline —
+  /// that flow was already correct before create supported `images` and
+  /// there's no requirement to change it.
   @JsonKey(includeIfNull: false)
   final List<String>? images;
 

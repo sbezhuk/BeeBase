@@ -111,6 +111,7 @@ void main() {
         fromJson: (json) => (json as List<dynamic>).cast<String>(),
         entityType: 'apiary',
         entityId: 'apiary-1',
+        matchingOperationTypes: const {OperationType.create, OperationType.update},
         operation: () => _operation('op-1'),
         mergeInto: (existing) => fail('should not merge — nothing pending yet'),
       );
@@ -138,6 +139,7 @@ void main() {
         fromJson: (json) => (json as List<dynamic>).cast<String>(),
         entityType: 'apiary',
         entityId: 'apiary-1',
+        matchingOperationTypes: const {OperationType.create, OperationType.update},
         operation: () => _operation('op-1'),
         mergeInto: (existing) => fail('should not merge on the first save'),
       );
@@ -149,6 +151,7 @@ void main() {
         fromJson: (json) => (json as List<dynamic>).cast<String>(),
         entityType: 'apiary',
         entityId: 'apiary-1',
+        matchingOperationTypes: const {OperationType.create, OperationType.update},
         operation: () => fail('should not enqueue a second operation'),
         mergeInto: (existing) => existing.copyWith(payload: const {'name': 'Renamed Yard'}, version: existing.version + 1),
       );
@@ -173,6 +176,7 @@ void main() {
         fromJson: (json) => (json as List<dynamic>).cast<String>(),
         entityType: 'apiary',
         entityId: 'apiary-1',
+        matchingOperationTypes: const {OperationType.create, OperationType.update},
         operation: () => _operation('op-1'),
         mergeInto: (existing) => fail('should not merge'),
       );
@@ -184,6 +188,7 @@ void main() {
         fromJson: (json) => (json as List<dynamic>).cast<String>(),
         entityType: 'apiary',
         entityId: 'apiary-2',
+        matchingOperationTypes: const {OperationType.create, OperationType.update},
         operation: () => _operation('op-2', localEntityId: 'apiary-2'),
         mergeInto: (existing) => fail('should not merge — different entity'),
       );
@@ -206,6 +211,7 @@ void main() {
         fromJson: (json) => (json as List<dynamic>).cast<String>(),
         entityType: 'apiary',
         entityId: 'apiary-1',
+        matchingOperationTypes: const {OperationType.create, OperationType.update},
         operation: () => _operation('op-2'),
         mergeInto: (existing) => fail('should not merge into a synced operation'),
       );

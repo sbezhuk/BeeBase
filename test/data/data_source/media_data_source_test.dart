@@ -9,7 +9,6 @@ import 'package:beebase/core/services/session_service.dart';
 import 'package:beebase/core/storage/token_storage.dart';
 import 'package:beebase/data/data_source/media_data_source.dart';
 import 'package:beebase/data/models/media_response.dart';
-import 'package:beebase/data/models/page_request.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -60,7 +59,8 @@ void main() {
   });
 
   test(
-    'listMedia sends owner_type/owner_id query params and maps the page',
+    'listMedia sends a repeated ids query param and parses the flat, '
+    'unpaginated {items: [...]} response',
     () async {
       when(
         () => innerDioClient.get<Map<String, dynamic>>(
@@ -72,25 +72,13 @@ void main() {
           requestOptions: RequestOptions(),
           data: {
             'items': [mediaResponse.toJson()],
-            'pagination': {
-              'page': 1,
-              'limit': 20,
-              'total': 1,
-              'total_pages': 1,
-              'has_next': false,
-              'has_previous': false,
-            },
           },
         ),
       );
 
-      final result = await dataSource.listMedia(
-        ownerType: MediaOwnerType.apiary,
-        ownerId: 'apiary-1',
-        request: const PageRequest(page: 1, limit: 20),
-      );
+      final result = await dataSource.listMedia(ids: ['media-1', 'media-2']);
 
-      expect(result.items.single.id, 'media-1');
+      expect(result.single.id, 'media-1');
       final captured =
           verify(
                 () => innerDioClient.get<Map<String, dynamic>>(
@@ -99,10 +87,7 @@ void main() {
                 ),
               ).captured.single
               as Map<String, dynamic>;
-      expect(captured['owner_type'], 'APIARY');
-      expect(captured['owner_id'], 'apiary-1');
-      expect(captured['page'], 1);
-      expect(captured['limit'], 20);
+      expect(captured['ids'], ['media-1', 'media-2']);
     },
   );
 
@@ -191,43 +176,6 @@ void main() {
       final fields = Map.fromEntries(captured.fields);
       expect(fields.containsKey('media_id'), isFalse);
     });
-  });
-
-  group('attachMedia', () {
-    test(
-      'posts owner_type/owner_id to the attach endpoint and maps the response',
-      () async {
-        when(
-          () => innerDioClient.post<Map<String, dynamic>>(
-            any(),
-            data: any(named: 'data'),
-          ),
-        ).thenAnswer(
-          (_) async => Response(
-            requestOptions: RequestOptions(),
-            data: mediaResponse.toJson(),
-          ),
-        );
-
-        final result = await dataSource.attachMedia(
-          mediaId: 'media-1',
-          ownerType: MediaOwnerType.apiary,
-          ownerId: 'apiary-1',
-        );
-
-        expect(result.id, 'media-1');
-        final captured =
-            verify(
-                  () => innerDioClient.post<Map<String, dynamic>>(
-                    ApiEndpoints.media.attach('media-1'),
-                    data: captureAny(named: 'data'),
-                  ),
-                ).captured.single
-                as Map<String, dynamic>;
-        expect(captured['owner_type'], 'APIARY');
-        expect(captured['owner_id'], 'apiary-1');
-      },
-    );
   });
 
   test('downloadMedia fetches raw bytes from the download endpoint', () async {

@@ -60,10 +60,13 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
     ImagePicker? imagePicker,
     VoidCallback? notifyOwnerListChanged,
     Stream<void>? ownerListChanges,
+    Future<List<String>> Function(String ownerId)? resolveImages,
   }) : _ownerId = ownerId, // ignore: prefer_initializing_formals
        _picker = imagePicker ?? ImagePicker(),
        // ignore: prefer_initializing_formals
        _notifyOwnerListChanged = notifyOwnerListChanged,
+       // ignore: prefer_initializing_formals
+       _resolveImages = resolveImages,
        super(const MediaGalleryLoading()) {
     _ownerListChangesSubscription = ownerListChanges?.listen((_) {
       // A reload while deferred would fetch the server's current attached
@@ -79,6 +82,19 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
   final MediaOwnerType ownerType;
   final ImagePicker _picker;
   final VoidCallback? _notifyOwnerListChanged;
+
+  /// Resolves the *current* set of media ids attached to whatever owner id
+  /// [load] is about to fetch for — called fresh on every [load] (including
+  /// the ones triggered by [ownerListChanges], not just the first) so a
+  /// gallery reload always reflects the owning Apiary/Hive's latest known
+  /// `images`, the same way asking media-service "what's attached to owner
+  /// X" always used to. DI wires this per [ownerType] to the matching
+  /// `IApiaryReader.getCachedApiary`/`IHiveReader.getCachedHive` — a cache
+  /// read, not a network call, since apiary/hive-service is now the source
+  /// of truth for "which media ids belong to me" and its own repository
+  /// already keeps that cache current ahead of every `ownerListChanges`
+  /// signal this cubit reacts to.
+  final Future<List<String>> Function(String ownerId)? _resolveImages;
   StreamSubscription<void>? _ownerListChangesSubscription;
 
   String? _ownerId;
@@ -112,7 +128,7 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
 
   /// Initial load — a no-op straight to an empty list in staging mode, or a
   /// fetch of already-attached photos in live/deferred mode.
-  Future<void> load() => emitLoad(reader, ownerType, _ownerId);
+  Future<void> load() => emitLoad(reader, _ownerId, _resolveImages);
 
   void configureDraftCreation(Future<String?> Function() ensureOwnerId) {
     _ensureOwnerId = ensureOwnerId;

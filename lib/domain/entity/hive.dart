@@ -9,6 +9,7 @@ final class Hive {
     this.notes,
     required this.createdAt,
     required this.updatedAt,
+    this.images = const [],
     this.syncStatus = HiveSyncStatus.synced,
   });
 
@@ -23,6 +24,13 @@ final class Hive {
   final String? notes;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// Media ids currently attached to this hive — hive-service's own source
+  /// of truth (see `HiveResponse.images`), not something media-service is
+  /// asked about anymore. Only as fresh as the last fetch/cache read that
+  /// produced this instance.
+  final List<String> images;
+
   final HiveSyncStatus syncStatus;
 
   /// Whether this hive was created while offline and has never reached the
@@ -38,6 +46,7 @@ final class Hive {
       notes: notes,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      images: images,
       syncStatus: syncStatus ?? this.syncStatus,
     );
   }
@@ -52,9 +61,19 @@ final class Hive {
           other.notes == notes &&
           other.createdAt == createdAt &&
           other.updatedAt == updatedAt &&
+          _listEquals(other.images, images) &&
           other.syncStatus == syncStatus);
 
   @override
   int get hashCode =>
-      Object.hash(id, apiaryId, name, notes, createdAt, updatedAt, syncStatus);
+      Object.hash(id, apiaryId, name, notes, createdAt, updatedAt, Object.hashAll(images), syncStatus);
+}
+
+bool _listEquals(List<String> a, List<String> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }

@@ -112,6 +112,22 @@ final class HiveRepositoryImpl extends Repository implements IHiveReader, IHiveW
     return on(() async => (await dataSource.getHive(id)).toEntity());
   }
 
+  @override
+  Future<Hive?> getCachedHive(String id) async {
+    final cached = await localDataSource.read() ?? const <HiveResponse>[];
+    HiveResponse? match;
+    for (final response in cached) {
+      if (response.id == id) {
+        match = response;
+        break;
+      }
+    }
+    if (match == null) return null;
+
+    final pendingOps = await _hiveOperations();
+    return cacheMerger.toEntities([match], pendingOps).first;
+  }
+
   /// Walks every page of the caller's global hive list once (there's no
   /// count endpoint and no apiary filter, see [getHives]), merging each page
   /// into the shared cache exactly like [getHives] does, then tallies the

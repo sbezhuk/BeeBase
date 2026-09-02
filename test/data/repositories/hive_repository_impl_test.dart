@@ -142,6 +142,7 @@ void main() {
         fromJson: any(named: 'fromJson'),
         entityType: any(named: 'entityType'),
         entityId: any(named: 'entityId'),
+        matchingOperationTypes: any(named: 'matchingOperationTypes'),
         operation: any(named: 'operation'),
         mergeInto: any(named: 'mergeInto'),
       ),
@@ -452,6 +453,34 @@ void main() {
       final result = await repository.getHive('hive-1');
 
       result.fold((_) => fail('expected Right'), (hive) => expect(hive.id, 'hive-1'));
+    });
+  });
+
+  group('getCachedHive', () {
+    test('returns the mapped hive straight from the cache, without calling the network', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => [hiveResponse]);
+
+      final result = await repository.getCachedHive('hive-1');
+
+      expect(result?.id, 'hive-1');
+      expect(result?.name, 'Hive 1');
+      verifyNever(() => dataSource.getHive(any()));
+    });
+
+    test('returns null when the id is not cached', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => [hiveResponse]);
+
+      final result = await repository.getCachedHive('missing-id');
+
+      expect(result, isNull);
+    });
+
+    test('returns null when nothing is cached at all', () async {
+      when(() => localDataSource.read()).thenAnswer((_) async => null);
+
+      final result = await repository.getCachedHive('hive-1');
+
+      expect(result, isNull);
     });
   });
 

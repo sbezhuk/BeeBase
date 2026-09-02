@@ -94,8 +94,8 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
 
   Future<void> emitLoad(
     IMediaReader reader,
-    MediaOwnerType ownerType,
     String? ownerId,
+    Future<List<String>> Function(String ownerId)? resolveImages,
   ) async {
     if (ownerId == null) {
       emit(const MediaGalleryLoaded([]));
@@ -112,17 +112,14 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
     if (state is! MediaGalleryLoaded) {
       emit(const MediaGalleryLoading());
     }
-    final result = await reader.getMedia(
-      ownerType: ownerType,
-      ownerId: ownerId,
-      page: 1,
-      limit: 100,
-    );
+    final ids = resolveImages == null ? const <String>[] : await resolveImages(ownerId);
+    if (isClosed) return;
+    final result = await reader.getMedia(ids: ids);
     if (isClosed) return;
     result.fold(
       (failure) => emit(MediaGalleryError(failure)),
-      (page) => emit(
-        MediaGalleryLoaded(page.items.map(_itemFromAttachment).toList()),
+      (items) => emit(
+        MediaGalleryLoaded(items.map(_itemFromAttachment).toList()),
       ),
     );
   }

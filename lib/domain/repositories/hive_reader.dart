@@ -18,4 +18,11 @@ abstract interface class IHiveReader {
   /// by the apiary list to show each apiary's real hive count instead of a
   /// placeholder.
   Future<Either<Failure, Map<String, int>>> getHiveCounts();
+
+  /// Reads [id] straight from the local cache — no network round trip, and
+  /// `null` if it isn't cached. Mirrors `IApiaryReader.getCachedApiary`; used
+  /// by `MediaGalleryCubit` (via DI's `resolveImages` wiring) to source a
+  /// hive gallery's current `images` id list without a server round trip on
+  /// every reload.
+  Future<Hive?> getCachedHive(String id);
 }

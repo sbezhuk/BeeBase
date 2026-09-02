@@ -16,33 +16,13 @@ import 'package:beebase/core/storage/local_media_store.dart';
 import 'package:beebase/data/data_source/interface/local_data_source.dart';
 import 'package:beebase/data/data_source/interface/media_data_source.dart';
 import 'package:beebase/data/models/media_response.dart';
-import 'package:beebase/data/models/page_request.dart';
-import 'package:beebase/data/models/paginated_response.dart';
-import 'package:beebase/data/models/pagination_meta.dart';
 import 'package:beebase/data/repositories/media_repository_impl.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/domain/enum/local/media_sync_status.dart';
+import 'package:beebase/domain/repositories/owner_image_writer.dart';
 import 'package:beebase/utils/either.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-
-PaginatedResponse<MediaResponse> _paginated(
-  List<MediaResponse> items, {
-  required bool hasNext,
-  int page = 1,
-}) {
-  return PaginatedResponse(
-    items: items,
-    pagination: PaginationMeta(
-      page: page,
-      limit: 20,
-      total: items.length,
-      totalPages: 1,
-      hasNext: hasNext,
-      hasPrevious: page > 1,
-    ),
-  );
-}
 
 class MockMediaDataSource extends Mock implements IMediaDataSource {}
 
@@ -57,6 +37,8 @@ class MockOperationQueue extends Mock implements OperationQueue {}
 
 class MockOfflineMutationStore extends Mock implements OfflineMutationStore {}
 
+class MockOwnerImageWriter extends Mock implements IOwnerImageWriter {}
+
 void main() {
   late MockMediaDataSource dataSource;
   late MockMediaLocalDataSource localDataSource;
@@ -64,6 +46,7 @@ void main() {
   late MockConnectivityService connectivity;
   late MockOperationQueue operationQueue;
   late MockOfflineMutationStore offlineMutationStore;
+  late MockOwnerImageWriter ownerImageWriter;
   late MediaRepositoryImpl repository;
   late Directory tempDir;
   late File localFile;
@@ -81,7 +64,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(MediaOwnerType.apiary);
-    registerFallbackValue(const PageRequest(page: 1, limit: 20));
+    registerFallbackValue(<String>[]);
     registerFallbackValue(<MediaResponse>[]);
     registerFallbackValue(
       OfflineOperation(
@@ -110,6 +93,7 @@ void main() {
     connectivity = MockConnectivityService();
     operationQueue = MockOperationQueue();
     offlineMutationStore = MockOfflineMutationStore();
+    ownerImageWriter = MockOwnerImageWriter();
     repository = MediaRepositoryImpl(
       dataSource: dataSource,
       localDataSource: localDataSource,
@@ -117,6 +101,7 @@ void main() {
       connectivity: connectivity,
       operationQueue: operationQueue,
       offlineMutationStore: offlineMutationStore,
+      ownerImageWriter: ownerImageWriter,
     );
 
     tempDir = await Directory.systemTemp.createTemp(
@@ -136,6 +121,7 @@ void main() {
     });
     when(() => operationQueue.all()).thenAnswer((_) async => []);
     when(() => operationQueue.remove(any())).thenAnswer((_) async {});
+    when(() => operationQueue.enqueue(any())).thenAnswer((_) async {});
     when(() => localMediaStore.delete(any())).thenAnswer((_) async {});
     when(
       () => offlineMutationStore.saveWithPendingOperation<List<MediaResponse>>(
@@ -146,18 +132,38 @@ void main() {
         operation: any(named: 'operation'),
       ),
     ).thenAnswer((_) async {});
+    when(
+      () => ownerImageWriter.addImage(
+        ownerType: any(named: 'ownerType'),
+        ownerId: any(named: 'ownerId'),
+        mediaId: any(named: 'mediaId'),
+      ),
+    ).thenAnswer((_) async => const Right(MediaSyncStatus.synced));
   });
 
   tearDown(() => tempDir.delete(recursive: true));
 
   group('getMedia', () {
+    test('returns Right([]) immediately for an empty ids list, no cache or '
+        'network touched', () async {
+      final result = await repository.getMedia(ids: const []);
+
+      result.fold(
+        (_) => fail('expected Right'),
+        (items) => expect(items, isEmpty),
+      );
+      verifyNever(
+        () => dataSource.listMedia(ids: any(named: 'ids')),
+      );
+    });
+
     test(
-      'first page replaces the cache and returns only items for the requested owner',
+      'fetches the real ids from the network, in request order, and merges the response into the cache',
       () async {
-        final otherOwner = MediaResponse(
+        final second = MediaResponse(
           id: 'media-2',
-          ownerType: MediaOwnerType.hive,
-          ownerId: 'hive-1',
+          ownerType: MediaOwnerType.apiary,
+          ownerId: 'apiary-1',
           originalFilename: 'other.jpg',
           contentType: 'image/jpeg',
           sizeBytes: 512,
@@ -165,25 +171,18 @@ void main() {
           updatedAt: DateTime(2026),
         );
         when(
-          () => dataSource.listMedia(
-            ownerType: MediaOwnerType.apiary,
-            ownerId: 'apiary-1',
-            request: any(named: 'request'),
-          ),
-        ).thenAnswer(
-          (_) async => _paginated([mediaResponse, otherOwner], hasNext: false),
-        );
+          () => dataSource.listMedia(ids: ['media-2', 'media-1']),
+        ).thenAnswer((_) async => [mediaResponse, second]);
 
         final result = await repository.getMedia(
-          ownerType: MediaOwnerType.apiary,
-          ownerId: 'apiary-1',
-          page: 1,
-          limit: 20,
+          ids: ['media-2', 'media-1'],
         );
 
-        result.fold((_) => fail('expected Right'), (page) {
-          expect(page.items.map((attachment) => attachment.id), ['media-1']);
-          expect(page.hasNext, isFalse);
+        result.fold((_) => fail('expected Right'), (items) {
+          expect(items.map((attachment) => attachment.id), [
+            'media-2',
+            'media-1',
+          ]);
         });
       },
     );
@@ -192,19 +191,10 @@ void main() {
       'maps a thrown exception to a Failure when nothing is cached',
       () async {
         when(
-          () => dataSource.listMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
-            request: any(named: 'request'),
-          ),
+          () => dataSource.listMedia(ids: any(named: 'ids')),
         ).thenThrow(const InternalException(ErrorTextRaw('no connection')));
 
-        final result = await repository.getMedia(
-          ownerType: MediaOwnerType.apiary,
-          ownerId: 'apiary-1',
-          page: 1,
-          limit: 20,
-        );
+        final result = await repository.getMedia(ids: ['media-1']);
 
         expect(result, isA<Left<Failure, dynamic>>());
       },
@@ -212,11 +202,7 @@ void main() {
 
     test('does not fall back to the cache on a real server failure', () async {
       when(
-        () => dataSource.listMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
-          request: any(named: 'request'),
-        ),
+        () => dataSource.listMedia(ids: any(named: 'ids')),
       ).thenThrow(
         const ServerException(
           statusCode: 403,
@@ -225,18 +211,13 @@ void main() {
         ),
       );
 
-      final result = await repository.getMedia(
-        ownerType: MediaOwnerType.apiary,
-        ownerId: 'apiary-1',
-        page: 1,
-        limit: 20,
-      );
+      final result = await repository.getMedia(ids: ['media-1']);
 
       expect(result, isA<Left<Failure, dynamic>>());
     });
 
     test(
-      'reads straight from the cache, filtered to the requested owner, when offline',
+      'reads straight from the cache, filtered and ordered to the requested ids, when offline',
       () async {
         when(() => connectivity.isOnline).thenAnswer((_) async => false);
         when(() => localDataSource.read()).thenAnswer(
@@ -255,47 +236,30 @@ void main() {
           ],
         );
 
-        final result = await repository.getMedia(
-          ownerType: MediaOwnerType.apiary,
-          ownerId: 'apiary-1',
-          page: 1,
-          limit: 20,
-        );
+        final result = await repository.getMedia(ids: ['media-1']);
 
         result.fold(
           (_) => fail('expected Right'),
-          (page) => expect(page.items.map((a) => a.id), ['media-1']),
+          (items) => expect(items.map((a) => a.id), ['media-1']),
         );
-        verifyNever(
-          () => dataSource.listMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
-            request: any(named: 'request'),
-          ),
-        );
+        verifyNever(() => dataSource.listMedia(ids: any(named: 'ids')));
       },
     );
 
-    test('fails when offline with nothing cached for the owner', () async {
+    test('fails when offline with nothing cached for the requested ids', () async {
       when(() => connectivity.isOnline).thenAnswer((_) async => false);
 
-      final result = await repository.getMedia(
-        ownerType: MediaOwnerType.apiary,
-        ownerId: 'apiary-1',
-        page: 1,
-        limit: 20,
-      );
+      final result = await repository.getMedia(ids: ['media-1']);
 
       expect(result, isA<Left<Failure, dynamic>>());
     });
 
-    test('never calls the network for a still-local, unsynced owner id, even '
+    test('never calls the network for a still-local, unsynced id, even '
         'while online — the server has never heard of it, so a photo already '
         'cached for it (and pending its own sync) must keep showing from '
         'cache instead of the request failing outright', () async {
       final localPlaceholder = mediaResponse.copyWithLocalPath(
         id: 'local-media-1',
-        ownerId: 'local-apiary-1',
         localFilePath: localFile.path,
       );
       when(
@@ -304,16 +268,6 @@ void main() {
       when(() => operationQueue.all()).thenAnswer(
         (_) async => [
           OfflineOperation(
-            id: 'apiary-op-1',
-            entityType: 'apiary',
-            operationType: OperationType.create,
-            payload: const {},
-            status: OperationStatus.pending,
-            createdAt: DateTime(2026),
-            updatedAt: DateTime(2026),
-            localEntityId: 'local-apiary-1',
-          ),
-          OfflineOperation(
             id: 'media-op-1',
             entityType: 'media',
             operationType: OperationType.create,
@@ -326,84 +280,38 @@ void main() {
         ],
       );
 
-      final result = await repository.getMedia(
-        ownerType: MediaOwnerType.apiary,
-        ownerId: 'local-apiary-1',
-        page: 1,
-        limit: 20,
-      );
+      final result = await repository.getMedia(ids: ['local-media-1']);
 
       result.fold(
         (_) => fail('expected Right'),
-        (page) => expect(page.items.single.id, 'local-media-1'),
+        (items) => expect(items.single.id, 'local-media-1'),
       );
-      verifyNever(
-        () => dataSource.listMedia(
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
-          request: any(named: 'request'),
-        ),
-      );
+      verifyNever(() => dataSource.listMedia(ids: any(named: 'ids')));
     });
 
-    test('an unsynced local owner with nothing attached yet is a legitimate '
-        'empty page, not a failure — unlike the generic offline fallback, '
-        'there is no "we don\'t know" case here: the owner genuinely has no '
-        'photos', () async {
-      when(() => operationQueue.all()).thenAnswer(
-        (_) async => [
-          OfflineOperation(
-            id: 'apiary-op-1',
-            entityType: 'apiary',
-            operationType: OperationType.create,
-            payload: const {},
-            status: OperationStatus.pending,
-            createdAt: DateTime(2026),
-            updatedAt: DateTime(2026),
-            localEntityId: 'local-apiary-1',
-          ),
-        ],
-      );
-
-      final result = await repository.getMedia(
-        ownerType: MediaOwnerType.apiary,
-        ownerId: 'local-apiary-1',
-        page: 1,
-        limit: 20,
-      );
+    test('a request made only of still-local ids with nothing cached yet is '
+        'a legitimate empty result, not a failure — unlike the generic '
+        'offline fallback, there is no "we don\'t know" case here', () async {
+      final result = await repository.getMedia(ids: ['local-media-1']);
 
       result.fold(
         (_) => fail('expected Right'),
-        (page) => expect(page.items, isEmpty),
+        (items) => expect(items, isEmpty),
       );
     });
 
-    test('once the owner has synced, transparently queries the network under '
-        'its resolved real id and still surfaces a photo attached before that '
-        'resolution and still filed under the stale local owner id — the '
-        'exact "apiary synced, its photo\'s own create has not run yet" '
-        'window that used to make the photo vanish', () async {
-      final placeholderUnderOldOwnerId = mediaResponse.copyWithLocalPath(
+    test('splits a mixed request: still-local ids are served from the cache '
+        'only, real ids are fetched from the network, and both halves come '
+        'back together in the original request order', () async {
+      final localPlaceholder = mediaResponse.copyWithLocalPath(
         id: 'local-media-1',
-        ownerId: 'local-apiary-1',
         localFilePath: localFile.path,
       );
       when(
         () => localDataSource.read(),
-      ).thenAnswer((_) async => [placeholderUnderOldOwnerId]);
+      ).thenAnswer((_) async => [localPlaceholder]);
       when(() => operationQueue.all()).thenAnswer(
         (_) async => [
-          OfflineOperation(
-            id: 'apiary-op-1',
-            entityType: 'apiary',
-            operationType: OperationType.create,
-            payload: const {},
-            status: OperationStatus.synced,
-            createdAt: DateTime(2026),
-            updatedAt: DateTime(2026),
-            localEntityId: 'local-apiary-1',
-            resolvedEntityId: 'srv-apiary-1',
-          ),
           OfflineOperation(
             id: 'media-op-1',
             entityType: 'media',
@@ -416,38 +324,38 @@ void main() {
           ),
         ],
       );
+      final second = MediaResponse(
+        id: 'media-2',
+        ownerType: MediaOwnerType.apiary,
+        ownerId: 'apiary-1',
+        originalFilename: 'other.jpg',
+        contentType: 'image/jpeg',
+        sizeBytes: 512,
+        createdAt: DateTime(2026),
+        updatedAt: DateTime(2026),
+      );
       when(
-        () => dataSource.listMedia(
-          ownerType: MediaOwnerType.apiary,
-          ownerId: 'srv-apiary-1',
-          request: any(named: 'request'),
-        ),
-      ).thenAnswer((_) async => _paginated(const [], hasNext: false));
+        () => dataSource.listMedia(ids: ['media-2']),
+      ).thenAnswer((_) async => [second]);
 
       final result = await repository.getMedia(
-        ownerType: MediaOwnerType.apiary,
-        ownerId: 'local-apiary-1',
-        page: 1,
-        limit: 20,
+        ids: ['local-media-1', 'media-2'],
       );
 
       result.fold(
         (_) => fail('expected Right'),
-        (page) => expect(page.items.single.id, 'local-media-1'),
+        (items) => expect(items.map((a) => a.id), [
+          'local-media-1',
+          'media-2',
+        ]),
       );
-      verify(
-        () => dataSource.listMedia(
-          ownerType: MediaOwnerType.apiary,
-          ownerId: 'srv-apiary-1',
-          request: any(named: 'request'),
-        ),
-      ).called(1);
+      verify(() => dataSource.listMedia(ids: ['media-2'])).called(1);
     });
   });
 
   group('attachMedia', () {
     test(
-      'uploads then attaches, returning the mapped attachment and preserving the local file path in the cache entry',
+      'uploads then links to the owner via IOwnerImageWriter, returning the mapped attachment and preserving the local file path in the cache entry',
       () async {
         when(
           () => dataSource.uploadMedia(
@@ -458,13 +366,6 @@ void main() {
             onSendProgress: any(named: 'onSendProgress'),
           ),
         ).thenAnswer((_) async => 'media-1');
-        when(
-          () => dataSource.attachMedia(
-            mediaId: any(named: 'mediaId'),
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
-          ),
-        ).thenAnswer((_) async => mediaResponse);
 
         final result = await repository.attachMedia(
           ownerType: MediaOwnerType.apiary,
@@ -477,12 +378,13 @@ void main() {
         result.fold((_) => fail('expected Right'), (attachment) {
           expect(attachment.id, 'media-1');
           expect(attachment.localFilePath, localFile.path);
+          expect(attachment.syncStatus, MediaSyncStatus.synced);
         });
         verify(
-          () => dataSource.attachMedia(
-            mediaId: 'media-1',
+          () => ownerImageWriter.addImage(
             ownerType: MediaOwnerType.apiary,
             ownerId: 'apiary-1',
+            mediaId: 'media-1',
           ),
         ).called(1);
         verifyNever(
@@ -561,6 +463,13 @@ void main() {
             onSendProgress: any(named: 'onSendProgress'),
           ),
         ).thenThrow(const InternalException(ErrorTextRaw('no connection')));
+        when(
+          () => ownerImageWriter.addImage(
+            ownerType: any(named: 'ownerType'),
+            ownerId: any(named: 'ownerId'),
+            mediaId: any(named: 'mediaId'),
+          ),
+        ).thenAnswer((_) async => const Right(MediaSyncStatus.pending));
 
         final result = await repository.attachMedia(
           ownerType: MediaOwnerType.apiary,
@@ -592,6 +501,13 @@ void main() {
       'attaches locally and enqueues a pending operation atomically when offline',
       () async {
         when(() => connectivity.isOnline).thenAnswer((_) async => false);
+        when(
+          () => ownerImageWriter.addImage(
+            ownerType: any(named: 'ownerType'),
+            ownerId: any(named: 'ownerId'),
+            mediaId: any(named: 'mediaId'),
+          ),
+        ).thenAnswer((_) async => const Right(MediaSyncStatus.pending));
 
         final result = await repository.attachMedia(
           ownerType: MediaOwnerType.apiary,
@@ -625,9 +541,20 @@ void main() {
         final operation = captured.single as OfflineOperation;
         expect(operation.entityType, 'media');
         expect(operation.operationType, OperationType.create);
-        expect(operation.payload['owner_type'], 'APIARY');
-        expect(operation.payload['owner_id'], 'apiary-1');
+        // The upload operation itself is owner-less (uploading bytes never
+        // needed an owner to exist — see MediaRepositoryImpl._attachOffline) —
+        // linking to the owner is ownerImageWriter's separate job, verified
+        // below.
+        expect(operation.payload.containsKey('owner_type'), isFalse);
+        expect(operation.payload.containsKey('owner_id'), isFalse);
         expect(operation.dependsOnOperationId, isNull);
+        verify(
+          () => ownerImageWriter.addImage(
+            ownerType: MediaOwnerType.apiary,
+            ownerId: 'apiary-1',
+            mediaId: any(named: 'mediaId'),
+          ),
+        ).called(1);
       },
     );
 
@@ -669,103 +596,40 @@ void main() {
     });
 
     test(
-      'links the create operation to the owner\'s pending create when ownerId is itself still local',
+      'still calls ownerImageWriter.addImage with the caller\'s (possibly '
+      'still-local) ownerId when it is itself still local — addImage is what '
+      'decides whether that needs queuing, not this repository',
       () async {
         when(() => connectivity.isOnline).thenAnswer((_) async => false);
-        when(() => operationQueue.all()).thenAnswer(
-          (_) async => [
-            OfflineOperation(
-              id: 'owner-op-1',
-              entityType: 'apiary',
-              operationType: OperationType.create,
-              payload: const {},
-              status: OperationStatus.pending,
-              createdAt: DateTime(2026),
-              updatedAt: DateTime(2026),
-              localEntityId: 'local-apiary-1',
-            ),
-          ],
-        );
-
-        final result = await repository.attachMedia(
-          ownerType: MediaOwnerType.apiary,
-          ownerId: 'local-apiary-1',
-          localFilePath: localFile.path,
-          originalFilename: 'photo.jpg',
-          contentType: 'image/jpeg',
-        );
-
-        expect(result, isA<Right<Failure, dynamic>>());
-        final captured = verify(
-          () => offlineMutationStore
-              .saveWithPendingOperation<List<MediaResponse>>(
-                cacheKey: any(named: 'cacheKey'),
-                mutate: any(named: 'mutate'),
-                toJson: any(named: 'toJson'),
-                fromJson: any(named: 'fromJson'),
-                operation: captureAny(named: 'operation'),
-              ),
-        ).captured;
-        final operation = captured.single as OfflineOperation;
-        expect(operation.dependsOnOperationId, 'owner-op-1');
-      },
-    );
-
-    test(
-      'queues offline instead of calling the network when the owner is '
-      'still local and unsynced, even though the device is online — the '
-      'server has never heard of this owner id, so sending it anyway would '
-      'just fail; this isn\'t a genuine error, only a matter of sequencing',
-      () async {
-        when(() => operationQueue.all()).thenAnswer(
-          (_) async => [
-            OfflineOperation(
-              id: 'owner-op-1',
-              entityType: 'apiary',
-              operationType: OperationType.create,
-              payload: const {},
-              status: OperationStatus.pending,
-              createdAt: DateTime(2026),
-              updatedAt: DateTime(2026),
-              localEntityId: 'local-apiary-1',
-            ),
-          ],
-        );
-
-        final result = await repository.attachMedia(
-          ownerType: MediaOwnerType.apiary,
-          ownerId: 'local-apiary-1',
-          localFilePath: localFile.path,
-          originalFilename: 'photo.jpg',
-          contentType: 'image/jpeg',
-        );
-
-        expect(result, isA<Right<Failure, dynamic>>());
-        verifyNever(
-          () => dataSource.uploadMedia(
-            filePath: any(named: 'filePath'),
-            originalFilename: any(named: 'originalFilename'),
-            contentType: any(named: 'contentType'),
-            onSendProgress: any(named: 'onSendProgress'),
+        when(
+          () => ownerImageWriter.addImage(
+            ownerType: any(named: 'ownerType'),
+            ownerId: any(named: 'ownerId'),
+            mediaId: any(named: 'mediaId'),
           ),
+        ).thenAnswer((_) async => const Right(MediaSyncStatus.pending));
+
+        final result = await repository.attachMedia(
+          ownerType: MediaOwnerType.apiary,
+          ownerId: 'local-apiary-1',
+          localFilePath: localFile.path,
+          originalFilename: 'photo.jpg',
+          contentType: 'image/jpeg',
         );
-        final captured = verify(
-          () => offlineMutationStore
-              .saveWithPendingOperation<List<MediaResponse>>(
-                cacheKey: any(named: 'cacheKey'),
-                mutate: any(named: 'mutate'),
-                toJson: any(named: 'toJson'),
-                fromJson: any(named: 'fromJson'),
-                operation: captureAny(named: 'operation'),
-              ),
-        ).captured;
-        final operation = captured.single as OfflineOperation;
-        expect(operation.dependsOnOperationId, 'owner-op-1');
+
+        expect(result, isA<Right<Failure, dynamic>>());
+        verify(
+          () => ownerImageWriter.addImage(
+            ownerType: MediaOwnerType.apiary,
+            ownerId: 'local-apiary-1',
+            mediaId: any(named: 'mediaId'),
+          ),
+        ).called(1);
       },
     );
 
     test(
-      'attaches under the owner\'s resolved real id once it has synced, even '
+      'links under the owner\'s resolved real id once it has synced, even '
       'though the caller still passes the stale local id it was built with',
       () async {
         when(() => operationQueue.all()).thenAnswer(
@@ -792,19 +656,6 @@ void main() {
             onSendProgress: any(named: 'onSendProgress'),
           ),
         ).thenAnswer((_) async => 'media-1');
-        when(
-          () => dataSource.attachMedia(
-            mediaId: 'media-1',
-            ownerType: MediaOwnerType.apiary,
-            ownerId: 'srv-apiary-1',
-          ),
-        ).thenAnswer(
-          (_) async => mediaResponse.copyWithLocalPath(
-            id: 'media-1',
-            ownerId: 'srv-apiary-1',
-            localFilePath: localFile.path,
-          ),
-        );
 
         final result = await repository.attachMedia(
           ownerType: MediaOwnerType.apiary,
@@ -816,10 +667,10 @@ void main() {
 
         expect(result, isA<Right<Failure, dynamic>>());
         verify(
-          () => dataSource.attachMedia(
-            mediaId: 'media-1',
+          () => ownerImageWriter.addImage(
             ownerType: MediaOwnerType.apiary,
             ownerId: 'srv-apiary-1',
+            mediaId: 'media-1',
           ),
         ).called(1);
       },
@@ -933,14 +784,24 @@ void main() {
     );
 
     test(
-      'blocks deleting a synced id while offline, without calling the network',
+      'queues a delete instead of calling the network when a synced id is removed while offline',
       () async {
         when(() => connectivity.isOnline).thenAnswer((_) async => false);
+        when(
+          () => localDataSource.read(),
+        ).thenAnswer((_) async => [mediaResponse]);
 
         final result = await repository.removeMedia('media-1');
 
-        expect(result, isA<Left<Failure, void>>());
+        expect(result, isA<Right<Failure, void>>());
         verifyNever(() => dataSource.deleteMedia(any()));
+        final captured = verify(
+          () => operationQueue.enqueue(captureAny()),
+        ).captured;
+        final operation = captured.single as OfflineOperation;
+        expect(operation.entityType, 'media');
+        expect(operation.operationType, OperationType.delete);
+        expect(operation.localEntityId, 'media-1');
       },
     );
   });

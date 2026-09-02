@@ -1,15 +1,14 @@
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/entity/media_attachment.dart';
-import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/utils/either.dart';
-import 'package:beebase/utils/pagination/page.dart';
 
 abstract interface class IMediaReader {
-  Future<Either<Failure, Page<MediaAttachment>>> getMedia({
-    required MediaOwnerType ownerType,
-    required String ownerId,
-    required int page,
-    required int limit,
+  /// Only the caller's own media among [ids] comes back, in request order —
+  /// media-service's `GET /api/v1/media` has no pagination of its own
+  /// anymore (see `IMediaDataSource.listMedia`), so this always returns the
+  /// complete answer in one call rather than a [Page].
+  Future<Either<Failure, List<MediaAttachment>>> getMedia({
+    required List<String> ids,
   });
 
   /// Raw file bytes for [id], via the authenticated `.../download` endpoint —

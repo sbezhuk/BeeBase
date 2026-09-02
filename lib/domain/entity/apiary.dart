@@ -11,6 +11,7 @@ final class Apiary {
     this.lon,
     required this.createdAt,
     required this.updatedAt,
+    this.images = const [],
     this.syncStatus = ApiarySyncStatus.synced,
   });
 
@@ -22,6 +23,13 @@ final class Apiary {
   final double? lon;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// Media ids currently attached to this apiary — apiary-service's own
+  /// source of truth (see `ApiaryResponse.images`), not something media-
+  /// service is asked about anymore. Only as fresh as the last fetch/cache
+  /// read that produced this instance.
+  final List<String> images;
+
   final ApiarySyncStatus syncStatus;
 
   /// Whether this apiary was created while offline and has never reached
@@ -39,6 +47,7 @@ final class Apiary {
       lon: lon,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      images: images,
       syncStatus: syncStatus ?? this.syncStatus,
     );
   }
@@ -55,8 +64,19 @@ final class Apiary {
           other.lon == lon &&
           other.createdAt == createdAt &&
           other.updatedAt == updatedAt &&
+          _listEquals(other.images, images) &&
           other.syncStatus == syncStatus);
 
   @override
-  int get hashCode => Object.hash(id, name, description, location, lat, lon, createdAt, updatedAt, syncStatus);
+  int get hashCode =>
+      Object.hash(id, name, description, location, lat, lon, createdAt, updatedAt, Object.hashAll(images), syncStatus);
+}
+
+bool _listEquals(List<String> a, List<String> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }

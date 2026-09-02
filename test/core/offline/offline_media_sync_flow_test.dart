@@ -24,12 +24,12 @@ import 'package:beebase/data/models/hive_request.dart';
 import 'package:beebase/data/models/hive_response.dart';
 import 'package:beebase/data/models/media_response.dart';
 import 'package:beebase/data/models/page_request.dart';
-import 'package:beebase/data/models/paginated_response.dart';
-import 'package:beebase/data/models/pagination_meta.dart';
 import 'package:beebase/data/repositories/apiary_repository_impl.dart';
 import 'package:beebase/data/repositories/hive_repository_impl.dart';
 import 'package:beebase/data/repositories/media_repository_impl.dart';
+import 'package:beebase/data/repositories/owner_image_writer.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
+import 'package:beebase/domain/repositories/hive_writer.dart';
 import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
 import 'package:beebase/presentation/hive/hive_list_refresh_notifier.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -49,6 +49,8 @@ class MockMediaDataSource extends Mock implements IMediaDataSource {}
 class MockConnectivityService extends Mock implements IConnectivityService {}
 
 class MockLocationService extends Mock implements LocationService {}
+
+class MockHiveWriter extends Mock implements IHiveWriter {}
 
 /// End-to-end coverage for the exact chain the offline-photo-sync feature
 /// promises: an Apiary and a Hive created offline, each with a photo
@@ -141,6 +143,7 @@ void main() {
         operationQueue: queue,
         offlineMutationStore: mutationStore,
       );
+      final ownerImageWriter = OwnerImageWriter(apiaryWriter: apiaryRepository, hiveWriter: hiveRepository);
       final mediaRepository = MediaRepositoryImpl(
         dataSource: mediaDataSource,
         localDataSource: mediaLocalDataSource,
@@ -148,6 +151,7 @@ void main() {
         connectivity: connectivity,
         operationQueue: queue,
         offlineMutationStore: mutationStore,
+        ownerImageWriter: ownerImageWriter,
       );
 
       final registry = OperationRegistry({
@@ -169,8 +173,6 @@ void main() {
           localDataSource: mediaLocalDataSource,
           localMediaStore: localMediaStore,
           operationQueue: queue,
-          apiaryRefreshNotifier: apiaryRefreshNotifier,
-          hiveRefreshNotifier: hiveRefreshNotifier,
         ),
       });
       final syncEngine = SyncEngineImpl(
@@ -236,13 +238,19 @@ void main() {
         (_) {},
       );
 
+      // Each photo attach queues two operations: the owner-less upload
+      // itself, and a separate `imageAdd` (see `ApiaryRepositoryImpl.
+      // addApiaryImage`/`HiveRepositoryImpl.addHiveImage`) linking it to the
+      // owner once both the upload and the owner itself have synced.
       final queuedBeforeSync = await queue.all();
-      expect(queuedBeforeSync, hasLength(4));
+      expect(queuedBeforeSync, hasLength(6));
       expect(queuedBeforeSync.map((operation) => operation.entityType), [
         'apiary',
         'media',
+        'apiary',
         'hive',
         'media',
+        'hive',
       ]);
 
       // --- Online: stub the server responses, capturing exactly which owner
@@ -295,26 +303,49 @@ void main() {
         return 'srv-media-$uploadCount';
       });
 
-      final capturedUploads = <String>[];
-      when(
-        () => mediaDataSource.attachMedia(
-          mediaId: any(named: 'mediaId'),
-          ownerType: any(named: 'ownerType'),
-          ownerId: any(named: 'ownerId'),
+      // Linking now happens through `ApiaryOperationHandler`/
+      // `HiveOperationHandler`'s `imageAdd` handling — a fetch of the
+      // owner's current state followed by a PUT with the uploaded id folded
+      // into its `images` — rather than a direct media-service attach call.
+      when(() => apiaryDataSource.getApiary('srv-apiary-1')).thenAnswer(
+        (_) async => ApiaryResponse(
+          id: 'srv-apiary-1',
+          name: 'Test Apiary',
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
         ),
-      ).thenAnswer((invocation) async {
-        final mediaId = invocation.namedArguments[#mediaId] as String;
-        final ownerType =
-            invocation.namedArguments[#ownerType] as MediaOwnerType;
-        final ownerId = invocation.namedArguments[#ownerId] as String;
-        capturedUploads.add('$ownerType:$ownerId');
-        return MediaResponse(
-          id: mediaId,
-          ownerType: ownerType,
-          ownerId: ownerId,
-          originalFilename: 'photo.jpg',
-          contentType: 'image/jpeg',
-          sizeBytes: 4,
+      );
+      final capturedApiaryImages = <List<String>>[];
+      when(() => apiaryDataSource.updateApiary('srv-apiary-1', any())).thenAnswer((invocation) async {
+        final request = invocation.positionalArguments[1] as ApiaryRequest;
+        capturedApiaryImages.add(request.images ?? const []);
+        return ApiaryResponse(
+          id: 'srv-apiary-1',
+          name: 'Test Apiary',
+          images: request.images ?? const [],
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        );
+      });
+
+      when(() => hiveDataSource.getHive('srv-hive-1')).thenAnswer(
+        (_) async => HiveResponse(
+          id: 'srv-hive-1',
+          apiaryId: 'srv-apiary-1',
+          name: 'Test Hive',
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        ),
+      );
+      final capturedHiveImages = <List<String>>[];
+      when(() => hiveDataSource.updateHive('srv-hive-1', any())).thenAnswer((invocation) async {
+        final request = invocation.positionalArguments[1] as HiveRequest;
+        capturedHiveImages.add(request.images ?? const []);
+        return HiveResponse(
+          id: 'srv-hive-1',
+          apiaryId: 'srv-apiary-1',
+          name: 'Test Hive',
+          images: request.images ?? const [],
           createdAt: DateTime(2026),
           updatedAt: DateTime(2026),
         );
@@ -337,9 +368,11 @@ void main() {
       );
 
       expect(capturedHiveApiaryId, 'srv-apiary-1');
-      expect(capturedUploads, [
-        'MediaOwnerType.apiary:srv-apiary-1',
-        'MediaOwnerType.hive:srv-hive-1',
+      expect(capturedApiaryImages, [
+        ['srv-media-1'],
+      ]);
+      expect(capturedHiveImages, [
+        ['srv-media-2'],
       ]);
 
       // The staging copies are gone — `MediaOperationHandler` adopts
@@ -370,13 +403,10 @@ void main() {
       online = false;
       final apiaryPhotos =
           (await mediaRepository.getMedia(
-            ownerType: MediaOwnerType.apiary,
-            ownerId: 'srv-apiary-1',
-            page: 1,
-            limit: 20,
+            ids: const ['srv-media-1'],
           )).fold(
             (failure) => throw StateError('offline getMedia failed: $failure'),
-            (page) => page.items,
+            (items) => items,
           );
       expect(apiaryPhotos.single.localFilePath, cachedApiaryPhotoPath);
     },
@@ -389,17 +419,21 @@ void main() {
   /// list-refresh notification) one full step of `syncNow()`'s sequential
   /// sweep before the *dependent* photo `create` operation is even
   /// attempted, and whatever reload that notification triggers (e.g. a
-  /// still-mounted `MediaGalleryCubit`, forever bound to the Apiary's old
-  /// local id — see `ApiaryDetailsPage`) used to ask the server about an id
-  /// it had never heard of and treat the resulting `ServerFailure` as "no
-  /// photo" instead of falling back to the perfectly good cached one. This
-  /// reproduces that exact window directly, without a full `syncNow()`
-  /// sweep, by syncing only the Apiary's own operation and deliberately
-  /// leaving its photo's `create` operation untouched.
-  test('a photo attached to an apiary created offline stays visible via '
-      'getMedia — queried by the original local apiary id, exactly as a '
-      'still-mounted MediaGalleryCubit would keep doing — through the window '
-      'where the apiary itself has synced but its photo has not yet', () async {
+  /// still-mounted `MediaGalleryCubit`) used to ask the server about an
+  /// owner id it had never heard of and treat the resulting `ServerFailure`
+  /// as "no photo" instead of falling back to the perfectly good cached one.
+  /// `getMedia` is ids-based now rather than owner-based, so the id
+  /// resolution this used to test is `attachMedia`'s job (see
+  /// `MediaRepositoryImpl._resolvedOwnerIdIfSynced`) — what's still worth
+  /// covering here is the other half: a still-local, not-yet-synced photo id
+  /// (exactly what a `MediaGalleryCubit` still has right after this same
+  /// window, before its own reload has a resolved id to ask for) must keep
+  /// resolving straight from the cache, network untouched, through the
+  /// window where the apiary itself has synced but its photo has not yet.
+  test('a photo attached offline and still pending its own sync stays '
+      'visible via getMedia(ids: [localId]), served from the cache with no '
+      'network call, through the window where its owning apiary has synced '
+      'but the photo has not yet', () async {
     final mediaDocumentsDir = await Directory.systemTemp.createTemp(
       'offline_media_sync_flow_test_race_documents',
     );
@@ -458,6 +492,7 @@ void main() {
       operationQueue: queue,
       offlineMutationStore: mutationStore,
     );
+    final ownerImageWriter = OwnerImageWriter(apiaryWriter: apiaryRepository, hiveWriter: MockHiveWriter());
     final mediaRepository = MediaRepositoryImpl(
       dataSource: mediaDataSource,
       localDataSource: mediaLocalDataSource,
@@ -465,6 +500,7 @@ void main() {
       connectivity: connectivity,
       operationQueue: queue,
       offlineMutationStore: mutationStore,
+      ownerImageWriter: ownerImageWriter,
     );
     final apiaryHandler = ApiaryOperationHandler(
       dataSource: apiaryDataSource,
@@ -492,16 +528,18 @@ void main() {
         );
     expect(LocalIdGenerator.isLocal(apiary.id), isTrue);
 
-    (await mediaRepository.attachMedia(
+    final attachedPhoto = (await mediaRepository.attachMedia(
       ownerType: MediaOwnerType.apiary,
       ownerId: apiary.id,
       localFilePath: photoFile.path,
       originalFilename: 'race.jpg',
       contentType: 'image/jpeg',
     )).fold(
-      (failure) => throw StateError('photo attach failed offline: $failure'),
-      (_) {},
+      (failure) =>
+          throw StateError('photo attach failed offline: $failure'),
+      (value) => value,
     );
+    expect(LocalIdGenerator.isLocal(attachedPhoto.id), isTrue);
 
     // --- Online, but sync ONLY the apiary's own create operation — the
     // exact mid-`syncNow()` state one step after the apiary resolves and
@@ -541,40 +579,17 @@ void main() {
       (operation) => operation.entityType == 'media',
     );
     expect(mediaCreateOp.status, OperationStatus.pending);
-
-    // Only stubbed under the *resolved* id — if `getMedia` mistakenly
-    // called the network with the stale local id instead, this mock
-    // would throw on the unstubbed call rather than silently succeed.
-    when(
-      () => mediaDataSource.listMedia(
-        ownerType: MediaOwnerType.apiary,
-        ownerId: resolvedApiaryId,
-        request: any(named: 'request'),
-      ),
-    ).thenAnswer(
-      (_) async => PaginatedResponse(
-        items: const [],
-        pagination: const PaginationMeta(
-          page: 1,
-          limit: 20,
-          total: 0,
-          totalPages: 1,
-          hasNext: false,
-          hasPrevious: false,
-        ),
-      ),
-    );
+    expect(mediaCreateOp.localEntityId, attachedPhoto.id);
 
     // A `MediaGalleryCubit` still mounted on the details page it was built
-    // on never learns the apiary's id changed — it keeps asking for the
-    // OLD local id for as long as that page stays open. This must still
-    // return the photo instead of erroring out.
-    final page =
+    // on has no resolved server id for this photo yet either — it keeps
+    // asking `getMedia` for the same still-local id it has always had. That
+    // must still return the photo straight from the cache, without ever
+    // touching the network (the server has never heard of a `local-`
+    // prefixed id).
+    final items =
         (await mediaRepository.getMedia(
-          ownerType: MediaOwnerType.apiary,
-          ownerId: apiary.id,
-          page: 1,
-          limit: 20,
+          ids: [attachedPhoto.id],
         )).fold(
           (failure) => throw StateError(
             'getMedia failed during the sync race: $failure',
@@ -582,14 +597,8 @@ void main() {
           (value) => value,
         );
 
-    expect(page.items, hasLength(1));
-    expect(page.items.single.localFilePath, photoFile.path);
-    verifyNever(
-      () => mediaDataSource.listMedia(
-        ownerType: MediaOwnerType.apiary,
-        ownerId: apiary.id,
-        request: any(named: 'request'),
-      ),
-    );
+    expect(items, hasLength(1));
+    expect(items.single.localFilePath, photoFile.path);
+    verifyNever(() => mediaDataSource.listMedia(ids: any(named: 'ids')));
   });
 }
