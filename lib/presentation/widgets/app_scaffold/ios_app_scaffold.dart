@@ -54,8 +54,37 @@ final class IosAppScaffold extends StatelessWidget {
   // no shared constant exported by liquid_glass_widgets for this. The
   // floating tab bar lives in MainPage's own GlassScaffold, which uses
   // `extendBody: true` (its default), so it overlays tab content rather
-  // than reserving layout space for it — the tab-root list has to add this
-  // clearance itself so its last item can still scroll clear of the bar.
+  // than reserving layout space for it, and relies on real content sitting
+  // behind its `BackdropFilter` blur to look like glass rather than an
+  // opaque panel — so the tab-root list must keep painting its full height
+  // behind the bar (never shrink the CustomScrollView's own box for this),
+  // while still only letting the user actually *scroll* that far when
+  // [hasContent] says there's a real last item to clear the bar for.
+  //
+  // This has to be a trailing sliver (SliverToBoxAdapter appended after
+  // [slivers]), gated on [hasContent], rather than a box-level Padding or a
+  // SliverPadding inside the sliver list:
+  //  - A box-level Padding shrinks the CustomScrollView's own render size,
+  //    which also shrinks what it paints — the empty/loading/error states
+  //    (a SliverFillRemaining, e.g. apiary_list_loaded_view.dart) would
+  //    stop short of the true screen bottom, leaving nothing but the bare
+  //    background gradient behind the bar instead of the empty-state
+  //    content, which is exactly the "flat, opaque-looking bar" regression
+  //    this comment is here to warn against re-introducing.
+  //  - A SliverPadding's reduced remainingPaintExtent only ever accounts
+  //    for the padding *before* its child in scroll order — trailing
+  //    padding is laid out after and is invisible to an earlier sibling —
+  //    so it wouldn't stop a SliverFillRemaining from filling the entire
+  //    viewport and then adding this clearance as genuine extra scroll
+  //    extent on top of that regardless of [hasContent].
+  // A plain trailing SliverToBoxAdapter has neither problem: it never
+  // touches the CustomScrollView's box size (full-height paint, and thus
+  // the "content/background behind the glass bar" look, is preserved
+  // unconditionally), and it only ever contributes real scroll extent when
+  // [hasContent] includes it — a SliverFillRemaining upstream already
+  // naturally produces zero extra scroll extent on its own (nothing
+  // artificial follows it) whenever it's the state in play, i.e. whenever
+  // [hasContent] is false, exactly matching intent without special-casing.
   static const double _floatingTabBarClearance = 64;
 
   const IosAppScaffold({
@@ -67,6 +96,7 @@ final class IosAppScaffold extends StatelessWidget {
     this.onRefresh,
     this.fadeEdges = false,
     this.controller,
+    this.hasContent = true,
     super.key,
   });
 
@@ -78,6 +108,13 @@ final class IosAppScaffold extends StatelessWidget {
   final Future<void> Function()? onRefresh;
   final bool fadeEdges;
   final ScrollController? controller;
+
+  // Only meaningful for the tab-root case (showBackButton: false) — whether
+  // [slivers] is currently a real, populated list rather than an
+  // empty/loading/error placeholder. Callers whose slivers never render a
+  // SliverFillRemaining-style placeholder can safely leave this at its
+  // default; see _floatingTabBarClearance's doc for what it controls.
+  final bool hasContent;
 
   @override
   Widget build(BuildContext context) {
@@ -152,10 +189,10 @@ final class IosAppScaffold extends StatelessWidget {
       slivers: [
         if (!pinAppBar) SliverToBoxAdapter(child: appBarContent),
         ...slivers,
-        // Tab-root case only: the floating glass tab bar overlays content
-        // instead of reserving space for it (see _floatingTabBarClearance),
-        // so the last item needs real bottom padding to scroll clear of it.
-        if (!showBackButton)
+        // Tab-root case with real content only — see _floatingTabBarClearance's
+        // doc for why this must be a plain trailing sliver, and why it's
+        // gated on hasContent rather than always present.
+        if (!showBackButton && hasContent)
           SliverToBoxAdapter(child: SizedBox(height: _floatingTabBarClearance + MediaQuery.paddingOf(context).bottom)),
       ],
     );

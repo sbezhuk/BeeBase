@@ -25,6 +25,7 @@ final class AppScaffold extends StatelessWidget {
     this.onRefresh,
     this.fadeEdges = false,
     this.controller,
+    this.hasContent = true,
     super.key,
   });
 
@@ -35,6 +36,12 @@ final class AppScaffold extends StatelessWidget {
   final Future<void> Function()? onRefresh;
   final bool fadeEdges;
   final ScrollController? controller;
+
+  // See IosAppScaffold.hasContent — only meaningful there (iOS's floating
+  // glass tab bar needs it); Android's bottomNavigationBar reserves its own
+  // layout space instead of overlaying content, so AndroidAppScaffold has
+  // no equivalent concept and this is simply not forwarded to it.
+  final bool hasContent;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +54,7 @@ final class AppScaffold extends StatelessWidget {
         onRefresh: onRefresh,
         fadeEdges: fadeEdges,
         controller: controller,
+        hasContent: hasContent,
         onBack: () => context.router.maybePop(),
       ),
       _ => AndroidAppScaffold(

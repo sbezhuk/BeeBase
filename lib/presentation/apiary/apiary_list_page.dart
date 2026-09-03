@@ -84,9 +84,13 @@ final class _ApiaryListPageState extends State<ApiaryListPage> {
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<ApiaryListCubit>();
-    return BlocSelector<ApiaryListCubit, ApiaryListState, bool>(
-      selector: (state) => state is ApiaryListLoading || (state is ApiaryListLoaded && state.isRefreshing),
-      builder: (context, isLoading) {
+    return BlocSelector<ApiaryListCubit, ApiaryListState, (bool isLoading, bool hasContent)>(
+      selector: (state) => (
+        state is ApiaryListLoading || (state is ApiaryListLoaded && state.isRefreshing),
+        state is ApiaryListLoaded && !state.isEmpty,
+      ),
+      builder: (context, selection) {
+        final (isLoading, hasContent) = selection;
         return LoadingOverlay(
           isLoading: isLoading,
           child: AppScaffold(
@@ -95,6 +99,7 @@ final class _ApiaryListPageState extends State<ApiaryListPage> {
             onRefresh: cubit.refresh,
             fadeEdges: true,
             controller: _scrollController,
+            hasContent: hasContent,
             slivers: const [_ApiaryListBody()],
           ),
         );
