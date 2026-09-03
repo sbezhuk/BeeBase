@@ -13,7 +13,6 @@ import 'package:beebase/data/models/profile_update_request.dart';
 import 'package:beebase/data/repositories/profile_repository_impl.dart';
 import 'package:beebase/domain/repositories/repository.dart';
 import 'package:beebase/utils/media_file_extension.dart';
-import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
 /// Executes a queued `profile` operation when the [SyncEngine] drains the
@@ -75,9 +74,6 @@ final class ProfileOperationHandler extends Repository
     final idempotencyKey =
         payload['avatarIdempotencyKey'] as String? ?? operation.id;
     final originalFilename = p.basename(pendingLocalPath);
-    debugPrint(
-      '[ProfileOperationHandler] ${_label(operation)} API request starting: upload avatar $originalFilename.',
-    );
     final uploadResult = await on(
       () => mediaDataSource.uploadMedia(
         filePath: pendingLocalPath,
@@ -87,19 +83,16 @@ final class ProfileOperationHandler extends Repository
         ),
         idempotencyKey: idempotencyKey,
       ),
-      label: _label(operation),
     );
 
-    return uploadResult.fold(_classify, (uploadedId) {
-      debugPrint(
-        '[ProfileOperationHandler] ${_label(operation)} avatar upload response received: id=$uploadedId.',
-      );
-      return _sendUpdate(
+    return uploadResult.fold(
+      _classify,
+      (uploadedId) => _sendUpdate(
         operation,
         avatar: uploadedId,
         pendingLocalPath: pendingLocalPath,
-      );
-    });
+      ),
+    );
   }
 
   Future<OperationResult> _sendUpdate(
@@ -113,26 +106,14 @@ final class ProfileOperationHandler extends Repository
       lastName: payload['lastName'] as String,
       avatar: avatar,
     );
-    debugPrint(
-      '[ProfileOperationHandler] ${_label(operation)} API request starting: PUT profile.',
-    );
-    final result = await on(
-      () => dataSource.updateProfile(request),
-      label: _label(operation),
-    );
+    final result = await on(() => dataSource.updateProfile(request));
 
     return result.fold(_classify, (response) async {
-      debugPrint(
-        '[ProfileOperationHandler] ${_label(operation)} API response received.',
-      );
       // A newer local edit was consolidated into this operation's row while
       // the request above was in flight — this response is already stale,
       // and the row already carries the newer payload for another sync pass.
       final current = await operationQueue.find(operation.id);
       if (current != null && current.version != operation.version) {
-        debugPrint(
-          '[ProfileOperationHandler] ${_label(operation)} superseded by a newer local edit — not marked synced.',
-        );
         return const OperationSuperseded();
       }
 
@@ -144,13 +125,7 @@ final class ProfileOperationHandler extends Repository
         clearAvatarLocalFilePath: avatar == '',
       );
       await localDataSource.write(resolved);
-      debugPrint(
-        '[ProfileOperationHandler] ${_label(operation)} local cache updated with the synced profile.',
-      );
       await _markSynced(operation, resolvedEntityId: avatar);
-      debugPrint(
-        '[ProfileOperationHandler] ${_label(operation)} sync status updated: pending/in-progress -> synced.',
-      );
       return const OperationSuccess();
     });
   }
@@ -169,14 +144,8 @@ final class ProfileOperationHandler extends Repository
   }
 
   Future<OperationResult> _classify(Failure failure) async {
-    debugPrint(
-      '[ProfileOperationHandler] API request failed before a response could be used: $failure',
-    );
     return failure is ServerFailure
         ? OperationPermanentFailure(failure.message.resolve())
         : OperationRetryableFailure(failure.message.resolve());
   }
-
-  String _label(OfflineOperation operation) =>
-      'profile/${operation.operationType} (id=${operation.id})';
 }

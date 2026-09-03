@@ -35,10 +35,7 @@ final class ProfilePage extends StatelessWidget implements AutoRouteWrapper {
 
   @override
   Widget wrappedRoute(BuildContext context) {
-    return BlocProvider(
-      create: (_) => di.get<ProfileCubit>()..load(),
-      child: this,
-    );
+    return BlocProvider(create: (_) => di.get<ProfileCubit>()..load(), child: this);
   }
 
   @override
@@ -59,12 +56,11 @@ final class ProfilePage extends StatelessWidget implements AutoRouteWrapper {
                   label: 'profile.page.edit'.tr(),
                   materialIcon: Icons.edit_outlined,
                   cupertinoIcon: CupertinoIcons.pencil,
-                  onPressed: () =>
-                      context.router.push(ProfileEditRoute(user: user)),
+                  onPressed: () => context.router.push(ProfileEditRoute(user: user)),
                 ),
           slivers: [
             SliverPadding(
-              padding: EdgeInsets.all(context.spacing.lg),
+              padding: EdgeInsets.all(context.spacing.md),
               sliver: SliverToBoxAdapter(
                 child: user == null
                     ? const SizedBox.shrink()

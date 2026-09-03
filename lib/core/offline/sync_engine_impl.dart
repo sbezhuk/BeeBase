@@ -86,13 +86,9 @@ final class SyncEngineImpl implements SyncEngine {
   @override
   Future<void> syncNow() async {
     if (_syncing) {
-      debugPrint(
-        '[SyncEngine] syncNow() called while a sync is already in progress — skipping.',
-      );
       return;
     }
     if (!await connectivity.isOnline) {
-      debugPrint('[SyncEngine] syncNow() called while offline — skipping.');
       return;
     }
     _syncing = true;
@@ -109,22 +105,15 @@ final class SyncEngineImpl implements SyncEngine {
       var toProcess = (await queue.all()).where(_needsSync).toList();
       var attempt = 1;
       while (toProcess.isNotEmpty) {
-        debugPrint(
-          '[SyncEngine] Sync attempt #$attempt started — ${toProcess.length} operation(s) to process.',
-        );
         final attemptedIds = toProcess.map((operation) => operation.id).toSet();
         for (final operation in toProcess) {
           await _process(operation);
         }
-        debugPrint('[SyncEngine] Sync attempt #$attempt finished.');
 
         if (attempt >= _maxAttemptsPerOperation) {
           break;
         }
         if (!await connectivity.isOnline) {
-          debugPrint(
-            '[SyncEngine] Lost connectivity mid-sync — leaving anything still unsynced for the next manual sync.',
-          );
           break;
         }
         final stillFailing = <OfflineOperation>[];
@@ -138,14 +127,9 @@ final class SyncEngineImpl implements SyncEngine {
           break;
         }
         attempt++;
-        debugPrint(
-          '[SyncEngine] ${stillFailing.length} operation(s) still failing after this attempt — '
-          'retrying in ${retryDelay.inSeconds}s (attempt #$attempt of $_maxAttemptsPerOperation).',
-        );
         await Future<void>.delayed(retryDelay);
         toProcess = stillFailing;
       }
-      debugPrint('[SyncEngine] Sync finished.');
     } finally {
       _syncing = false;
       activity.finish();
@@ -164,24 +148,15 @@ final class SyncEngineImpl implements SyncEngine {
     if (dependsOnId != null) {
       final dependency = await queue.find(dependsOnId);
       if (dependency == null || dependency.status != OperationStatus.synced) {
-        debugPrint(
-          '[SyncEngine] ${_label(operation)} waiting on dependency $dependsOnId (not yet synced) — deferring to next sync.',
-        );
         return;
       }
     }
 
     final handler = registry.handlerFor(operation.entityType);
     if (handler == null) {
-      debugPrint(
-        '[SyncEngine] ${_label(operation)} has no registered handler for "${operation.entityType}" — skipping.',
-      );
       return;
     }
 
-    debugPrint(
-      '[SyncEngine] ${_label(operation)} attempt #${operation.retryCount + 1} starting.',
-    );
     await queue.update(
       operation.copyWith(
         status: OperationStatus.inProgress,
@@ -205,7 +180,6 @@ final class SyncEngineImpl implements SyncEngine {
       // Catching here keeps one bad operation from taking the rest of the
       // batch down with it and always resolves the row to `failed` so it's
       // retried on the next sync instead of disappearing.
-      debugPrint('[SyncEngine] ${_label(operation)} threw during handling: $e');
       final current = await queue.find(operation.id) ?? operation;
       // A handler marks its row `synced` itself, as the last step before
       // returning (see e.g. `ApiaryOperationHandler._markSynced`) — before
@@ -220,10 +194,6 @@ final class SyncEngineImpl implements SyncEngine {
       // trusting the pre-call `operation`) is what makes this check see the
       // handler's own write.
       if (current.status == OperationStatus.synced) {
-        debugPrint(
-          '[SyncEngine] ${_label(operation)} was already marked synced before this exception — '
-          'leaving it synced instead of overwriting it back to failed.',
-        );
         return;
       }
       await queue.update(
@@ -247,10 +217,6 @@ final class SyncEngineImpl implements SyncEngine {
     try {
       switch (result) {
         case OperationSuccess(:final resolvedEntityId):
-          debugPrint(
-            '[SyncEngine] ${_label(operation)} synced successfully'
-            '${resolvedEntityId != null ? ' (resolved id: $resolvedEntityId)' : ''}.',
-          );
           await queue.update(
             current.copyWith(
               status: OperationStatus.synced,
@@ -259,12 +225,9 @@ final class SyncEngineImpl implements SyncEngine {
             ),
           );
         case OperationSuperseded():
-          debugPrint(
-            '[SyncEngine] ${_label(operation)} superseded by a newer local edit — left for the handler\'s own state.',
-          );
+          break;
         case OperationRetryableFailure(:final message) ||
             OperationPermanentFailure(:final message):
-          debugPrint('[SyncEngine] ${_label(operation)} failed: $message');
           await queue.update(
             current.copyWith(
               status: OperationStatus.failed,
@@ -274,22 +237,16 @@ final class SyncEngineImpl implements SyncEngine {
             ),
           );
       }
-    } catch (e) {
+    } catch (_) {
       // This write is bookkeeping on top of a result the handler already
       // determined (and, for `OperationSuccess`, already durably recorded
       // itself — see the comment above). Letting a failure here escape
       // uncaught would abort the rest of this `syncNow()` pass (every
       // operation after this one in `toProcess` silently skipped) over a
       // write that, for the success case, only repeats what already
-      // happened. Logging and moving on keeps one bookkeeping hiccup from
-      // taking the whole batch down with it, matching the handler-exception
-      // guard above.
-      debugPrint(
-        '[SyncEngine] ${_label(operation)} result recorded ($result) but the queue bookkeeping write threw: $e',
-      );
+      // happened. Swallowing it keeps one bookkeeping hiccup from taking
+      // the whole batch down with it, matching the handler-exception guard
+      // above.
     }
   }
-
-  String _label(OfflineOperation operation) =>
-      '${operation.entityType}/${operation.operationType} (id=${operation.id})';
 }

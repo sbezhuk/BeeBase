@@ -13,7 +13,6 @@ import 'package:beebase/data/models/hive_request.dart';
 import 'package:beebase/data/models/hive_response.dart';
 import 'package:beebase/domain/repositories/repository.dart';
 import 'package:beebase/presentation/hive/hive_list_refresh_notifier.dart';
-import 'package:flutter/foundation.dart';
 
 const _payloadApiaryIdKey = 'apiaryId';
 
@@ -63,22 +62,15 @@ final class HiveOperationHandler extends Repository
       );
     }
     final request = HiveRequest.fromJson(operation.payload);
-    debugPrint(
-      '[HiveOperationHandler] ${_label(operation)} API request starting: POST hive under apiary $apiaryId.',
-    );
     final result = await on(
       () => dataSource.createHive(
         request,
         apiaryId: apiaryId,
         idempotencyKey: operation.id,
       ),
-      label: _label(operation),
     );
 
     return result.fold(_classify, (response) async {
-      debugPrint(
-        '[HiveOperationHandler] ${_label(operation)} API response received: backend id=${response.id}.',
-      );
       final retargeted = await _checkSupersededAndRetarget(
         operation,
         newEntityId: response.id,
@@ -90,24 +82,12 @@ final class HiveOperationHandler extends Repository
           response,
           latestPayload: retargeted.payload,
         );
-        debugPrint(
-          '[HiveOperationHandler] ${_label(operation)} superseded by a newer local edit — retargeted, not marked synced.',
-        );
         refreshNotifier.notify();
         return const OperationSuperseded();
       }
       await _reconcileCache(operation.localEntityId, response);
-      debugPrint(
-        '[HiveOperationHandler] ${_label(operation)} local cache updated with the synced entity (${response.id}).',
-      );
       await _markSynced(operation, resolvedEntityId: response.id);
-      debugPrint(
-        '[HiveOperationHandler] ${_label(operation)} sync status updated: pending/in-progress -> synced.',
-      );
       refreshNotifier.notify();
-      debugPrint(
-        '[HiveOperationHandler] ${_label(operation)} refresh notifier fired for list/detail cubits.',
-      );
       return OperationSuccess(resolvedEntityId: response.id);
     });
   }
@@ -162,9 +142,6 @@ final class HiveOperationHandler extends Repository
       return const OperationRetryableFailure('This hive has not synced yet.');
     }
 
-    debugPrint(
-      '[HiveOperationHandler] ${_label(operation)} API request starting: attach photo $mediaId to hive $hiveId.',
-    );
     final result = await on(() async {
       final current = await dataSource.getHive(hiveId);
       final request = HiveRequest(
@@ -173,17 +150,11 @@ final class HiveOperationHandler extends Repository
         images: {...current.images, mediaId}.toList(),
       );
       return dataSource.updateHive(hiveId, request);
-    }, label: _label(operation));
+    });
 
     return result.fold(_classify, (response) async {
-      debugPrint(
-        '[HiveOperationHandler] ${_label(operation)} API response received: photo $mediaId attached to $hiveId.',
-      );
       await _reconcileCache(hiveId, response);
       await _markSynced(operation, resolvedEntityId: mediaId);
-      debugPrint(
-        '[HiveOperationHandler] ${_label(operation)} sync status updated: pending/in-progress -> synced.',
-      );
       refreshNotifier.notify();
       return OperationSuccess(resolvedEntityId: mediaId);
     });
@@ -223,18 +194,9 @@ final class HiveOperationHandler extends Repository
       return const OperationPermanentFailure('Missing target id for update.');
     }
     final request = HiveRequest.fromJson(operation.payload);
-    debugPrint(
-      '[HiveOperationHandler] ${_label(operation)} API request starting: PUT hive $id.',
-    );
-    final result = await on(
-      () => dataSource.updateHive(id, request),
-      label: _label(operation),
-    );
+    final result = await on(() => dataSource.updateHive(id, request));
 
     return result.fold(_classify, (response) async {
-      debugPrint(
-        '[HiveOperationHandler] ${_label(operation)} API response received for $id.',
-      );
       final retargeted = await _checkSupersededAndRetarget(
         operation,
         newEntityId: id,
@@ -242,24 +204,12 @@ final class HiveOperationHandler extends Repository
       );
       if (retargeted != null) {
         await _reconcileCache(id, response, latestPayload: retargeted.payload);
-        debugPrint(
-          '[HiveOperationHandler] ${_label(operation)} superseded by a newer local edit — retargeted, not marked synced.',
-        );
         refreshNotifier.notify();
         return const OperationSuperseded();
       }
       await _reconcileCache(id, response);
-      debugPrint(
-        '[HiveOperationHandler] ${_label(operation)} local cache updated with the synced entity ($id).',
-      );
       await _markSynced(operation);
-      debugPrint(
-        '[HiveOperationHandler] ${_label(operation)} sync status updated: pending/in-progress -> synced.',
-      );
       refreshNotifier.notify();
-      debugPrint(
-        '[HiveOperationHandler] ${_label(operation)} refresh notifier fired for list/detail cubits.',
-      );
       return const OperationSuccess();
     });
   }
@@ -288,16 +238,10 @@ final class HiveOperationHandler extends Repository
   }
 
   Future<OperationResult> _classify(Failure failure) async {
-    debugPrint(
-      '[HiveOperationHandler] API request failed before a response could be used: $failure',
-    );
     return failure is ServerFailure
         ? OperationPermanentFailure(failure.message.resolve())
         : OperationRetryableFailure(failure.message.resolve());
   }
-
-  String _label(OfflineOperation operation) =>
-      'hive/${operation.operationType} (id=${operation.id})';
 
   /// If a newer local edit was consolidated into [sent]'s row after it was
   /// read for sending (its `version` moved on), the response just received
