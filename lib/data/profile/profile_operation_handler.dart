@@ -13,6 +13,7 @@ import 'package:beebase/data/models/profile_update_request.dart';
 import 'package:beebase/data/repositories/profile_repository_impl.dart';
 import 'package:beebase/domain/repositories/repository.dart';
 import 'package:beebase/utils/media_file_extension.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
 /// Executes a queued `profile` operation when the [SyncEngine] drains the
@@ -20,7 +21,8 @@ import 'package:path/path.dart' as p;
 /// never created or deleted client-side, and there is no per-field
 /// `imageAdd` equivalent (an avatar pick simply travels inside the same
 /// `update` payload — see `ProfileRepositoryImpl._updateOffline`).
-final class ProfileOperationHandler extends Repository implements OperationHandler {
+final class ProfileOperationHandler extends Repository
+    implements OperationHandler {
   ProfileOperationHandler({
     required this.dataSource,
     required this.mediaDataSource,
@@ -40,9 +42,15 @@ final class ProfileOperationHandler extends Repository implements OperationHandl
   Future<OperationResult> handle(OfflineOperation operation) {
     return switch (operation.operationType) {
       OperationType.update => _handleUpdate(operation),
-      OperationType.create => Future.value(const OperationPermanentFailure('Profile create is not supported.')),
-      OperationType.delete => Future.value(const OperationPermanentFailure('Profile delete is not supported.')),
-      OperationType.imageAdd => Future.value(const OperationPermanentFailure('imageAdd is not a profile operation.')),
+      OperationType.create => Future.value(
+        const OperationPermanentFailure('Profile create is not supported.'),
+      ),
+      OperationType.delete => Future.value(
+        const OperationPermanentFailure('Profile delete is not supported.'),
+      ),
+      OperationType.imageAdd => Future.value(
+        const OperationPermanentFailure('imageAdd is not a profile operation.'),
+      ),
     };
   }
 
@@ -57,64 +65,118 @@ final class ProfileOperationHandler extends Repository implements OperationHandl
     if (pendingLocalPath == null) {
       // No 'avatar' key at all means "leave untouched" — matches
       // auth-service's own contract, see `ProfileUpdateRequest`.
-      return _sendUpdate(operation, avatar: payload['avatar'] as String?, pendingLocalPath: null);
+      return _sendUpdate(
+        operation,
+        avatar: payload['avatar'] as String?,
+        pendingLocalPath: null,
+      );
     }
 
-    final idempotencyKey = payload['avatarIdempotencyKey'] as String? ?? operation.id;
+    final idempotencyKey =
+        payload['avatarIdempotencyKey'] as String? ?? operation.id;
     final originalFilename = p.basename(pendingLocalPath);
+    debugPrint(
+      '[ProfileOperationHandler] ${_label(operation)} API request starting: upload avatar $originalFilename.',
+    );
     final uploadResult = await on(
       () => mediaDataSource.uploadMedia(
         filePath: pendingLocalPath,
         originalFilename: originalFilename,
-        contentType: contentTypeFromExtension(extensionFromFilename(originalFilename)),
+        contentType: contentTypeFromExtension(
+          extensionFromFilename(originalFilename),
+        ),
         idempotencyKey: idempotencyKey,
       ),
+      label: _label(operation),
     );
 
-    return uploadResult.fold(
-      _classify,
-      (uploadedId) => _sendUpdate(operation, avatar: uploadedId, pendingLocalPath: pendingLocalPath),
-    );
+    return uploadResult.fold(_classify, (uploadedId) {
+      debugPrint(
+        '[ProfileOperationHandler] ${_label(operation)} avatar upload response received: id=$uploadedId.',
+      );
+      return _sendUpdate(
+        operation,
+        avatar: uploadedId,
+        pendingLocalPath: pendingLocalPath,
+      );
+    });
   }
 
-  Future<OperationResult> _sendUpdate(OfflineOperation operation, {required String? avatar, required String? pendingLocalPath}) async {
+  Future<OperationResult> _sendUpdate(
+    OfflineOperation operation, {
+    required String? avatar,
+    required String? pendingLocalPath,
+  }) async {
     final payload = operation.payload;
     final request = ProfileUpdateRequest(
       firstName: payload['firstName'] as String,
       lastName: payload['lastName'] as String,
       avatar: avatar,
     );
-    final result = await on(() => dataSource.updateProfile(request));
+    debugPrint(
+      '[ProfileOperationHandler] ${_label(operation)} API request starting: PUT profile.',
+    );
+    final result = await on(
+      () => dataSource.updateProfile(request),
+      label: _label(operation),
+    );
 
     return result.fold(_classify, (response) async {
+      debugPrint(
+        '[ProfileOperationHandler] ${_label(operation)} API response received.',
+      );
       // A newer local edit was consolidated into this operation's row while
       // the request above was in flight — this response is already stale,
       // and the row already carries the newer payload for another sync pass.
       final current = await operationQueue.find(operation.id);
       if (current != null && current.version != operation.version) {
+        debugPrint(
+          '[ProfileOperationHandler] ${_label(operation)} superseded by a newer local edit — not marked synced.',
+        );
         return const OperationSuperseded();
       }
 
       final cached = await localDataSource.read();
       final resolved = response.copyWith(
-        avatarLocalFilePath: pendingLocalPath ?? (avatar == '' ? null : cached?.avatarLocalFilePath),
+        avatarLocalFilePath:
+            pendingLocalPath ??
+            (avatar == '' ? null : cached?.avatarLocalFilePath),
         clearAvatarLocalFilePath: avatar == '',
       );
       await localDataSource.write(resolved);
+      debugPrint(
+        '[ProfileOperationHandler] ${_label(operation)} local cache updated with the synced profile.',
+      );
       await _markSynced(operation, resolvedEntityId: avatar);
+      debugPrint(
+        '[ProfileOperationHandler] ${_label(operation)} sync status updated: pending/in-progress -> synced.',
+      );
       return const OperationSuccess();
     });
   }
 
-  Future<void> _markSynced(OfflineOperation operation, {String? resolvedEntityId}) {
+  Future<void> _markSynced(
+    OfflineOperation operation, {
+    String? resolvedEntityId,
+  }) {
     return operationQueue.update(
-      operation.copyWith(status: OperationStatus.synced, resolvedEntityId: resolvedEntityId, updatedAt: DateTime.now()),
+      operation.copyWith(
+        status: OperationStatus.synced,
+        resolvedEntityId: resolvedEntityId,
+        updatedAt: DateTime.now(),
+      ),
     );
   }
 
   Future<OperationResult> _classify(Failure failure) async {
+    debugPrint(
+      '[ProfileOperationHandler] API request failed before a response could be used: $failure',
+    );
     return failure is ServerFailure
         ? OperationPermanentFailure(failure.message.resolve())
         : OperationRetryableFailure(failure.message.resolve());
   }
+
+  String _label(OfflineOperation operation) =>
+      'profile/${operation.operationType} (id=${operation.id})';
 }

@@ -14,13 +14,15 @@ import 'package:beebase/data/models/apiary_response.dart';
 import 'package:beebase/data/models/extensions/apiary_extension.dart';
 import 'package:beebase/domain/repositories/repository.dart';
 import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
+import 'package:flutter/foundation.dart';
 
 /// Executes a queued Apiary operation when the [SyncEngine] drains the
 /// queue. Extends [Repository] purely to reuse its `on()` exception→Failure
 /// classification — the same rule already governs online reads/writes, so
 /// there is exactly one place that decides what counts as a permanent vs a
 /// retryable failure.
-final class ApiaryOperationHandler extends Repository implements OperationHandler {
+final class ApiaryOperationHandler extends Repository
+    implements OperationHandler {
   ApiaryOperationHandler({
     required this.dataSource,
     required this.localDataSource,
@@ -44,24 +46,57 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
       OperationType.create => _handleCreate(operation),
       OperationType.update => _handleUpdate(operation),
       OperationType.imageAdd => _handleImageAdd(operation),
-      OperationType.delete => Future.value(const OperationPermanentFailure('Offline delete is not supported yet.')),
+      OperationType.delete => Future.value(
+        const OperationPermanentFailure('Offline delete is not supported yet.'),
+      ),
     };
   }
 
   Future<OperationResult> _handleCreate(OfflineOperation operation) async {
-    final request = await _withResolvedAddress(ApiaryRequest.fromJson(operation.payload));
-    final result = await on(() => dataSource.createApiary(request, idempotencyKey: operation.id));
+    final request = await _withResolvedAddress(
+      ApiaryRequest.fromJson(operation.payload),
+    );
+    debugPrint(
+      '[ApiaryOperationHandler] ${_label(operation)} API request starting: POST apiary (idempotencyKey=${operation.id}).',
+    );
+    final result = await on(
+      () => dataSource.createApiary(request, idempotencyKey: operation.id),
+      label: _label(operation),
+    );
 
     return result.fold(_classify, (response) async {
-      final retargeted = await _checkSupersededAndRetarget(operation, newEntityId: response.id, newType: OperationType.update);
+      debugPrint(
+        '[ApiaryOperationHandler] ${_label(operation)} API response received: backend id=${response.id}.',
+      );
+      final retargeted = await _checkSupersededAndRetarget(
+        operation,
+        newEntityId: response.id,
+        newType: OperationType.update,
+      );
       if (retargeted != null) {
-        await _reconcileCache(operation.localEntityId, response, latestPayload: retargeted.payload);
+        await _reconcileCache(
+          operation.localEntityId,
+          response,
+          latestPayload: retargeted.payload,
+        );
+        debugPrint(
+          '[ApiaryOperationHandler] ${_label(operation)} superseded by a newer local edit — retargeted, not marked synced.',
+        );
         refreshNotifier.notify();
         return const OperationSuperseded();
       }
       await _reconcileCache(operation.localEntityId, response);
+      debugPrint(
+        '[ApiaryOperationHandler] ${_label(operation)} local cache updated with the synced entity (${response.id}).',
+      );
       await _markSynced(operation, resolvedEntityId: response.id);
+      debugPrint(
+        '[ApiaryOperationHandler] ${_label(operation)} sync status updated: pending/in-progress -> synced.',
+      );
       refreshNotifier.notify();
+      debugPrint(
+        '[ApiaryOperationHandler] ${_label(operation)} refresh notifier fired for list/detail cubits.',
+      );
       return OperationSuccess(resolvedEntityId: response.id);
     });
   }
@@ -71,19 +106,46 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
     if (id == null) {
       return const OperationPermanentFailure('Missing target id for update.');
     }
-    final request = await _withResolvedAddress(ApiaryRequest.fromJson(operation.payload));
-    final result = await on(() => dataSource.updateApiary(id, request));
+    final request = await _withResolvedAddress(
+      ApiaryRequest.fromJson(operation.payload),
+    );
+    debugPrint(
+      '[ApiaryOperationHandler] ${_label(operation)} API request starting: PUT apiary $id.',
+    );
+    final result = await on(
+      () => dataSource.updateApiary(id, request),
+      label: _label(operation),
+    );
 
     return result.fold(_classify, (response) async {
-      final retargeted = await _checkSupersededAndRetarget(operation, newEntityId: id, newType: OperationType.update);
+      debugPrint(
+        '[ApiaryOperationHandler] ${_label(operation)} API response received for $id.',
+      );
+      final retargeted = await _checkSupersededAndRetarget(
+        operation,
+        newEntityId: id,
+        newType: OperationType.update,
+      );
       if (retargeted != null) {
         await _reconcileCache(id, response, latestPayload: retargeted.payload);
+        debugPrint(
+          '[ApiaryOperationHandler] ${_label(operation)} superseded by a newer local edit — retargeted, not marked synced.',
+        );
         refreshNotifier.notify();
         return const OperationSuperseded();
       }
       await _reconcileCache(id, response);
+      debugPrint(
+        '[ApiaryOperationHandler] ${_label(operation)} local cache updated with the synced entity ($id).',
+      );
       await _markSynced(operation);
+      debugPrint(
+        '[ApiaryOperationHandler] ${_label(operation)} sync status updated: pending/in-progress -> synced.',
+      );
       refreshNotifier.notify();
+      debugPrint(
+        '[ApiaryOperationHandler] ${_label(operation)} refresh notifier fired for list/detail cubits.',
+      );
       return const OperationSuccess();
     });
   }
@@ -105,13 +167,18 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
   Future<OperationResult> _handleImageAdd(OfflineOperation operation) async {
     final mediaId = await _resolveDependencyId(operation.dependsOnOperationId);
     if (mediaId == null) {
-      return const OperationRetryableFailure('The photo upload has not synced yet.');
+      return const OperationRetryableFailure(
+        'The photo upload has not synced yet.',
+      );
     }
     final apiaryId = await _resolveRealSelfId(operation.localEntityId);
     if (apiaryId == null) {
       return const OperationRetryableFailure('This apiary has not synced yet.');
     }
 
+    debugPrint(
+      '[ApiaryOperationHandler] ${_label(operation)} API request starting: attach photo $mediaId to apiary $apiaryId.',
+    );
     final result = await on(() async {
       final current = await dataSource.getApiary(apiaryId);
       final request = ApiaryRequest(
@@ -123,11 +190,17 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
         images: {...current.images, mediaId}.toList(),
       );
       return dataSource.updateApiary(apiaryId, request);
-    });
+    }, label: _label(operation));
 
     return result.fold(_classify, (response) async {
+      debugPrint(
+        '[ApiaryOperationHandler] ${_label(operation)} API response received: photo $mediaId attached to $apiaryId.',
+      );
       await _reconcileCache(apiaryId, response);
       await _markSynced(operation, resolvedEntityId: mediaId);
+      debugPrint(
+        '[ApiaryOperationHandler] ${_label(operation)} sync status updated: pending/in-progress -> synced.',
+      );
       refreshNotifier.notify();
       return OperationSuccess(resolvedEntityId: mediaId);
     });
@@ -147,7 +220,9 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
     }
     final operations = await operationQueue.all();
     for (final op in operations) {
-      if (op.entityType == 'apiary' && op.localEntityId == rawId && op.operationType == OperationType.create) {
+      if (op.entityType == 'apiary' &&
+          op.localEntityId == rawId &&
+          op.operationType == OperationType.create) {
         return op.status == OperationStatus.synced ? op.resolvedEntityId : null;
       }
     }
@@ -157,7 +232,9 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
   Future<String?> _resolveDependencyId(String? dependsOnOperationId) async {
     if (dependsOnOperationId == null) return null;
     final dependency = await operationQueue.find(dependsOnOperationId);
-    return dependency?.status == OperationStatus.synced ? dependency?.resolvedEntityId : null;
+    return dependency?.status == OperationStatus.synced
+        ? dependency?.resolvedEntityId
+        : null;
   }
 
   /// Re-resolves [request]'s address from its coordinates before it's sent.
@@ -172,8 +249,17 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
     final lon = request.lon;
     if (lat == null || lon == null) return request;
 
-    final resolvedLocation = await locationService.resolveAddress(latitude: lat, longitude: lon);
-    return ApiaryRequest(name: request.name, description: request.description, location: resolvedLocation, lat: lat, lon: lon);
+    final resolvedLocation = await locationService.resolveAddress(
+      latitude: lat,
+      longitude: lon,
+    );
+    return ApiaryRequest(
+      name: request.name,
+      description: request.description,
+      location: resolvedLocation,
+      lat: lat,
+      lon: lon,
+    );
   }
 
   /// Marks [operation] `synced` in the queue before [refreshNotifier] fires.
@@ -184,17 +270,30 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
   /// queue and keep showing a "needs sync" badge for an apiary that has, in
   /// fact, already synced. `SyncEngineImpl`'s later write just repeats this
   /// (harmlessly) with a fresher `updatedAt` once it re-reads the row.
-  Future<void> _markSynced(OfflineOperation operation, {String? resolvedEntityId}) {
+  Future<void> _markSynced(
+    OfflineOperation operation, {
+    String? resolvedEntityId,
+  }) {
     return operationQueue.update(
-      operation.copyWith(status: OperationStatus.synced, resolvedEntityId: resolvedEntityId, updatedAt: DateTime.now()),
+      operation.copyWith(
+        status: OperationStatus.synced,
+        resolvedEntityId: resolvedEntityId,
+        updatedAt: DateTime.now(),
+      ),
     );
   }
 
   Future<OperationResult> _classify(Failure failure) async {
+    debugPrint(
+      '[ApiaryOperationHandler] API request failed before a response could be used: $failure',
+    );
     return failure is ServerFailure
         ? OperationPermanentFailure(failure.message.resolve())
         : OperationRetryableFailure(failure.message.resolve());
   }
+
+  String _label(OfflineOperation operation) =>
+      'apiary/${operation.operationType} (id=${operation.id})';
 
   /// If a newer local edit was consolidated into [sent]'s row after it was
   /// read for sending (its `version` moved on), the response just received
@@ -212,7 +311,11 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
     if (current == null || current.version == sent.version) {
       return null;
     }
-    final retargeted = current.copyWith(operationType: newType, localEntityId: newEntityId, status: OperationStatus.pending);
+    final retargeted = current.copyWith(
+      operationType: newType,
+      localEntityId: newEntityId,
+      status: OperationStatus.pending,
+    );
     await operationQueue.update(retargeted);
     return retargeted;
   }
@@ -221,7 +324,11 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
   /// [serverResponse] — or, when [latestPayload] is given (the entity was
   /// edited again after this request was sent), with the newer field values
   /// under the server's id instead of the now-stale response fields.
-  Future<void> _reconcileCache(String? localEntityId, ApiaryResponse serverResponse, {Map<String, dynamic>? latestPayload}) {
+  Future<void> _reconcileCache(
+    String? localEntityId,
+    ApiaryResponse serverResponse, {
+    Map<String, dynamic>? latestPayload,
+  }) {
     // images always comes from serverResponse, never from latestPayload: a
     // field-edit's own request payload never carries one (see
     // [ApiaryRequest.images]), so serverResponse.images - the apiary's
@@ -236,7 +343,9 @@ final class ApiaryOperationHandler extends Repository implements OperationHandle
             images: serverResponse.images,
           );
     return localDataSource.modify((current) {
-      final withoutPlaceholder = (current ?? const []).where((response) => response.id != localEntityId);
+      final withoutPlaceholder = (current ?? const []).where(
+        (response) => response.id != localEntityId,
+      );
       return [...withoutPlaceholder, resolved];
     });
   }

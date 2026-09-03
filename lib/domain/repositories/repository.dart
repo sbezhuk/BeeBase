@@ -1,8 +1,10 @@
+import 'package:beebase/core/error/error_text.dart';
 import 'package:beebase/core/networking/exceptions/cancellation_exception.dart';
 import 'package:beebase/core/networking/exceptions/internal_exception.dart';
 import 'package:beebase/core/networking/exceptions/server_exception.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/utils/either.dart';
+import 'package:flutter/foundation.dart';
 
 /// Base class for repository implementations. [on] runs [action] and
 /// translates the exceptions thrown by the networking layer into a
@@ -16,22 +18,49 @@ abstract class Repository {
   /// `statusCode` matches it, the exception is treated as success instead —
   /// e.g. a delete that 404s because the entity is already gone server-side
   /// — and [onIgnoredStatusCode] is called to produce the result value.
+  ///
+  /// Any *other* exception — most notably one thrown while decoding an
+  /// already-successful HTTP response (a null/malformed body reaching a
+  /// DTO's `fromJson`, e.g. `response.data!`) — used to propagate straight
+  /// out of here uncaught. For an offline sync operation that meant the
+  /// backend write had already durably succeeded, yet the exception looked
+  /// identical to a real request failure by the time it reached
+  /// `SyncEngineImpl`'s generic catch: same generic "operation failed"
+  /// handling, no distinction from an actual network/server error. Catching
+  /// it here too — classified as an [InternalFailure], the same bucket a
+  /// connectivity blip already falls into — means it flows through the
+  /// exact same retry path as any other transient failure instead of a
+  /// separate, less visible one, and [label] (when the caller supplies one)
+  /// records in the log which call it was, since the exception itself won't
+  /// say.
   Future<Either<Failure, T>> on<T>(
     Future<T> Function() action, {
     int? ignoreStatusCode,
     T Function()? onIgnoredStatusCode,
+    String? label,
   }) async {
     try {
       return Right(await action());
     } on ServerException catch (e) {
-      if (ignoreStatusCode != null && e.statusCode == ignoreStatusCode && onIgnoredStatusCode != null) {
+      if (ignoreStatusCode != null &&
+          e.statusCode == ignoreStatusCode &&
+          onIgnoredStatusCode != null) {
         return Right(onIgnoredStatusCode());
       }
-      return Left(ServerFailure(code: e.code, message: e.message, fields: e.fields));
+      return Left(
+        ServerFailure(code: e.code, message: e.message, fields: e.fields),
+      );
     } on CancellationException catch (e) {
       return Left(CancellationFailure(e.message));
     } on InternalException catch (e) {
       return Left(InternalFailure(e.message));
+    } catch (e) {
+      debugPrint(
+        '[Repository${label != null ? '/$label' : ''}] Unclassified exception after the request '
+        '(the backend call may already have succeeded — this is almost always a client-side response '
+        'decoding problem, not a rejected request): $e',
+      );
+      return Left(InternalFailure(ErrorTextRaw(e.toString())));
     }
   }
 }

@@ -13,6 +13,7 @@ import 'package:beebase/data/models/hive_request.dart';
 import 'package:beebase/data/models/hive_response.dart';
 import 'package:beebase/domain/repositories/repository.dart';
 import 'package:beebase/presentation/hive/hive_list_refresh_notifier.dart';
+import 'package:flutter/foundation.dart';
 
 const _payloadApiaryIdKey = 'apiaryId';
 
@@ -21,7 +22,8 @@ const _payloadApiaryIdKey = 'apiaryId';
 /// classification — the same rule already governs online reads/writes, so
 /// there is exactly one place that decides what counts as a permanent vs a
 /// retryable failure.
-final class HiveOperationHandler extends Repository implements OperationHandler {
+final class HiveOperationHandler extends Repository
+    implements OperationHandler {
   HiveOperationHandler({
     required this.dataSource,
     required this.localDataSource,
@@ -43,29 +45,69 @@ final class HiveOperationHandler extends Repository implements OperationHandler 
       OperationType.create => _handleCreate(operation),
       OperationType.update => _handleUpdate(operation),
       OperationType.imageAdd => _handleImageAdd(operation),
-      OperationType.delete => Future.value(const OperationPermanentFailure('Offline delete is not supported yet.')),
+      OperationType.delete => Future.value(
+        const OperationPermanentFailure('Offline delete is not supported yet.'),
+      ),
     };
   }
 
   Future<OperationResult> _handleCreate(OfflineOperation operation) async {
     final rawApiaryId = operation.payload[_payloadApiaryIdKey] as String;
-    final apiaryId = await _resolveApiaryId(rawApiaryId, operation.dependsOnOperationId);
+    final apiaryId = await _resolveApiaryId(
+      rawApiaryId,
+      operation.dependsOnOperationId,
+    );
     if (apiaryId == null) {
-      return const OperationRetryableFailure('The parent apiary has not synced yet.');
+      return const OperationRetryableFailure(
+        'The parent apiary has not synced yet.',
+      );
     }
     final request = HiveRequest.fromJson(operation.payload);
-    final result = await on(() => dataSource.createHive(request, apiaryId: apiaryId, idempotencyKey: operation.id));
+    debugPrint(
+      '[HiveOperationHandler] ${_label(operation)} API request starting: POST hive under apiary $apiaryId.',
+    );
+    final result = await on(
+      () => dataSource.createHive(
+        request,
+        apiaryId: apiaryId,
+        idempotencyKey: operation.id,
+      ),
+      label: _label(operation),
+    );
 
     return result.fold(_classify, (response) async {
-      final retargeted = await _checkSupersededAndRetarget(operation, newEntityId: response.id, newType: OperationType.update);
+      debugPrint(
+        '[HiveOperationHandler] ${_label(operation)} API response received: backend id=${response.id}.',
+      );
+      final retargeted = await _checkSupersededAndRetarget(
+        operation,
+        newEntityId: response.id,
+        newType: OperationType.update,
+      );
       if (retargeted != null) {
-        await _reconcileCache(operation.localEntityId, response, latestPayload: retargeted.payload);
+        await _reconcileCache(
+          operation.localEntityId,
+          response,
+          latestPayload: retargeted.payload,
+        );
+        debugPrint(
+          '[HiveOperationHandler] ${_label(operation)} superseded by a newer local edit — retargeted, not marked synced.',
+        );
         refreshNotifier.notify();
         return const OperationSuperseded();
       }
       await _reconcileCache(operation.localEntityId, response);
+      debugPrint(
+        '[HiveOperationHandler] ${_label(operation)} local cache updated with the synced entity (${response.id}).',
+      );
       await _markSynced(operation, resolvedEntityId: response.id);
+      debugPrint(
+        '[HiveOperationHandler] ${_label(operation)} sync status updated: pending/in-progress -> synced.',
+      );
       refreshNotifier.notify();
+      debugPrint(
+        '[HiveOperationHandler] ${_label(operation)} refresh notifier fired for list/detail cubits.',
+      );
       return OperationSuccess(resolvedEntityId: response.id);
     });
   }
@@ -81,7 +123,10 @@ final class HiveOperationHandler extends Repository implements OperationHandler 
   /// hasn't synced yet, which `SyncEngine` should already have prevented by
   /// not dispatching this operation in the first place — this is a
   /// defensive fallback, not the primary guard.
-  Future<String?> _resolveApiaryId(String rawApiaryId, String? dependsOnOperationId) async {
+  Future<String?> _resolveApiaryId(
+    String rawApiaryId,
+    String? dependsOnOperationId,
+  ) async {
     if (!LocalIdGenerator.isLocal(rawApiaryId)) {
       return rawApiaryId;
     }
@@ -108,22 +153,37 @@ final class HiveOperationHandler extends Repository implements OperationHandler 
   Future<OperationResult> _handleImageAdd(OfflineOperation operation) async {
     final mediaId = await _resolveDependencyId(operation.dependsOnOperationId);
     if (mediaId == null) {
-      return const OperationRetryableFailure('The photo upload has not synced yet.');
+      return const OperationRetryableFailure(
+        'The photo upload has not synced yet.',
+      );
     }
     final hiveId = await _resolveRealSelfId(operation.localEntityId);
     if (hiveId == null) {
       return const OperationRetryableFailure('This hive has not synced yet.');
     }
 
+    debugPrint(
+      '[HiveOperationHandler] ${_label(operation)} API request starting: attach photo $mediaId to hive $hiveId.',
+    );
     final result = await on(() async {
       final current = await dataSource.getHive(hiveId);
-      final request = HiveRequest(name: current.name, notes: current.notes, images: {...current.images, mediaId}.toList());
+      final request = HiveRequest(
+        name: current.name,
+        notes: current.notes,
+        images: {...current.images, mediaId}.toList(),
+      );
       return dataSource.updateHive(hiveId, request);
-    });
+    }, label: _label(operation));
 
     return result.fold(_classify, (response) async {
+      debugPrint(
+        '[HiveOperationHandler] ${_label(operation)} API response received: photo $mediaId attached to $hiveId.',
+      );
       await _reconcileCache(hiveId, response);
       await _markSynced(operation, resolvedEntityId: mediaId);
+      debugPrint(
+        '[HiveOperationHandler] ${_label(operation)} sync status updated: pending/in-progress -> synced.',
+      );
       refreshNotifier.notify();
       return OperationSuccess(resolvedEntityId: mediaId);
     });
@@ -140,7 +200,9 @@ final class HiveOperationHandler extends Repository implements OperationHandler 
     }
     final operations = await operationQueue.all();
     for (final op in operations) {
-      if (op.entityType == 'hive' && op.localEntityId == rawId && op.operationType == OperationType.create) {
+      if (op.entityType == 'hive' &&
+          op.localEntityId == rawId &&
+          op.operationType == OperationType.create) {
         return op.status == OperationStatus.synced ? op.resolvedEntityId : null;
       }
     }
@@ -150,7 +212,9 @@ final class HiveOperationHandler extends Repository implements OperationHandler 
   Future<String?> _resolveDependencyId(String? dependsOnOperationId) async {
     if (dependsOnOperationId == null) return null;
     final dependency = await operationQueue.find(dependsOnOperationId);
-    return dependency?.status == OperationStatus.synced ? dependency?.resolvedEntityId : null;
+    return dependency?.status == OperationStatus.synced
+        ? dependency?.resolvedEntityId
+        : null;
   }
 
   Future<OperationResult> _handleUpdate(OfflineOperation operation) async {
@@ -159,18 +223,43 @@ final class HiveOperationHandler extends Repository implements OperationHandler 
       return const OperationPermanentFailure('Missing target id for update.');
     }
     final request = HiveRequest.fromJson(operation.payload);
-    final result = await on(() => dataSource.updateHive(id, request));
+    debugPrint(
+      '[HiveOperationHandler] ${_label(operation)} API request starting: PUT hive $id.',
+    );
+    final result = await on(
+      () => dataSource.updateHive(id, request),
+      label: _label(operation),
+    );
 
     return result.fold(_classify, (response) async {
-      final retargeted = await _checkSupersededAndRetarget(operation, newEntityId: id, newType: OperationType.update);
+      debugPrint(
+        '[HiveOperationHandler] ${_label(operation)} API response received for $id.',
+      );
+      final retargeted = await _checkSupersededAndRetarget(
+        operation,
+        newEntityId: id,
+        newType: OperationType.update,
+      );
       if (retargeted != null) {
         await _reconcileCache(id, response, latestPayload: retargeted.payload);
+        debugPrint(
+          '[HiveOperationHandler] ${_label(operation)} superseded by a newer local edit — retargeted, not marked synced.',
+        );
         refreshNotifier.notify();
         return const OperationSuperseded();
       }
       await _reconcileCache(id, response);
+      debugPrint(
+        '[HiveOperationHandler] ${_label(operation)} local cache updated with the synced entity ($id).',
+      );
       await _markSynced(operation);
+      debugPrint(
+        '[HiveOperationHandler] ${_label(operation)} sync status updated: pending/in-progress -> synced.',
+      );
       refreshNotifier.notify();
+      debugPrint(
+        '[HiveOperationHandler] ${_label(operation)} refresh notifier fired for list/detail cubits.',
+      );
       return const OperationSuccess();
     });
   }
@@ -185,17 +274,30 @@ final class HiveOperationHandler extends Repository implements OperationHandler 
   /// `ApiaryOperationHandler._markSynced`). `SyncEngineImpl`'s later write
   /// just repeats this (harmlessly) with a fresher `updatedAt` once it
   /// re-reads the row.
-  Future<void> _markSynced(OfflineOperation operation, {String? resolvedEntityId}) {
+  Future<void> _markSynced(
+    OfflineOperation operation, {
+    String? resolvedEntityId,
+  }) {
     return operationQueue.update(
-      operation.copyWith(status: OperationStatus.synced, resolvedEntityId: resolvedEntityId, updatedAt: DateTime.now()),
+      operation.copyWith(
+        status: OperationStatus.synced,
+        resolvedEntityId: resolvedEntityId,
+        updatedAt: DateTime.now(),
+      ),
     );
   }
 
   Future<OperationResult> _classify(Failure failure) async {
+    debugPrint(
+      '[HiveOperationHandler] API request failed before a response could be used: $failure',
+    );
     return failure is ServerFailure
         ? OperationPermanentFailure(failure.message.resolve())
         : OperationRetryableFailure(failure.message.resolve());
   }
+
+  String _label(OfflineOperation operation) =>
+      'hive/${operation.operationType} (id=${operation.id})';
 
   /// If a newer local edit was consolidated into [sent]'s row after it was
   /// read for sending (its `version` moved on), the response just received
@@ -213,7 +315,11 @@ final class HiveOperationHandler extends Repository implements OperationHandler 
     if (current == null || current.version == sent.version) {
       return null;
     }
-    final retargeted = current.copyWith(operationType: newType, localEntityId: newEntityId, status: OperationStatus.pending);
+    final retargeted = current.copyWith(
+      operationType: newType,
+      localEntityId: newEntityId,
+      status: OperationStatus.pending,
+    );
     await operationQueue.update(retargeted);
     return retargeted;
   }
@@ -222,7 +328,11 @@ final class HiveOperationHandler extends Repository implements OperationHandler 
   /// [serverResponse] — or, when [latestPayload] is given (the entity was
   /// edited again after this request was sent), with the newer field values
   /// under the server's id instead of the now-stale response fields.
-  Future<void> _reconcileCache(String? localEntityId, HiveResponse serverResponse, {Map<String, dynamic>? latestPayload}) {
+  Future<void> _reconcileCache(
+    String? localEntityId,
+    HiveResponse serverResponse, {
+    Map<String, dynamic>? latestPayload,
+  }) {
     // images always comes from serverResponse, never from latestPayload: a
     // field-edit's own request payload never carries one (see
     // [HiveRequest.images]), so serverResponse.images - the hive's actual
@@ -238,7 +348,9 @@ final class HiveOperationHandler extends Repository implements OperationHandler 
             images: serverResponse.images,
           );
     return localDataSource.modify((current) {
-      final withoutPlaceholder = (current ?? const []).where((response) => response.id != localEntityId);
+      final withoutPlaceholder = (current ?? const []).where(
+        (response) => response.id != localEntityId,
+      );
       return [...withoutPlaceholder, resolved];
     });
   }

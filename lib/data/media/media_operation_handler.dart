@@ -14,6 +14,7 @@ import 'package:beebase/data/repositories/owner_operation_status.dart';
 import 'package:beebase/domain/repositories/repository.dart';
 import 'package:beebase/utils/media_file_extension.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 
 /// Executes a queued `media` operation when the [SyncEngine] drains the
 /// queue. Uploading and deleting a file are both owner-less as far as
@@ -60,6 +61,9 @@ final class MediaOperationHandler extends Repository
 
     // Keyed by the request's stable idempotency key so a retried sync never
     // creates a second file server-side.
+    debugPrint(
+      '[MediaOperationHandler] ${_label(operation)} API request starting: upload ${request.originalFilename}.',
+    );
     final result = await on(
       () => dataSource.uploadMedia(
         filePath: request.localFilePath,
@@ -67,9 +71,13 @@ final class MediaOperationHandler extends Repository
         contentType: request.contentType,
         idempotencyKey: request.idempotencyKey,
       ),
+      label: _label(operation),
     );
 
     return result.fold(_classify, (uploadedId) async {
+      debugPrint(
+        '[MediaOperationHandler] ${_label(operation)} API response received: uploaded id=$uploadedId.',
+      );
       // Adopts (renames) the already-on-disk staged file onto the
       // deterministic cache path for the server's real id, rather than
       // deleting it — so this photo stays available offline immediately
@@ -81,7 +89,13 @@ final class MediaOperationHandler extends Repository
         extension: extensionFromFilename(request.originalFilename),
       );
       await _reconcileCache(operation.localEntityId, uploadedId, cachedPath);
+      debugPrint(
+        '[MediaOperationHandler] ${_label(operation)} local cache updated with the synced media ($uploadedId).',
+      );
       await _markSynced(operation, resolvedEntityId: uploadedId);
+      debugPrint(
+        '[MediaOperationHandler] ${_label(operation)} sync status updated: pending/in-progress -> synced.',
+      );
       return OperationSuccess(resolvedEntityId: uploadedId);
     });
   }
@@ -94,14 +108,24 @@ final class MediaOperationHandler extends Repository
     if (id == null) {
       return const OperationPermanentFailure('Missing target id for delete.');
     }
+    debugPrint(
+      '[MediaOperationHandler] ${_label(operation)} API request starting: delete media $id.',
+    );
     final result = await on(
       () => dataSource.deleteMedia(id),
       ignoreStatusCode: 404,
       onIgnoredStatusCode: () {},
+      label: _label(operation),
     );
 
     return result.fold(_classify, (_) async {
+      debugPrint(
+        '[MediaOperationHandler] ${_label(operation)} API response received: $id deleted.',
+      );
       await _markSynced(operation);
+      debugPrint(
+        '[MediaOperationHandler] ${_label(operation)} sync status updated: pending/in-progress -> synced.',
+      );
       return const OperationSuccess();
     });
   }
@@ -127,10 +151,16 @@ final class MediaOperationHandler extends Repository
   }
 
   Future<OperationResult> _classify(Failure failure) async {
+    debugPrint(
+      '[MediaOperationHandler] API request failed before a response could be used: $failure',
+    );
     return failure is ServerFailure
         ? OperationPermanentFailure(failure.message.resolve())
         : OperationRetryableFailure(failure.message.resolve());
   }
+
+  String _label(OfflineOperation operation) =>
+      'media/${operation.operationType} (id=${operation.id})';
 
   /// Replaces the local placeholder (keyed by [localEntityId]) with the
   /// uploaded id, preserving whatever filename/size the placeholder was

@@ -41,10 +41,11 @@ final class _ApplicationState extends State<Application> with WidgetsBindingObse
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Never triggers a sync — synchronization is user-initiated only (see
-    // the "Sync now" banner). This just re-derives whether the banner
-    // should show, in case connectivity changed while backgrounded without
-    // the connectivity stream catching it.
+    // Re-derives whether the banner should show, in case connectivity
+    // changed while backgrounded without the connectivity stream catching
+    // it. If that re-check finds the device came back online with
+    // operations still pending, `SyncEngine.refreshAvailability` also starts
+    // an automatic sync itself — same as a live connectivity event would.
     if (state == AppLifecycleState.resumed) {
       di<SyncEngine>().refreshAvailability();
     }
