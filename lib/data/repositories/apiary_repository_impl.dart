@@ -62,12 +62,7 @@ final class ApiaryRepositoryImpl extends Repository
   }) async {
     final pendingOps = await _apiaryOperations();
     if (!await connectivity.isOnline) {
-      return _cachedPageOrFailure(
-        const InternalFailure(
-          ErrorTextKey('core.errors.unexpected_network_error'),
-        ),
-        pendingOps,
-      );
+      return _cachedPageOrEmpty(pendingOps);
     }
 
     final result = await on(() async {
@@ -90,7 +85,7 @@ final class ApiaryRepositoryImpl extends Repository
         if (failure is ServerFailure) {
           return Left(failure);
         }
-        return _cachedPageOrFailure(failure, pendingOps);
+        return _cachedPageOrEmpty(pendingOps);
       },
       (data) async {
         final (merged, hasNext) = data;
@@ -664,14 +659,18 @@ final class ApiaryRepositoryImpl extends Repository
   /// or offline, so "load more" simply isn't offered again until the next
   /// successful online fetch; pull-to-refresh is the existing "try again"
   /// affordance once back online.
-  Future<Either<Failure, Page<Apiary>>> _cachedPageOrFailure(
-    Failure failure,
+  ///
+  /// Always succeeds, even with nothing cached: an empty local cache while
+  /// offline (or degraded) isn't a failure to surface — it's the legitimate
+  /// "nothing synced to this device yet" state, and must render as an empty
+  /// list (`ApiaryListLoaded` with no items), not an error screen. This used
+  /// to return `Left(failure)` whenever the cache was empty, which made a
+  /// device with no cached apiaries yet show a "check your connection" error
+  /// instead of the list's normal empty state as soon as it went offline.
+  Future<Either<Failure, Page<Apiary>>> _cachedPageOrEmpty(
     List<OfflineOperation> pendingOps,
   ) async {
-    final cached = await localDataSource.read();
-    if (cached == null || cached.isEmpty) {
-      return Left(failure);
-    }
+    final cached = await localDataSource.read() ?? const <ApiaryResponse>[];
     return Right(
       Page(items: cacheMerger.toEntities(cached, pendingOps), hasNext: false),
     );
