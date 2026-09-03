@@ -1,5 +1,6 @@
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/core/services/session_service.dart';
+import 'package:beebase/domain/entity/profile.dart';
 import 'package:beebase/domain/entity/user.dart';
 import 'package:beebase/domain/repositories/authentication_repository.dart';
 import 'package:beebase/domain/repositories/profile_writer.dart';
@@ -18,11 +19,14 @@ void main() {
   late MockProfileWriter writer;
   late AuthenticationCubit authenticationCubit;
 
-  final user = User(id: 'user-1', email: 'john@example.com', createdAt: DateTime(2026), firstName: 'Jane');
+  final baseUser = User(id: 'user-1', email: 'john@example.com', createdAt: DateTime(2026));
+  final profile = Profile(id: 'user-1', email: 'john@example.com', firstName: 'Jane', lastName: 'Doe');
+  final mergedUser = profile.mergeOnto(baseUser);
 
   setUp(() {
     writer = MockProfileWriter();
-    authenticationCubit = AuthenticationCubit(repository: MockAuthenticationRepository(), sessionService: SessionService());
+    authenticationCubit = AuthenticationCubit(repository: MockAuthenticationRepository(), sessionService: SessionService())
+      ..setAuthenticated(baseUser);
   });
 
   tearDown(() {
@@ -30,7 +34,7 @@ void main() {
   });
 
   blocTest<ProfileEditCubit, ProfileEditState>(
-    'emits Loading then Success and updates AuthenticationCubit',
+    'emits Loading then Success and merges the profile onto AuthenticationCubit',
     build: () {
       when(
         () => writer.updateProfile(
@@ -39,20 +43,15 @@ void main() {
           newAvatarLocalFilePath: any(named: 'newAvatarLocalFilePath'),
           removeAvatar: any(named: 'removeAvatar'),
         ),
-      ).thenAnswer((_) async => Right(user));
+      ).thenAnswer((_) async => Right(profile));
       return ProfileEditCubit(writer: writer, authenticationCubit: authenticationCubit);
     },
     act: (cubit) => cubit.submit(firstName: 'Jane', lastName: 'Doe'),
-    expect: () => [const ProfileEditLoading(), ProfileEditSuccess(user)],
+    expect: () => [const ProfileEditLoading(), ProfileEditSuccess(mergedUser)],
     verify: (_) {
-      expect(authenticationCubit.state, AuthenticationAuthenticated(user));
+      expect(authenticationCubit.state, AuthenticationAuthenticated(mergedUser));
       verify(
-        () => writer.updateProfile(
-          firstName: 'Jane',
-          lastName: 'Doe',
-          newAvatarLocalFilePath: null,
-          removeAvatar: false,
-        ),
+        () => writer.updateProfile(firstName: 'Jane', lastName: 'Doe', newAvatarLocalFilePath: null, removeAvatar: false),
       ).called(1);
     },
   );
@@ -67,15 +66,15 @@ void main() {
           newAvatarLocalFilePath: any(named: 'newAvatarLocalFilePath'),
           removeAvatar: any(named: 'removeAvatar'),
         ),
-      ).thenAnswer((_) async => Left(ServerFailure(code: 'invalid_name', message: 'Invalid name')));
+      ).thenAnswer((_) async => Left(ServerFailure(code: 'first_name_required', message: 'First name required')));
       return ProfileEditCubit(writer: writer, authenticationCubit: authenticationCubit);
     },
     act: (cubit) => cubit.submit(firstName: '', lastName: 'Doe'),
     expect: () => [
       const ProfileEditLoading(),
-      ProfileEditError(ServerFailure(code: 'invalid_name', message: 'Invalid name')),
+      ProfileEditError(ServerFailure(code: 'first_name_required', message: 'First name required')),
     ],
-    verify: (_) => expect(authenticationCubit.state, isNot(isA<AuthenticationAuthenticated>())),
+    verify: (_) => expect(authenticationCubit.state, AuthenticationAuthenticated(baseUser)),
   );
 
   blocTest<ProfileEditCubit, ProfileEditState>(
@@ -88,11 +87,11 @@ void main() {
           newAvatarLocalFilePath: any(named: 'newAvatarLocalFilePath'),
           removeAvatar: any(named: 'removeAvatar'),
         ),
-      ).thenAnswer((_) async => Right(user));
+      ).thenAnswer((_) async => Right(profile));
       return ProfileEditCubit(writer: writer, authenticationCubit: authenticationCubit);
     },
     act: (cubit) => cubit.submit(firstName: 'Jane', lastName: 'Doe', newAvatarLocalFilePath: '/tmp/avatar.jpg'),
-    expect: () => [const ProfileEditLoading(), ProfileEditSuccess(user)],
+    expect: () => [const ProfileEditLoading(), ProfileEditSuccess(mergedUser)],
     verify: (_) {
       verify(
         () => writer.updateProfile(

@@ -1,7 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/domain/entity/user.dart';
 import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';
-import 'package:beebase/presentation/component/buttons/primary_button.dart';
+import 'package:beebase/presentation/connectivity/cubit/connectivity_cubit/connectivity_cubit.dart';
 import 'package:beebase/presentation/profile/avatar_path_resolver.dart';
 import 'package:beebase/presentation/profile/cubit/profile_cubit/profile_cubit.dart';
 import 'package:beebase/presentation/profile/extension/profile_date_x.dart';
@@ -22,6 +22,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 part 'profile_page/profile_sync_section.dart';
+part 'profile_page/profile_language_section.dart';
 part 'profile_page/profile_header.dart';
 part 'profile_page/profile_info_section.dart';
 part 'profile_page/profile_info_row.dart';
@@ -73,6 +74,8 @@ final class ProfilePage extends StatelessWidget implements AutoRouteWrapper {
                           _ProfileHeader(user: user),
                           SizedBox(height: context.spacing.xl),
                           _ProfileInfoSection(user: user),
+                          SizedBox(height: context.spacing.xl),
+                          const _ProfileLanguageSection(),
                           SizedBox(height: context.spacing.xl),
                           const _ProfileSyncSection(),
                           SizedBox(height: context.spacing.xl),

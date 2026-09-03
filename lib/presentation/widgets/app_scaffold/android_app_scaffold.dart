@@ -66,11 +66,23 @@ final class AndroidAppScaffold extends StatelessWidget {
           bottom: false,
           child: Padding(
             padding: EdgeInsets.fromLTRB(context.spacing.md, context.spacing.sm, context.spacing.md, context.spacing.sm),
-            child: Text(
-              title,
-              style: TextStyle(fontFamily: AppFont.titleBold, fontSize: 30, height: 1.1, color: context.colors.text.primary),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontFamily: AppFont.titleBold,
+                      fontSize: 30,
+                      height: 1.1,
+                      color: context.colors.text.primary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (action != null) IconButton(icon: Icon(action.materialIcon), tooltip: action.label, onPressed: action.onPressed),
+              ],
             ),
           ),
         ),

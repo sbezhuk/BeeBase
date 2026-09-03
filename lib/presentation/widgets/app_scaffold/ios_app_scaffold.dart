@@ -126,11 +126,36 @@ final class IosAppScaffold extends StatelessWidget {
 
     final Widget appBarContent;
     if (!showBackButton) {
+      final action = trailingAction;
       appBarContent = SafeArea(
         bottom: false,
         child: Padding(
           padding: EdgeInsets.fromLTRB(context.spacing.md, context.spacing.sm, context.spacing.md, context.spacing.sm),
-          child: Text(title, style: titleStyle.copyWith(fontSize: 30, height: 1.1), maxLines: 1, overflow: TextOverflow.ellipsis),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: titleStyle.copyWith(fontSize: 30, height: 1.1),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (action != null)
+                Semantics(
+                  button: true,
+                  label: action.label,
+                  child: GlassButton(
+                    icon: Icon(action.cupertinoIcon),
+                    iconColor: colors.brand.primary,
+                    onTap: action.onPressed,
+                    width: 36,
+                    height: 36,
+                    iconSize: 18,
+                  ),
+                ),
+            ],
+          ),
         ),
       );
     } else {

@@ -42,6 +42,7 @@ import 'package:beebase/data/models/apiary_response.dart';
 import 'package:beebase/data/models/hive_response.dart';
 import 'package:beebase/data/models/inspection_response.dart';
 import 'package:beebase/data/models/media_response.dart';
+import 'package:beebase/data/models/profile_response.dart';
 import 'package:beebase/data/models/user_response.dart';
 import 'package:beebase/data/profile/profile_operation_handler.dart';
 import 'package:beebase/data/repositories/apiary_repository_impl.dart';
@@ -149,6 +150,14 @@ Future<void> initDi() async {
       key: 'cached_user',
       toJson: (user) => user.toJson(),
       fromJson: (json) => UserResponse.fromJson(json as Map<String, dynamic>),
+    ),
+  );
+  di.registerLazySingleton<LocalDataSource<ProfileResponse>>(
+    () => SqliteLocalDataSource<ProfileResponse>(
+      database: di(),
+      key: profileCacheKey,
+      toJson: (profile) => profile.toJson(),
+      fromJson: (json) => ProfileResponse.fromJson(json as Map<String, dynamic>),
     ),
   );
   di.registerLazySingleton<LocalDataSource<List<ApiaryResponse>>>(
@@ -392,7 +401,8 @@ Future<void> initDi() async {
     () => ProfileRepositoryImpl(
       dataSource: di(),
       mediaDataSource: di(),
-      localDataSource: di(),
+      userLocalDataSource: di(),
+      profileLocalDataSource: di(),
       connectivity: di(),
       operationQueue: di(),
       offlineMutationStore: di(),

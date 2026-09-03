@@ -25,6 +25,29 @@ final class User {
   /// sent to the server. `null` means nothing is cached locally yet.
   final String? avatarLocalFilePath;
 
+  /// Merges freshly fetched/edited profile fields (see `Profile`) onto this
+  /// user — used by `ProfileCubit`/`ProfileEditCubit` to update
+  /// `AuthenticationCubit`'s single source of truth without losing [id]/
+  /// [email]/[createdAt], none of which the profile resource itself carries.
+  User copyWith({
+    String? firstName,
+    String? lastName,
+    String? avatarId,
+    bool clearAvatarId = false,
+    String? avatarLocalFilePath,
+    bool clearAvatarLocalFilePath = false,
+  }) {
+    return User(
+      id: id,
+      email: email,
+      createdAt: createdAt,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      avatarId: clearAvatarId ? null : (avatarId ?? this.avatarId),
+      avatarLocalFilePath: clearAvatarLocalFilePath ? null : (avatarLocalFilePath ?? this.avatarLocalFilePath),
+    );
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

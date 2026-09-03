@@ -281,8 +281,11 @@
       "sync": {
         "title": "Offline data",
         "pending": "There is data to synchronize.",
-        "up_to_date": "There is no data to synchronize."
-      }
+        "up_to_date": "There is no data to synchronize.",
+        "failed": "Some data couldn't sync. Tap to try again."
+      },
+      "language": "Language",
+      "language_sheet_title": "Choose language"
     },
     "edit": {
       "title": "Edit Profile",
@@ -338,7 +341,14 @@
       "hive_not_found": "This hive couldn't be found on the server.",
       "inspection_not_found": "This inspection couldn't be found on the server.",
       "media_not_found": "This photo couldn't be found on the server.",
-      "media_id_conflict": "This photo was already uploaded by another account."
+      "media_id_conflict": "This photo was already uploaded by another account.",
+      "user_not_found": "We couldn't find your account. Please log in again.",
+      "first_name_required": "First name is required.",
+      "first_name_too_long": "First name is too long.",
+      "last_name_required": "Last name is required.",
+      "last_name_too_long": "Last name is too long.",
+      "avatar_invalid": "This photo couldn't be used as an avatar.",
+      "avatar_not_found": "This photo couldn't be found. Please try uploading it again."
     }
   }
 }

@@ -3,6 +3,7 @@ import 'package:beebase/presentation/component/honey_gradient_background.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/android_app_scaffold.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold_action.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/ios_app_scaffold.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -45,6 +46,18 @@ final class AppScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // `.tr()` (used throughout `slivers`/`title` by every caller) reads the
+    // active locale from a global singleton, not from `BuildContext` — none
+    // of that establishes a rebuild dependency on its own. AutoRoute's
+    // Navigator, being Pages-API-based, does not rebuild an already-pushed
+    // route's content just because an ancestor above it (like `MaterialApp`)
+    // rebuilds with a new locale — only a widget that explicitly depends on
+    // `EasyLocalization`'s `InheritedWidget` gets told directly. Reading
+    // `context.locale` here registers exactly that dependency once, for
+    // every screen built through this shared shell, so switching language
+    // refreshes already-open screens immediately instead of only the next
+    // one pushed.
+    context.locale;
     final body = switch (Theme.of(context).platform) {
       TargetPlatform.iOS => IosAppScaffold(
         title: title,

@@ -8,6 +8,7 @@ import 'package:beebase/core/services/connectivity_service.dart';
 import 'package:beebase/data/data_source/interface/local_data_source.dart';
 import 'package:beebase/data/data_source/interface/media_data_source.dart';
 import 'package:beebase/data/data_source/interface/profile_data_source.dart';
+import 'package:beebase/data/models/profile_response.dart';
 import 'package:beebase/data/models/profile_update_request.dart';
 import 'package:beebase/data/models/user_response.dart';
 import 'package:beebase/data/repositories/profile_repository_impl.dart';
@@ -20,6 +21,8 @@ class MockMediaDataSource extends Mock implements IMediaDataSource {}
 
 class MockUserLocalDataSource extends Mock implements LocalDataSource<UserResponse> {}
 
+class MockProfileLocalDataSource extends Mock implements LocalDataSource<ProfileResponse> {}
+
 class MockConnectivityService extends Mock implements IConnectivityService {}
 
 class MockOperationQueue extends Mock implements OperationQueue {}
@@ -29,16 +32,16 @@ class MockOfflineMutationStore extends Mock implements OfflineMutationStore {}
 void main() {
   late MockProfileDataSource dataSource;
   late MockMediaDataSource mediaDataSource;
-  late MockUserLocalDataSource localDataSource;
+  late MockUserLocalDataSource userLocalDataSource;
+  late MockProfileLocalDataSource profileLocalDataSource;
   late MockConnectivityService connectivity;
   late MockOperationQueue operationQueue;
   late MockOfflineMutationStore offlineMutationStore;
   late ProfileRepositoryImpl repository;
 
-  final cachedUser = UserResponse(
+  final cachedProfile = ProfileResponse(
     id: 'user-1',
     email: 'john@example.com',
-    createdAt: DateTime(2026),
     firstName: 'John',
     lastName: 'Doe',
     avatar: 'media-1',
@@ -46,10 +49,12 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(const ProfileUpdateRequest(firstName: 'fallback', lastName: 'fallback'));
-    registerFallbackValue(UserResponse(id: 'fallback', email: 'fallback@example.com', createdAt: DateTime(2026)));
-    UserResponse mutateFallback(UserResponse? current) => cachedUser;
-    Object? toJsonFallback(UserResponse value) => null;
-    UserResponse fromJsonFallback(Object? json) => cachedUser;
+    registerFallbackValue(
+      const ProfileResponse(id: 'fallback', email: 'fallback@example.com', firstName: 'fallback', lastName: 'fallback'),
+    );
+    ProfileResponse mutateFallback(ProfileResponse? current) => cachedProfile;
+    Object? toJsonFallback(ProfileResponse value) => null;
+    ProfileResponse fromJsonFallback(Object? json) => cachedProfile;
     registerFallbackValue(mutateFallback);
     registerFallbackValue(toJsonFallback);
     registerFallbackValue(fromJsonFallback);
@@ -70,34 +75,39 @@ void main() {
   setUp(() {
     dataSource = MockProfileDataSource();
     mediaDataSource = MockMediaDataSource();
-    localDataSource = MockUserLocalDataSource();
+    userLocalDataSource = MockUserLocalDataSource();
+    profileLocalDataSource = MockProfileLocalDataSource();
     connectivity = MockConnectivityService();
     operationQueue = MockOperationQueue();
     offlineMutationStore = MockOfflineMutationStore();
     repository = ProfileRepositoryImpl(
       dataSource: dataSource,
       mediaDataSource: mediaDataSource,
-      localDataSource: localDataSource,
+      userLocalDataSource: userLocalDataSource,
+      profileLocalDataSource: profileLocalDataSource,
       connectivity: connectivity,
       operationQueue: operationQueue,
       offlineMutationStore: offlineMutationStore,
     );
     when(() => connectivity.isOnline).thenAnswer((_) async => true);
-    when(() => localDataSource.read()).thenAnswer((_) async => cachedUser);
-    when(() => localDataSource.write(any())).thenAnswer((_) async {});
+    when(() => profileLocalDataSource.read()).thenAnswer((_) async => cachedProfile);
+    when(() => profileLocalDataSource.write(any())).thenAnswer((_) async {});
+    when(() => userLocalDataSource.read()).thenAnswer(
+      (_) async => UserResponse(id: cachedProfile.id, email: cachedProfile.email, createdAt: DateTime(2026)),
+    );
     when(() => operationQueue.all()).thenAnswer((_) async => []);
   });
 
   group('getProfile', () {
     test('online: fetches from the server and caches the result', () async {
-      final response = cachedUser.copyWith(firstName: 'Jane');
+      final response = cachedProfile.copyWith(firstName: 'Jane');
       when(() => dataSource.getProfile()).thenAnswer((_) async => response);
 
       final result = await repository.getProfile();
 
       expect(result.isRight, isTrue);
-      result.fold((_) => fail('expected Right'), (user) => expect(user.firstName, 'Jane'));
-      verify(() => localDataSource.write(any())).called(1);
+      result.fold((_) => fail('expected Right'), (profile) => expect(profile.firstName, 'Jane'));
+      verify(() => profileLocalDataSource.write(any())).called(1);
     });
 
     test('offline: falls back to the cached profile', () async {
@@ -105,13 +115,13 @@ void main() {
 
       final result = await repository.getProfile();
 
-      result.fold((_) => fail('expected Right'), (user) => expect(user.id, cachedUser.id));
+      result.fold((_) => fail('expected Right'), (profile) => expect(profile.id, cachedProfile.id));
       verifyNever(() => dataSource.getProfile());
     });
 
     test('offline with nothing cached: fails', () async {
       when(() => connectivity.isOnline).thenAnswer((_) async => false);
-      when(() => localDataSource.read()).thenAnswer((_) async => null);
+      when(() => profileLocalDataSource.read()).thenAnswer((_) async => null);
 
       final result = await repository.getProfile();
 
@@ -120,15 +130,15 @@ void main() {
   });
 
   group('updateProfile — online', () {
-    test('updates first/last name, keeping the existing avatar untouched', () async {
-      final updated = cachedUser.copyWith(firstName: 'Jane', lastName: 'Smith');
+    test('updates first/last name without resending the current avatar id', () async {
+      final updated = cachedProfile.copyWith(firstName: 'Jane', lastName: 'Smith');
       when(() => dataSource.updateProfile(any())).thenAnswer((_) async => updated);
 
       final result = await repository.updateProfile(firstName: 'Jane', lastName: 'Smith');
 
-      result.fold((_) => fail('expected Right'), (user) {
-        expect(user.firstName, 'Jane');
-        expect(user.avatarId, cachedUser.avatar);
+      result.fold((_) => fail('expected Right'), (profile) {
+        expect(profile.firstName, 'Jane');
+        expect(profile.avatarId, cachedProfile.avatar);
       });
       verify(
         () => dataSource.updateProfile(
@@ -136,7 +146,7 @@ void main() {
             that: isA<ProfileUpdateRequest>()
                 .having((request) => request.firstName, 'firstName', 'Jane')
                 .having((request) => request.lastName, 'lastName', 'Smith')
-                .having((request) => request.avatar, 'avatar', 'media-1'),
+                .having((request) => request.avatar, 'avatar', isNull),
           ),
         ),
       ).called(1);
@@ -151,9 +161,10 @@ void main() {
           idempotencyKey: any(named: 'idempotencyKey'),
         ),
       ).thenAnswer((_) async => 'media-2');
-      when(
-        () => dataSource.updateProfile(any()),
-      ).thenAnswer((invocation) async => cachedUser.copyWith(avatar: (invocation.positionalArguments.single as ProfileUpdateRequest).avatar));
+      when(() => dataSource.updateProfile(any())).thenAnswer(
+        (invocation) async =>
+            cachedProfile.copyWith(avatar: (invocation.positionalArguments.single as ProfileUpdateRequest).avatar),
+      );
 
       final result = await repository.updateProfile(
         firstName: 'John',
@@ -161,18 +172,20 @@ void main() {
         newAvatarLocalFilePath: '/tmp/avatar.jpg',
       );
 
-      result.fold((_) => fail('expected Right'), (user) => expect(user.avatarId, 'media-2'));
-      verify(() => mediaDataSource.uploadMedia(
-            filePath: '/tmp/avatar.jpg',
-            originalFilename: any(named: 'originalFilename'),
-            contentType: any(named: 'contentType'),
-            idempotencyKey: any(named: 'idempotencyKey'),
-          )).called(1);
+      result.fold((_) => fail('expected Right'), (profile) => expect(profile.avatarId, 'media-2'));
+      verify(
+        () => mediaDataSource.uploadMedia(
+          filePath: '/tmp/avatar.jpg',
+          originalFilename: any(named: 'originalFilename'),
+          contentType: any(named: 'contentType'),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      ).called(1);
     });
 
-    test('removeAvatar clears the avatar', () async {
+    test('removeAvatar sends an empty string, per auth-service contract', () async {
       when(() => dataSource.updateProfile(any())).thenAnswer(
-        (invocation) async => cachedUser.copyWith(
+        (invocation) async => cachedProfile.copyWith(
           clearAvatar: true,
           avatar: (invocation.positionalArguments.single as ProfileUpdateRequest).avatar,
         ),
@@ -180,24 +193,24 @@ void main() {
 
       final result = await repository.updateProfile(firstName: 'John', lastName: 'Doe', removeAvatar: true);
 
-      result.fold((_) => fail('expected Right'), (user) => expect(user.avatarId, isNull));
+      result.fold((_) => fail('expected Right'), (profile) => expect(profile.avatarId, isNull));
       verify(
         () => dataSource.updateProfile(
-          any(that: isA<ProfileUpdateRequest>().having((request) => request.avatar, 'avatar', isNull)),
+          any(that: isA<ProfileUpdateRequest>().having((request) => request.avatar, 'avatar', '')),
         ),
       ).called(1);
     });
 
     test('server failure surfaces directly, without falling back to an offline queue', () async {
       when(() => dataSource.updateProfile(any())).thenThrow(
-        const ServerException(statusCode: 422, code: 'invalid_name', message: 'Invalid name'),
+        const ServerException(statusCode: 422, code: 'first_name_required', message: 'First name is required'),
       );
 
       final result = await repository.updateProfile(firstName: '', lastName: 'Doe');
 
       expect(result.isLeft, isTrue);
       verifyNever(
-        () => offlineMutationStore.saveWithConsolidatedOperation<UserResponse>(
+        () => offlineMutationStore.saveWithConsolidatedOperation<ProfileResponse>(
           cacheKey: any(named: 'cacheKey'),
           mutate: any(named: 'mutate'),
           toJson: any(named: 'toJson'),
@@ -216,7 +229,7 @@ void main() {
     setUp(() {
       when(() => connectivity.isOnline).thenAnswer((_) async => false);
       when(
-        () => offlineMutationStore.saveWithConsolidatedOperation<UserResponse>(
+        () => offlineMutationStore.saveWithConsolidatedOperation<ProfileResponse>(
           cacheKey: any(named: 'cacheKey'),
           mutate: any(named: 'mutate'),
           toJson: any(named: 'toJson'),
@@ -228,28 +241,30 @@ void main() {
           mergeInto: any(named: 'mergeInto'),
         ),
       ).thenAnswer((invocation) async {
-        final mutate = invocation.namedArguments[#mutate] as UserResponse Function(UserResponse?);
-        mutate(cachedUser);
+        final mutate = invocation.namedArguments[#mutate] as ProfileResponse Function(ProfileResponse?);
+        mutate(cachedProfile);
       });
     });
 
-    test('queues a consolidated update and returns the optimistic result', () async {
+    test('queues a consolidated update with no avatar key when the avatar is untouched', () async {
       final result = await repository.updateProfile(firstName: 'Jane', lastName: 'Doe');
 
-      result.fold((_) => fail('expected Right'), (user) => expect(user.firstName, 'Jane'));
-      verify(
-        () => offlineMutationStore.saveWithConsolidatedOperation<UserResponse>(
+      result.fold((_) => fail('expected Right'), (profile) => expect(profile.firstName, 'Jane'));
+      final captured = verify(
+        () => offlineMutationStore.saveWithConsolidatedOperation<ProfileResponse>(
           cacheKey: any(named: 'cacheKey'),
           mutate: any(named: 'mutate'),
           toJson: any(named: 'toJson'),
           fromJson: any(named: 'fromJson'),
           entityType: 'profile',
-          entityId: cachedUser.id,
+          entityId: cachedProfile.id,
           matchingOperationTypes: {OperationType.update},
-          operation: any(named: 'operation'),
+          operation: captureAny(named: 'operation'),
           mergeInto: any(named: 'mergeInto'),
         ),
-      ).called(1);
+      ).captured;
+      final builtOperation = (captured.single as OfflineOperation Function())();
+      expect(builtOperation.payload, {'firstName': 'Jane', 'lastName': 'Doe'});
       verifyNever(() => dataSource.updateProfile(any()));
     });
 
@@ -260,21 +275,60 @@ void main() {
         newAvatarLocalFilePath: '/tmp/avatar.jpg',
       );
 
-      result.fold((_) => fail('expected Right'), (user) {
-        expect(user.avatarLocalFilePath, '/tmp/avatar.jpg');
-        expect(user.avatarId, isNotNull);
-        expect(user.avatarId, isNot(cachedUser.avatar));
+      result.fold((_) => fail('expected Right'), (profile) {
+        expect(profile.avatarLocalFilePath, '/tmp/avatar.jpg');
+        expect(profile.avatarId, cachedProfile.avatar);
       });
-      verifyNever(() => mediaDataSource.uploadMedia(
-            filePath: any(named: 'filePath'),
-            originalFilename: any(named: 'originalFilename'),
-            contentType: any(named: 'contentType'),
-          ));
+      verifyNever(
+        () => mediaDataSource.uploadMedia(
+          filePath: any(named: 'filePath'),
+          originalFilename: any(named: 'originalFilename'),
+          contentType: any(named: 'contentType'),
+        ),
+      );
+    });
+
+    test('resolves the user id from the auth cache when no profile has ever been fetched', () async {
+      when(() => profileLocalDataSource.read()).thenAnswer((_) async => null);
+      when(
+        () => offlineMutationStore.saveWithConsolidatedOperation<ProfileResponse>(
+          cacheKey: any(named: 'cacheKey'),
+          mutate: any(named: 'mutate'),
+          toJson: any(named: 'toJson'),
+          fromJson: any(named: 'fromJson'),
+          entityType: any(named: 'entityType'),
+          entityId: any(named: 'entityId'),
+          matchingOperationTypes: any(named: 'matchingOperationTypes'),
+          operation: any(named: 'operation'),
+          mergeInto: any(named: 'mergeInto'),
+        ),
+      ).thenAnswer((invocation) async {
+        final mutate = invocation.namedArguments[#mutate] as ProfileResponse Function(ProfileResponse?);
+        mutate(null);
+      });
+
+      final result = await repository.updateProfile(firstName: 'Jane', lastName: 'Doe');
+
+      expect(result.isRight, isTrue);
+      verify(
+        () => offlineMutationStore.saveWithConsolidatedOperation<ProfileResponse>(
+          cacheKey: any(named: 'cacheKey'),
+          mutate: any(named: 'mutate'),
+          toJson: any(named: 'toJson'),
+          fromJson: any(named: 'fromJson'),
+          entityType: 'profile',
+          entityId: cachedProfile.id,
+          matchingOperationTypes: any(named: 'matchingOperationTypes'),
+          operation: any(named: 'operation'),
+          mergeInto: any(named: 'mergeInto'),
+        ),
+      ).called(1);
     });
   });
 
   test('updateProfile fails fast when there is no cached user at all', () async {
-    when(() => localDataSource.read()).thenAnswer((_) async => null);
+    when(() => profileLocalDataSource.read()).thenAnswer((_) async => null);
+    when(() => userLocalDataSource.read()).thenAnswer((_) async => null);
 
     final result = await repository.updateProfile(firstName: 'Jane', lastName: 'Doe');
 

@@ -1,11 +1,7 @@
 part of '../home_page.dart';
 
 final class _DashboardEmptyView extends StatelessWidget {
-  const _DashboardEmptyView({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
+  const _DashboardEmptyView({required this.icon, required this.title, required this.subtitle});
 
   final IconData icon;
   final String title;
@@ -24,17 +20,13 @@ final class _DashboardEmptyView extends StatelessWidget {
             SizedBox(height: context.spacing.sm),
             Text(
               title,
-              style: context.textStyles.body.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+              style: context.textStyles.body.copyWith(fontWeight: FontWeight.w600),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: context.spacing.xs),
             Text(
               subtitle,
-              style: context.textStyles.body.copyWith(
-                color: colors.text.secondary,
-              ),
+              style: context.textStyles.body.copyWith(color: colors.text.secondary),
               textAlign: TextAlign.center,
             ),
           ],

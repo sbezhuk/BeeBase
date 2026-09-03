@@ -1,3 +1,4 @@
+import 'package:beebase/core/error/error_text.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/entity/user.dart';
 import 'package:beebase/domain/repositories/profile_writer.dart';

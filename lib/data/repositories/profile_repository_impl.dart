@@ -11,10 +11,11 @@ import 'package:beebase/core/services/connectivity_service.dart';
 import 'package:beebase/data/data_source/interface/local_data_source.dart';
 import 'package:beebase/data/data_source/interface/media_data_source.dart';
 import 'package:beebase/data/data_source/interface/profile_data_source.dart';
-import 'package:beebase/data/models/extensions/user_extension.dart';
+import 'package:beebase/data/models/extensions/profile_extension.dart';
+import 'package:beebase/data/models/profile_response.dart';
 import 'package:beebase/data/models/profile_update_request.dart';
 import 'package:beebase/data/models/user_response.dart';
-import 'package:beebase/domain/entity/user.dart';
+import 'package:beebase/domain/entity/profile.dart';
 import 'package:beebase/domain/repositories/profile_reader.dart';
 import 'package:beebase/domain/repositories/profile_writer.dart';
 import 'package:beebase/domain/repositories/repository.dart';
@@ -26,18 +27,16 @@ import 'package:path/path.dart' as p;
 /// `ProfileOperationHandler` via `OperationRegistry`.
 const profileOperationEntityType = 'profile';
 
-/// Must match the `key` this app registers `LocalDataSource<UserResponse>`
-/// under in `di.dart` — the same cached-user entry `AuthenticationRepositoryImpl`
-/// already reads/writes, since a profile update is just an edit to the
-/// currently authenticated user.
-const profileCacheKey = 'cached_user';
+/// Must match the `key` this app registers `LocalDataSource<ProfileResponse>`
+/// under in `di.dart`.
+const profileCacheKey = 'cached_profile';
 
-final class ProfileRepositoryImpl extends Repository
-    implements IProfileReader, IProfileWriter {
+final class ProfileRepositoryImpl extends Repository implements IProfileReader, IProfileWriter {
   ProfileRepositoryImpl({
     required this.dataSource,
     required this.mediaDataSource,
-    required this.localDataSource,
+    required this.userLocalDataSource,
+    required this.profileLocalDataSource,
     required this.connectivity,
     required this.operationQueue,
     required this.offlineMutationStore,
@@ -52,26 +51,31 @@ final class ProfileRepositoryImpl extends Repository
   /// which only knows about apiaries and hives). `PUT /api/v1/profile`
   /// itself carries the resulting media id.
   final IMediaDataSource mediaDataSource;
-  final LocalDataSource<UserResponse> localDataSource;
+
+  /// Read-only here — the same `LocalDataSource<UserResponse>`
+  /// `AuthenticationRepositoryImpl` writes to. auth-service's profile
+  /// resource has no id of its own to source from until [getProfile] has
+  /// run at least once; this is the fallback so an offline profile edit
+  /// still knows which user it belongs to even before that first fetch.
+  final LocalDataSource<UserResponse> userLocalDataSource;
+  final LocalDataSource<ProfileResponse> profileLocalDataSource;
   final IConnectivityService connectivity;
   final OperationQueue operationQueue;
   final OfflineMutationStore offlineMutationStore;
 
   @override
-  Future<Either<Failure, User>> getProfile() async {
+  Future<Either<Failure, Profile>> getProfile() async {
     if (!await connectivity.isOnline) {
       return _cachedProfileOrFailure();
     }
 
     final result = await on(() async {
       final response = await dataSource.getProfile();
-      final cached = await localDataSource.read();
+      final cached = await profileLocalDataSource.read();
       final resolved = response.copyWith(
-        avatarLocalFilePath: cached?.avatar == response.avatar
-            ? cached?.avatarLocalFilePath
-            : null,
+        avatarLocalFilePath: cached?.avatar == response.avatar ? cached?.avatarLocalFilePath : null,
       );
-      await localDataSource.write(resolved);
+      await profileLocalDataSource.write(resolved);
       return resolved;
     });
 
@@ -83,39 +87,30 @@ final class ProfileRepositoryImpl extends Repository
     }, (response) async => Right(response.toEntity()));
   }
 
-  Future<Either<Failure, User>> _cachedProfileOrFailure({
-    Failure? fallback,
-  }) async {
-    final cached = await localDataSource.read();
+  Future<Either<Failure, Profile>> _cachedProfileOrFailure({Failure? fallback}) async {
+    final cached = await profileLocalDataSource.read();
     if (cached == null) {
-      return Left(
-        fallback ??
-            const InternalFailure(
-              ErrorTextKey('core.errors.unexpected_network_error'),
-            ),
-      );
+      return Left(fallback ?? const InternalFailure(ErrorTextKey('core.errors.unexpected_network_error')));
     }
     return Right(cached.toEntity());
   }
 
   @override
-  Future<Either<Failure, User>> updateProfile({
+  Future<Either<Failure, Profile>> updateProfile({
     required String firstName,
     required String lastName,
     String? newAvatarLocalFilePath,
     bool removeAvatar = false,
   }) async {
-    final cached = await localDataSource.read();
-    if (cached == null) {
-      return const Left(
-        InternalFailure(ErrorTextKey('core.errors.no_active_session')),
-      );
+    final userId = await _resolveUserId();
+    if (userId == null) {
+      return const Left(InternalFailure(ErrorTextKey('core.errors.no_active_session')));
     }
-    final pending = await _pendingOperation(cached.id);
+    final pending = await _pendingOperation(userId);
 
     if (pending != null || !await connectivity.isOnline) {
       return _updateOffline(
-        cached: cached,
+        userId: userId,
         pending: pending,
         firstName: firstName,
         lastName: lastName,
@@ -125,24 +120,23 @@ final class ProfileRepositoryImpl extends Repository
     }
 
     final result = await on(() async {
-      final avatarId = removeAvatar
-          ? null
+      // Per auth-service's own contract: null/omitted leaves the current
+      // avatar untouched, '' removes it, an id replaces it — never resend
+      // the current id, there's no need to.
+      final avatar = removeAvatar
+          ? ''
           : newAvatarLocalFilePath != null
           ? await _uploadAvatar(newAvatarLocalFilePath)
-          : cached.avatar;
+          : null;
       final response = await dataSource.updateProfile(
-        ProfileUpdateRequest(
-          firstName: firstName,
-          lastName: lastName,
-          avatar: avatarId,
-        ),
+        ProfileUpdateRequest(firstName: firstName, lastName: lastName, avatar: avatar),
       );
+      final cached = await profileLocalDataSource.read();
       final resolved = response.copyWith(
-        avatarLocalFilePath:
-            newAvatarLocalFilePath ?? cached.avatarLocalFilePath,
+        avatarLocalFilePath: newAvatarLocalFilePath ?? (removeAvatar ? null : cached?.avatarLocalFilePath),
         clearAvatarLocalFilePath: removeAvatar,
       );
-      await localDataSource.write(resolved);
+      await profileLocalDataSource.write(resolved);
       return resolved;
     });
 
@@ -151,7 +145,7 @@ final class ProfileRepositoryImpl extends Repository
         return Left(failure);
       }
       return _updateOffline(
-        cached: cached,
+        userId: userId,
         pending: pending,
         firstName: firstName,
         lastName: lastName,
@@ -166,11 +160,17 @@ final class ProfileRepositoryImpl extends Repository
     return mediaDataSource.uploadMedia(
       filePath: localFilePath,
       originalFilename: originalFilename,
-      contentType: contentTypeFromExtension(
-        extensionFromFilename(originalFilename),
-      ),
+      contentType: contentTypeFromExtension(extensionFromFilename(originalFilename)),
       idempotencyKey: IdempotencyKeyGenerator.generate(),
     );
+  }
+
+  Future<String?> _resolveUserId() async {
+    final cachedProfile = await profileLocalDataSource.read();
+    if (cachedProfile != null) {
+      return cachedProfile.id;
+    }
+    return (await userLocalDataSource.read())?.id;
   }
 
   /// Saves the edit locally and consolidates it into the single outstanding
@@ -178,17 +178,15 @@ final class ProfileRepositoryImpl extends Repository
   /// `OfflineMutationStore.saveWithConsolidatedOperation`), so repeated
   /// offline edits never stack up as separate queued operations.
   ///
-  /// A new avatar pick is given a local placeholder id (see
-  /// [LocalIdGenerator]) so [User.avatarId] can be checked the same way
-  /// every other locally-picked-but-unsynced media id is (`isLocal`) — the
-  /// actual upload happens once `ProfileOperationHandler` replays this
-  /// operation online. An edit that doesn't touch the avatar at all
-  /// (`newAvatarLocalFilePath` and `removeAvatar` both unset) carries
-  /// forward whatever avatar state [pending] already has queued, rather
-  /// than [cached]'s — [cached] may itself already reflect an earlier,
-  /// still-unsynced avatar pick from a previous call to this method.
-  Future<Either<Failure, User>> _updateOffline({
-    required UserResponse cached,
+  /// The avatar-related payload keys are omitted entirely when this edit
+  /// doesn't touch the avatar and nothing was already pending — replaying
+  /// the request with no `avatar` key leaves it untouched server-side, so
+  /// there's nothing to carry forward. If something *is* already pending
+  /// (an earlier, still-unsynced offline edit staged a pick or a removal),
+  /// that gets carried forward instead — otherwise consolidating this
+  /// plain field edit into the same operation would silently drop it.
+  Future<Either<Failure, Profile>> _updateOffline({
+    required String userId,
     required OfflineOperation? pending,
     required String firstName,
     required String lastName,
@@ -196,54 +194,48 @@ final class ProfileRepositoryImpl extends Repository
     required bool removeAvatar,
   }) async {
     final now = DateTime.now();
-    final payload = <String, dynamic>{
-      'first_name': firstName,
-      'last_name': lastName,
-    };
-    String? nextAvatarId;
+    final payload = <String, dynamic>{'firstName': firstName, 'lastName': lastName};
     String? nextAvatarLocalFilePath;
+    var clearAvatarLocalFilePath = false;
 
     if (removeAvatar) {
-      payload['avatar'] = null;
+      payload['avatar'] = '';
+      clearAvatarLocalFilePath = true;
     } else if (newAvatarLocalFilePath != null) {
-      nextAvatarId = LocalIdGenerator.generate();
+      payload['avatarLocalFilePath'] = newAvatarLocalFilePath;
+      payload['avatarIdempotencyKey'] = IdempotencyKeyGenerator.generate();
       nextAvatarLocalFilePath = newAvatarLocalFilePath;
-      payload['avatar_local_file_path'] = newAvatarLocalFilePath;
-      payload['avatar_idempotency_key'] = IdempotencyKeyGenerator.generate();
-    } else if (pending != null &&
-        pending.payload['avatar_local_file_path'] != null) {
-      nextAvatarId = cached.avatar;
-      nextAvatarLocalFilePath = cached.avatarLocalFilePath;
-      payload['avatar_local_file_path'] =
-          pending.payload['avatar_local_file_path'];
-      payload['avatar_idempotency_key'] =
-          pending.payload['avatar_idempotency_key'];
-    } else {
-      nextAvatarId = cached.avatar;
-      nextAvatarLocalFilePath = cached.avatarLocalFilePath;
-      payload['avatar'] = cached.avatar;
+    } else if (pending != null) {
+      if (pending.payload.containsKey('avatar')) {
+        payload['avatar'] = pending.payload['avatar'];
+        clearAvatarLocalFilePath = true;
+      } else if (pending.payload.containsKey('avatarLocalFilePath')) {
+        payload['avatarLocalFilePath'] = pending.payload['avatarLocalFilePath'];
+        payload['avatarIdempotencyKey'] = pending.payload['avatarIdempotencyKey'];
+        nextAvatarLocalFilePath = pending.payload['avatarLocalFilePath'] as String?;
+      }
     }
 
-    UserResponse? updated;
-    await offlineMutationStore.saveWithConsolidatedOperation<UserResponse>(
+    ProfileResponse? updated;
+    await offlineMutationStore.saveWithConsolidatedOperation<ProfileResponse>(
       cacheKey: profileCacheKey,
       mutate: (current) {
-        final base = current ?? cached;
+        final base =
+            current ?? ProfileResponse(id: userId, email: '', firstName: firstName, lastName: lastName);
         final response = base.copyWith(
           firstName: firstName,
           lastName: lastName,
-          avatar: nextAvatarId,
-          clearAvatar: nextAvatarId == null,
+          clearAvatar: removeAvatar,
           avatarLocalFilePath: nextAvatarLocalFilePath,
-          clearAvatarLocalFilePath: nextAvatarLocalFilePath == null,
+          clearAvatarLocalFilePath: clearAvatarLocalFilePath,
         );
         updated = response;
         return response;
       },
       toJson: (response) => response.toJson(),
-      fromJson: (json) => UserResponse.fromJson(json as Map<String, dynamic>),
+      fromJson: (json) => ProfileResponse.fromJson(json as Map<String, dynamic>),
       entityType: profileOperationEntityType,
-      entityId: cached.id,
+      entityId: userId,
       matchingOperationTypes: const {OperationType.update},
       operation: () => OfflineOperation(
         id: LocalIdGenerator.generate(),
@@ -253,14 +245,10 @@ final class ProfileRepositoryImpl extends Repository
         status: OperationStatus.pending,
         createdAt: now,
         updatedAt: now,
-        localEntityId: cached.id,
+        localEntityId: userId,
       ),
-      mergeInto: (existing) => existing.copyWith(
-        payload: payload,
-        status: OperationStatus.pending,
-        updatedAt: now,
-        version: existing.version + 1,
-      ),
+      mergeInto: (existing) =>
+          existing.copyWith(payload: payload, status: OperationStatus.pending, updatedAt: now, version: existing.version + 1),
     );
 
     return Right(updated!.toEntity());

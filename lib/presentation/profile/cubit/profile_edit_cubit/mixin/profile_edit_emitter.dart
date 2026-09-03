@@ -16,9 +16,16 @@ mixin ProfileEditEmitter on Cubit<ProfileEditState> {
       newAvatarLocalFilePath: newAvatarLocalFilePath,
       removeAvatar: removeAvatar,
     );
-    result.fold((failure) => emit(ProfileEditError(failure)), (user) {
-      authenticationCubit.setAuthenticated(user);
-      emit(ProfileEditSuccess(user));
+    result.fold((failure) => emit(ProfileEditError(failure)), (profile) {
+      final currentState = authenticationCubit.state;
+      final baseUser = currentState is AuthenticationAuthenticated ? currentState.user : null;
+      if (baseUser == null) {
+        emit(const ProfileEditError(InternalFailure(ErrorTextKey('core.errors.no_active_session'))));
+        return;
+      }
+      final mergedUser = profile.mergeOnto(baseUser);
+      authenticationCubit.setAuthenticated(mergedUser);
+      emit(ProfileEditSuccess(mergedUser));
     });
   }
 }

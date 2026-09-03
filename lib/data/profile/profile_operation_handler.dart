@@ -8,8 +8,8 @@ import 'package:beebase/core/offline/operation_type.dart';
 import 'package:beebase/data/data_source/interface/local_data_source.dart';
 import 'package:beebase/data/data_source/interface/media_data_source.dart';
 import 'package:beebase/data/data_source/interface/profile_data_source.dart';
+import 'package:beebase/data/models/profile_response.dart';
 import 'package:beebase/data/models/profile_update_request.dart';
-import 'package:beebase/data/models/user_response.dart';
 import 'package:beebase/data/repositories/profile_repository_impl.dart';
 import 'package:beebase/domain/repositories/repository.dart';
 import 'package:beebase/utils/media_file_extension.dart';
@@ -20,8 +20,7 @@ import 'package:path/path.dart' as p;
 /// never created or deleted client-side, and there is no per-field
 /// `imageAdd` equivalent (an avatar pick simply travels inside the same
 /// `update` payload — see `ProfileRepositoryImpl._updateOffline`).
-final class ProfileOperationHandler extends Repository
-    implements OperationHandler {
+final class ProfileOperationHandler extends Repository implements OperationHandler {
   ProfileOperationHandler({
     required this.dataSource,
     required this.mediaDataSource,
@@ -31,7 +30,7 @@ final class ProfileOperationHandler extends Repository
 
   final IProfileDataSource dataSource;
   final IMediaDataSource mediaDataSource;
-  final LocalDataSource<UserResponse> localDataSource;
+  final LocalDataSource<ProfileResponse> localDataSource;
   final OperationQueue operationQueue;
 
   @override
@@ -41,15 +40,9 @@ final class ProfileOperationHandler extends Repository
   Future<OperationResult> handle(OfflineOperation operation) {
     return switch (operation.operationType) {
       OperationType.update => _handleUpdate(operation),
-      OperationType.create => Future.value(
-        const OperationPermanentFailure('Profile create is not supported.'),
-      ),
-      OperationType.delete => Future.value(
-        const OperationPermanentFailure('Profile delete is not supported.'),
-      ),
-      OperationType.imageAdd => Future.value(
-        const OperationPermanentFailure('imageAdd is not a profile operation.'),
-      ),
+      OperationType.create => Future.value(const OperationPermanentFailure('Profile create is not supported.')),
+      OperationType.delete => Future.value(const OperationPermanentFailure('Profile delete is not supported.')),
+      OperationType.imageAdd => Future.value(const OperationPermanentFailure('imageAdd is not a profile operation.')),
     };
   }
 
@@ -59,50 +52,37 @@ final class ProfileOperationHandler extends Repository
       return const OperationPermanentFailure('Missing target id for update.');
     }
     final payload = operation.payload;
-    final pendingLocalPath = payload['avatar_local_file_path'] as String?;
+    final pendingLocalPath = payload['avatarLocalFilePath'] as String?;
 
     if (pendingLocalPath == null) {
-      return _sendUpdate(
-        operation,
-        avatarId: payload['avatar'] as String?,
-        pendingLocalPath: null,
-      );
+      // No 'avatar' key at all means "leave untouched" — matches
+      // auth-service's own contract, see `ProfileUpdateRequest`.
+      return _sendUpdate(operation, avatar: payload['avatar'] as String?, pendingLocalPath: null);
     }
 
-    final idempotencyKey =
-        payload['avatar_idempotency_key'] as String? ?? operation.id;
+    final idempotencyKey = payload['avatarIdempotencyKey'] as String? ?? operation.id;
     final originalFilename = p.basename(pendingLocalPath);
     final uploadResult = await on(
       () => mediaDataSource.uploadMedia(
         filePath: pendingLocalPath,
         originalFilename: originalFilename,
-        contentType: contentTypeFromExtension(
-          extensionFromFilename(originalFilename),
-        ),
+        contentType: contentTypeFromExtension(extensionFromFilename(originalFilename)),
         idempotencyKey: idempotencyKey,
       ),
     );
 
     return uploadResult.fold(
       _classify,
-      (uploadedId) => _sendUpdate(
-        operation,
-        avatarId: uploadedId,
-        pendingLocalPath: pendingLocalPath,
-      ),
+      (uploadedId) => _sendUpdate(operation, avatar: uploadedId, pendingLocalPath: pendingLocalPath),
     );
   }
 
-  Future<OperationResult> _sendUpdate(
-    OfflineOperation operation, {
-    required String? avatarId,
-    required String? pendingLocalPath,
-  }) async {
+  Future<OperationResult> _sendUpdate(OfflineOperation operation, {required String? avatar, required String? pendingLocalPath}) async {
     final payload = operation.payload;
     final request = ProfileUpdateRequest(
-      firstName: payload['first_name'] as String,
-      lastName: payload['last_name'] as String,
-      avatar: avatarId,
+      firstName: payload['firstName'] as String,
+      lastName: payload['lastName'] as String,
+      avatar: avatar,
     );
     final result = await on(() => dataSource.updateProfile(request));
 
@@ -117,25 +97,18 @@ final class ProfileOperationHandler extends Repository
 
       final cached = await localDataSource.read();
       final resolved = response.copyWith(
-        avatarLocalFilePath: pendingLocalPath ?? cached?.avatarLocalFilePath,
-        clearAvatarLocalFilePath: avatarId == null,
+        avatarLocalFilePath: pendingLocalPath ?? (avatar == '' ? null : cached?.avatarLocalFilePath),
+        clearAvatarLocalFilePath: avatar == '',
       );
       await localDataSource.write(resolved);
-      await _markSynced(operation, resolvedEntityId: avatarId);
+      await _markSynced(operation, resolvedEntityId: avatar);
       return const OperationSuccess();
     });
   }
 
-  Future<void> _markSynced(
-    OfflineOperation operation, {
-    String? resolvedEntityId,
-  }) {
+  Future<void> _markSynced(OfflineOperation operation, {String? resolvedEntityId}) {
     return operationQueue.update(
-      operation.copyWith(
-        status: OperationStatus.synced,
-        resolvedEntityId: resolvedEntityId,
-        updatedAt: DateTime.now(),
-      ),
+      operation.copyWith(status: OperationStatus.synced, resolvedEntityId: resolvedEntityId, updatedAt: DateTime.now()),
     );
   }
 

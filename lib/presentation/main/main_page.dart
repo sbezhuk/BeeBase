@@ -23,6 +23,13 @@ final class MainPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // See AppScaffold's identical read for why this is needed: AutoRoute's
+    // Pages-API Navigator doesn't rebuild this already-mounted shell just
+    // because `MaterialApp` above it rebuilds with a new locale, and
+    // `buildMainDestinations()`'s `.tr()` calls don't depend on
+    // `BuildContext` on their own. This registers that dependency directly,
+    // so the bottom nav's labels refresh the moment the language changes.
+    context.locale;
     return AutoTabsRouter(
       routes: const [HomeRoute(), ApiaryListRoute(), ProfileRoute()],
       builder: (context, child) {

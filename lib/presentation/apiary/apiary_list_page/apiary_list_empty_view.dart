@@ -31,6 +31,7 @@ final class _ApiaryListEmptyView extends StatelessWidget {
               style: context.textStyles.body.copyWith(color: colors.text.secondary),
               textAlign: TextAlign.center,
             ),
+            SizedBox(height: context.spacing.lg * 4),
           ],
         ),
       ),
