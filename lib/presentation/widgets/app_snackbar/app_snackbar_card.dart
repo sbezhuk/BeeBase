@@ -77,13 +77,7 @@ final class AppSnackBarCard extends StatelessWidget {
         // copy like the offline-sync message).
         child: Stack(
           children: [
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 4,
-              child: ColoredBox(color: variant.accentColor(colors)),
-            ),
+            Positioned(left: 0, top: 0, bottom: 0, width: 4, child: ColoredBox(color: variant.accentColor(colors))),
             Padding(
               padding: const EdgeInsets.only(left: 4),
               child: Row(
@@ -91,23 +85,16 @@ final class AppSnackBarCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: spacing.md,
-                        vertical: spacing.sm,
-                      ),
+                      padding: EdgeInsets.symmetric(horizontal: spacing.md, vertical: spacing.sm),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(message, style: textStyles.body),
                           if (description != null) ...[
                             SizedBox(height: spacing.xs),
-                            Text(
-                              description!,
-                              style: textStyles.body.copyWith(
-                                color: colors.text.secondary,
-                              ),
-                            ),
+                            Text(description!, style: textStyles.body.copyWith(color: colors.text.secondary)),
                           ],
                         ],
                       ),
@@ -126,11 +113,7 @@ final class AppSnackBarCard extends StatelessWidget {
                       ),
                     IconButton(
                       onPressed: onDismiss,
-                      icon: Icon(
-                        Icons.close,
-                        color: colors.honey.muted,
-                        size: 20,
-                      ),
+                      icon: Icon(Icons.close, color: colors.honey.muted, size: 20),
                       tooltip: 'core.snackbar.dismiss'.tr(),
                     ),
                   ],

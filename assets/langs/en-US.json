@@ -316,7 +316,7 @@
   },
   "sync": {
     "banner": {
-      "message": "You have data saved offline that can now be uploaded to the server.",
+      "message": "Offline data ready to sync.",
       "action": "Sync now",
       "syncing": "Syncing offline data…",
       "offline": "You're offline. Changes will sync once you're back online.",
