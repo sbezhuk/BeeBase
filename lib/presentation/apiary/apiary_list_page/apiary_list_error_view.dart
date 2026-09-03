@@ -17,7 +17,7 @@ final class _ApiaryListErrorView extends StatelessWidget {
             SizedBox(height: context.spacing.md),
             Text(failure.message.resolve(), style: context.textStyles.body, textAlign: TextAlign.center),
             SizedBox(height: context.spacing.lg),
-            _RetryButton(onPressed: () => context.read<ApiaryListCubit>().loadApiaries()),
+            RetryButton(onPressed: () => context.read<ApiaryListCubit>().loadApiaries()),
           ],
         ),
       ),

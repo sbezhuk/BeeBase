@@ -21,7 +21,7 @@ final class _InspectionListErrorView extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             SizedBox(height: context.spacing.lg),
-            _RetryButton(onPressed: () => context.read<InspectionListCubit>().loadInspections()),
+            RetryButton(onPressed: () => context.read<InspectionListCubit>().loadInspections()),
           ],
         ),
       ),

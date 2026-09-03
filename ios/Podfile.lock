@@ -19,7 +19,7 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_secure_storage/ios"
 
 SPEC CHECKSUMS:
-  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
   flutter_config: a0cd4b5996f2a1683657d14777c8fa57e04a40ea
   flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
 

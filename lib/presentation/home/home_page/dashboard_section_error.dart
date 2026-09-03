@@ -26,30 +26,10 @@ final class _DashboardSectionError extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             SizedBox(height: context.spacing.sm),
-            _DashboardRetryButton(onPressed: onRetry),
+            RetryButton(onPressed: onRetry, width: 120, height: 40),
           ],
         ),
       ),
     );
-  }
-}
-
-final class _DashboardRetryButton extends StatelessWidget {
-  const _DashboardRetryButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final label = 'dashboard.section_error.retry'.tr();
-    return switch (Theme.of(context).platform) {
-      TargetPlatform.iOS => GlassButton.custom(
-        onTap: onPressed,
-        width: 120,
-        height: 40,
-        child: Text(label),
-      ),
-      _ => FilledButton.tonal(onPressed: onPressed, child: Text(label)),
-    };
   }
 }

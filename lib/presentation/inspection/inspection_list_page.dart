@@ -10,6 +10,7 @@ import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold_action.dart';
 import 'package:beebase/presentation/widgets/loading_overlay/loading_overlay.dart';
+import 'package:beebase/presentation/widgets/retry_button/retry_button.dart';
 import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
@@ -18,7 +19,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 part 'inspection_list_page/inspection_list_body.dart';
 part 'inspection_list_page/inspection_list_loaded_view.dart';
@@ -26,7 +26,6 @@ part 'inspection_list_page/inspection_list_load_more_error.dart';
 part 'inspection_list_page/inspection_list_tile.dart';
 part 'inspection_list_page/inspection_list_empty_view.dart';
 part 'inspection_list_page/inspection_list_error_view.dart';
-part 'inspection_list_page/inspection_list_retry_button.dart';
 
 /// Lists the inspections belonging to one hive — [hiveId] is required at
 /// construction so an inspection is never fetched or shown outside its

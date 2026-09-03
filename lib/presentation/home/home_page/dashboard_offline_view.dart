@@ -36,7 +36,7 @@ final class _DashboardOfflineView extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   SizedBox(height: context.spacing.lg),
-                  _DashboardOfflineRetryButton(onPressed: onRetry),
+                  RetryButton(onPressed: onRetry),
                 ],
               ),
             ),
@@ -44,25 +44,5 @@ final class _DashboardOfflineView extends StatelessWidget {
         ),
       ],
     );
-  }
-}
-
-final class _DashboardOfflineRetryButton extends StatelessWidget {
-  const _DashboardOfflineRetryButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final label = 'dashboard.offline.retry'.tr();
-    return switch (Theme.of(context).platform) {
-      TargetPlatform.iOS => GlassButton.custom(
-        onTap: onPressed,
-        width: 140,
-        height: 44,
-        child: Text(label),
-      ),
-      _ => FilledButton.tonal(onPressed: onPressed, child: Text(label)),
-    };
   }
 }

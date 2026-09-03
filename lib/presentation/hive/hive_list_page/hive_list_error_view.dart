@@ -25,7 +25,7 @@ final class _HiveListErrorView extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             SizedBox(height: context.spacing.lg),
-            _RetryButton(
+            RetryButton(
               onPressed: () => context.read<HiveListCubit>().loadHives(),
             ),
           ],

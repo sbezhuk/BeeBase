@@ -49,11 +49,7 @@
     "title": "Dashboard",
     "offline": {
       "title": "No internet connection",
-      "subtitle": "Dashboard is available only when you are connected to the Internet.",
-      "retry": "Retry"
-    },
-    "section_error": {
-      "retry": "Retry"
+      "subtitle": "Dashboard is available only when you are connected to the Internet."
     },
     "overview": {
       "title": "Overview",
@@ -303,7 +299,8 @@
   },
   "core": {
     "common": {
-      "back": "Back"
+      "back": "Back",
+      "retry": "Retry"
     },
     "errors": {
       "request_cancelled": "The request was cancelled. Please try again.",
