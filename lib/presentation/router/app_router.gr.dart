@@ -305,7 +305,7 @@ class HomeRoute extends PageRouteInfo<void> {
   static PageInfo page = PageInfo(
     name,
     builder: (data) {
-      return const HomePage();
+      return WrappedRoute(child: const HomePage());
     },
   );
 }
@@ -527,6 +527,55 @@ class MainRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [ProfileEditPage]
+class ProfileEditRoute extends PageRouteInfo<ProfileEditRouteArgs> {
+  ProfileEditRoute({
+    required User user,
+    Key? key,
+    List<PageRouteInfo>? children,
+  }) : super(
+         ProfileEditRoute.name,
+         args: ProfileEditRouteArgs(user: user, key: key),
+         initialChildren: children,
+       );
+
+  static const String name = 'ProfileEditRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      final args = data.argsAs<ProfileEditRouteArgs>();
+      return WrappedRoute(
+        child: ProfileEditPage(user: args.user, key: args.key),
+      );
+    },
+  );
+}
+
+class ProfileEditRouteArgs {
+  const ProfileEditRouteArgs({required this.user, this.key});
+
+  final User user;
+
+  final Key? key;
+
+  @override
+  String toString() {
+    return 'ProfileEditRouteArgs{user: $user, key: $key}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! ProfileEditRouteArgs) return false;
+    return user == other.user && key == other.key;
+  }
+
+  @override
+  int get hashCode => user.hashCode ^ key.hashCode;
+}
+
+/// generated route for
 /// [ProfilePage]
 class ProfileRoute extends PageRouteInfo<void> {
   const ProfileRoute({List<PageRouteInfo>? children})
@@ -537,7 +586,7 @@ class ProfileRoute extends PageRouteInfo<void> {
   static PageInfo page = PageInfo(
     name,
     builder: (data) {
-      return const ProfilePage();
+      return WrappedRoute(child: const ProfilePage());
     },
   );
 }

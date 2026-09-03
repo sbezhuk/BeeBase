@@ -268,11 +268,33 @@
   "profile": {
     "page": {
       "title": "Profile",
-      "placeholder": "Profile details go here.",
+      "edit": "Edit profile",
+      "name_placeholder": "Add your name",
+      "account_info": "Account information",
+      "email": "Email",
+      "member_since": "Member since",
+      "app_version": "Version {version} ({build})",
+      "logout": "Log out",
+      "logout_cancel": "Cancel",
+      "logout_confirm_title": "Log out?",
+      "logout_confirm_message": "You'll need to sign in again to access your apiaries and hives.",
       "sync": {
         "title": "Offline data",
         "pending": "There is data to synchronize.",
         "up_to_date": "There is no data to synchronize."
+      }
+    },
+    "edit": {
+      "title": "Edit Profile",
+      "first_name_label": "First name",
+      "first_name_hint": "e.g. John",
+      "last_name_label": "Last name",
+      "last_name_hint": "e.g. Doe",
+      "remove_avatar": "Remove photo",
+      "submit": "Save Changes",
+      "validations": {
+        "first_name_required": "First name is required",
+        "last_name_required": "Last name is required"
       }
     }
   },

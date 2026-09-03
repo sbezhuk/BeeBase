@@ -161,7 +161,7 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
     final bytes = await picked.readAsBytes();
     final localId = LocalIdGenerator.generate();
     final extension = extensionFromFilename(picked.name);
-    final contentType = _contentTypeFor(extension);
+    final contentType = contentTypeFromExtension(extension);
     final localFilePath = await localMediaStore.save(
       Uint8List.fromList(bytes),
       id: localId,
@@ -446,13 +446,4 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
       ),
     );
   }
-
-  String _contentTypeFor(String extension) => switch (extension) {
-    'png' => 'image/png',
-    'heic' => 'image/heic',
-    'heif' => 'image/heif',
-    'webp' => 'image/webp',
-    'gif' => 'image/gif',
-    _ => 'image/jpeg',
-  };
 }

@@ -29,8 +29,10 @@ import 'package:beebase/data/data_source/interface/hive_data_source.dart';
 import 'package:beebase/data/data_source/interface/inspection_data_source.dart';
 import 'package:beebase/data/data_source/interface/local_data_source.dart';
 import 'package:beebase/data/data_source/interface/media_data_source.dart';
+import 'package:beebase/data/data_source/interface/profile_data_source.dart';
 import 'package:beebase/data/data_source/interface/statistics_data_source.dart';
 import 'package:beebase/data/data_source/media_data_source.dart';
+import 'package:beebase/data/data_source/profile_data_source.dart';
 import 'package:beebase/data/data_source/sqlite_local_data_source.dart';
 import 'package:beebase/data/data_source/statistics_data_source.dart';
 import 'package:beebase/data/hive/hive_operation_handler.dart';
@@ -41,12 +43,14 @@ import 'package:beebase/data/models/hive_response.dart';
 import 'package:beebase/data/models/inspection_response.dart';
 import 'package:beebase/data/models/media_response.dart';
 import 'package:beebase/data/models/user_response.dart';
+import 'package:beebase/data/profile/profile_operation_handler.dart';
 import 'package:beebase/data/repositories/apiary_repository_impl.dart';
 import 'package:beebase/data/repositories/authentication_repository_impl.dart';
 import 'package:beebase/data/repositories/hive_repository_impl.dart';
 import 'package:beebase/data/repositories/inspection_repository_impl.dart';
 import 'package:beebase/data/repositories/media_repository_impl.dart';
 import 'package:beebase/data/repositories/owner_image_writer.dart';
+import 'package:beebase/data/repositories/profile_repository_impl.dart';
 import 'package:beebase/data/repositories/statistics_repository_impl.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/entity/hive.dart';
@@ -62,6 +66,8 @@ import 'package:beebase/domain/repositories/inspection_writer.dart';
 import 'package:beebase/domain/repositories/media_reader.dart';
 import 'package:beebase/domain/repositories/media_writer.dart';
 import 'package:beebase/domain/repositories/owner_image_writer.dart';
+import 'package:beebase/domain/repositories/profile_reader.dart';
+import 'package:beebase/domain/repositories/profile_writer.dart';
 import 'package:beebase/domain/repositories/statistics_reader.dart';
 import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_delete_cubit/apiary_delete_cubit.dart';
@@ -82,6 +88,9 @@ import 'package:beebase/presentation/inspection/cubit/inspection_form_cubit/insp
 import 'package:beebase/presentation/inspection/cubit/inspection_list_cubit/inspection_list_cubit.dart';
 import 'package:beebase/presentation/inspection/inspection_list_refresh_notifier.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
+import 'package:beebase/presentation/profile/avatar_path_resolver.dart';
+import 'package:beebase/presentation/profile/cubit/profile_cubit/profile_cubit.dart';
+import 'package:beebase/presentation/profile/cubit/profile_edit_cubit/profile_edit_cubit.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/router/guardes/authentication_guard.dart';
 import 'package:beebase/presentation/sync/cubit/sync_banner_cubit/sync_banner_cubit.dart';
@@ -236,6 +245,10 @@ Future<void> initDi() async {
     () => MediaDataSource(dioClient: di(), resolver: di()),
   );
   di.registerLazySingleton<IMediaDataSource>(() => di<MediaDataSource>());
+  di.registerLazySingleton<ProfileDataSource>(
+    () => ProfileDataSource(dioClient: di(), resolver: di()),
+  );
+  di.registerLazySingleton<IProfileDataSource>(() => di<ProfileDataSource>());
   di.registerLazySingleton<StatisticsDataSource>(
     () => StatisticsDataSource(dioClient: di(), resolver: di()),
   );
@@ -291,12 +304,21 @@ Future<void> initDi() async {
       operationQueue: di(),
     ),
   );
+  di.registerLazySingleton<ProfileOperationHandler>(
+    () => ProfileOperationHandler(
+      dataSource: di(),
+      mediaDataSource: di(),
+      localDataSource: di(),
+      operationQueue: di(),
+    ),
+  );
   di.registerLazySingleton<OperationRegistry>(
     () => OperationRegistry({
       'apiary': di<ApiaryOperationHandler>(),
       'hive': di<HiveOperationHandler>(),
       'inspection': di<InspectionOperationHandler>(),
       'media': di<MediaOperationHandler>(),
+      'profile': di<ProfileOperationHandler>(),
     }),
   );
   di.registerLazySingleton<SyncEngineImpl>(
@@ -366,11 +388,26 @@ Future<void> initDi() async {
   );
   di.registerLazySingleton<IMediaReader>(() => di<MediaRepositoryImpl>());
   di.registerLazySingleton<IMediaWriter>(() => di<MediaRepositoryImpl>());
+  di.registerLazySingleton<ProfileRepositoryImpl>(
+    () => ProfileRepositoryImpl(
+      dataSource: di(),
+      mediaDataSource: di(),
+      localDataSource: di(),
+      connectivity: di(),
+      operationQueue: di(),
+      offlineMutationStore: di(),
+    ),
+  );
+  di.registerLazySingleton<IProfileReader>(() => di<ProfileRepositoryImpl>());
+  di.registerLazySingleton<IProfileWriter>(() => di<ProfileRepositoryImpl>());
   di.registerLazySingleton<StatisticsRepositoryImpl>(
     () => StatisticsRepositoryImpl(dataSource: di()),
   );
   di.registerLazySingleton<IStatisticsReader>(
     () => di<StatisticsRepositoryImpl>(),
+  );
+  di.registerLazySingleton<AvatarPathResolver>(
+    () => AvatarPathResolver(mediaReader: di(), localMediaStore: di()),
   );
   // #endregion
 
@@ -509,6 +546,12 @@ Future<void> initDi() async {
               (await di<IHiveReader>().getCachedHive(id))?.images ?? const [],
       },
     ),
+  );
+  di.registerFactory<ProfileCubit>(
+    () => ProfileCubit(reader: di(), authenticationCubit: di()),
+  );
+  di.registerFactory<ProfileEditCubit>(
+    () => ProfileEditCubit(writer: di(), authenticationCubit: di()),
   );
   // #endregion
 }
