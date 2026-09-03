@@ -26,7 +26,7 @@ final class _DashboardSectionError extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             SizedBox(height: context.spacing.sm),
-            RetryButton(onPressed: onRetry, width: 120, height: 40),
+            RetryButton(onPressed: onRetry),
           ],
         ),
       ),
