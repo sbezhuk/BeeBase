@@ -10,7 +10,10 @@ import 'package:beebase/domain/repositories/apiary_reader.dart';
 import 'package:beebase/domain/repositories/hive_reader.dart';
 import 'package:beebase/domain/repositories/inspection_reader.dart';
 import 'package:beebase/domain/repositories/statistics_reader.dart';
+import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
+import 'package:beebase/presentation/hive/hive_list_refresh_notifier.dart';
 import 'package:beebase/presentation/home/cubit/dashboard_cubit/dashboard_cubit.dart';
+import 'package:beebase/presentation/inspection/inspection_list_refresh_notifier.dart';
 import 'package:beebase/utils/either.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -62,6 +65,9 @@ void main() {
   late MockInspectionReader inspectionReader;
   late MockConnectivityService connectivity;
   late StreamController<bool> connectivityController;
+  late ApiaryListRefreshNotifier apiaryRefreshNotifier;
+  late HiveListRefreshNotifier hiveRefreshNotifier;
+  late InspectionListRefreshNotifier inspectionRefreshNotifier;
 
   DashboardCubit buildCubit() {
     return DashboardCubit(
@@ -70,6 +76,9 @@ void main() {
       hiveReader: hiveReader,
       inspectionReader: inspectionReader,
       connectivity: connectivity,
+      apiaryRefreshNotifier: apiaryRefreshNotifier,
+      hiveRefreshNotifier: hiveRefreshNotifier,
+      inspectionRefreshNotifier: inspectionRefreshNotifier,
     );
   }
 
@@ -99,6 +108,9 @@ void main() {
       () => connectivity.status,
     ).thenAnswer((_) => connectivityController.stream);
     when(() => connectivity.isOnline).thenAnswer((_) async => true);
+    apiaryRefreshNotifier = ApiaryListRefreshNotifier();
+    hiveRefreshNotifier = HiveListRefreshNotifier();
+    inspectionRefreshNotifier = InspectionListRefreshNotifier();
   });
 
   tearDown(() => connectivityController.close());
@@ -260,6 +272,115 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(cubit.state, same(stateAfterSecondLoad));
+      await cubit.close();
+    },
+  );
+
+  test(
+    'apiaryRefreshNotifier signalling a change while Loaded refetches only overview and apiary stats',
+    () async {
+      stubAllSuccess();
+      final cubit = buildCubit();
+      await cubit.loadDashboard();
+      clearInteractions(statisticsReader);
+
+      const updatedApiaryStats = ApiaryStats(
+        totalApiaries: 4,
+        apiariesWithoutHives: 0,
+        hiveDistribution: [],
+      );
+      when(
+        () => statisticsReader.getApiaryStats(),
+      ).thenAnswer((_) async => const Right(updatedApiaryStats));
+
+      apiaryRefreshNotifier.notify();
+      await Future<void>.delayed(Duration.zero);
+
+      verify(() => statisticsReader.getOverview()).called(1);
+      verify(() => statisticsReader.getApiaryStats()).called(1);
+      verifyNever(() => statisticsReader.getInspectionStats());
+      verifyNever(() => statisticsReader.getRecentActivity());
+      expect(
+        (cubit.state as DashboardLoaded).apiaryStats,
+        const SectionData(updatedApiaryStats),
+      );
+
+      await cubit.close();
+    },
+  );
+
+  test(
+    'hiveRefreshNotifier signalling a change while Loaded refetches only overview and apiary stats',
+    () async {
+      stubAllSuccess();
+      final cubit = buildCubit();
+      await cubit.loadDashboard();
+      clearInteractions(statisticsReader);
+
+      hiveRefreshNotifier.notify();
+      await Future<void>.delayed(Duration.zero);
+
+      verify(() => statisticsReader.getOverview()).called(1);
+      verify(() => statisticsReader.getApiaryStats()).called(1);
+      verifyNever(() => statisticsReader.getInspectionStats());
+      verifyNever(() => statisticsReader.getRecentActivity());
+
+      await cubit.close();
+    },
+  );
+
+  test(
+    'inspectionRefreshNotifier signalling a change while Loaded refetches only overview, inspection stats, and recent activity',
+    () async {
+      stubAllSuccess();
+      final cubit = buildCubit();
+      await cubit.loadDashboard();
+      clearInteractions(statisticsReader);
+
+      const updatedInspectionStats = InspectionStats(
+        totalInspections: 43,
+        inspectionsLast7Days: 3,
+        inspectionsThisMonth: 6,
+        inspectionsThisYear: 21,
+        activityLast30Days: [],
+      );
+      when(
+        () => statisticsReader.getInspectionStats(),
+      ).thenAnswer((_) async => const Right(updatedInspectionStats));
+
+      inspectionRefreshNotifier.notify();
+      await Future<void>.delayed(Duration.zero);
+
+      verify(() => statisticsReader.getOverview()).called(1);
+      verify(() => statisticsReader.getInspectionStats()).called(1);
+      verify(() => statisticsReader.getRecentActivity()).called(1);
+      verifyNever(() => statisticsReader.getApiaryStats());
+      expect(
+        (cubit.state as DashboardLoaded).inspectionStats,
+        const SectionData(updatedInspectionStats),
+      );
+
+      await cubit.close();
+    },
+  );
+
+  test(
+    'a refresh notifier signalling a change before the dashboard has loaded is a no-op',
+    () async {
+      stubAllSuccess();
+      final cubit = buildCubit();
+
+      apiaryRefreshNotifier.notify();
+      hiveRefreshNotifier.notify();
+      inspectionRefreshNotifier.notify();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(cubit.state, const DashboardLoading());
+      verifyNever(() => statisticsReader.getOverview());
+      verifyNever(() => statisticsReader.getApiaryStats());
+      verifyNever(() => statisticsReader.getInspectionStats());
+      verifyNever(() => statisticsReader.getRecentActivity());
+
       await cubit.close();
     },
   );

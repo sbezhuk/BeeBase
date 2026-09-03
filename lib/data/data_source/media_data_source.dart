@@ -9,12 +9,8 @@ import 'package:beebase/data/models/media_upload_form_request.dart';
 import 'package:dio/dio.dart' as dio;
 
 final class MediaDataSource implements IMediaDataSource {
-  MediaDataSource({
-    required DioClient dioClient,
-    required InterceptorResolver resolver,
-  }) : _dioClient = dioClient.copyWith(
-         interceptors: [resolver.resolve<AuthenticationInterceptor>()],
-       );
+  MediaDataSource({required DioClient dioClient, required InterceptorResolver resolver})
+    : _dioClient = dioClient.copyWith(interceptors: [resolver.resolve<AuthenticationInterceptor>()]);
 
   final DioClient _dioClient;
 
@@ -25,9 +21,7 @@ final class MediaDataSource implements IMediaDataSource {
       queryParameters: MediaListRequest(ids: ids).toJson(),
     );
     final items = response.data!['items'] as List<dynamic>;
-    return items
-        .map((item) => MediaResponse.fromJson(item as Map<String, dynamic>))
-        .toList();
+    return items.map((item) => MediaResponse.fromJson(item as Map<String, dynamic>)).toList();
   }
 
   @override
@@ -61,6 +55,5 @@ final class MediaDataSource implements IMediaDataSource {
   }
 
   @override
-  Future<void> deleteMedia(String id) =>
-      _dioClient.delete<void>(ApiEndpoints.media.byId(id));
+  Future<void> deleteMedia(String id) => _dioClient.delete<void>(ApiEndpoints.media.byId(id));
 }

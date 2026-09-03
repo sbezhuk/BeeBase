@@ -406,6 +406,9 @@ Future<void> initDi() async {
       hiveReader: di(),
       inspectionReader: di(),
       connectivity: di(),
+      apiaryRefreshNotifier: di(),
+      hiveRefreshNotifier: di(),
+      inspectionRefreshNotifier: di(),
     ),
   );
   di.registerFactory<ApiaryListCubit>(

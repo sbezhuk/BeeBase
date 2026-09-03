@@ -42,7 +42,9 @@ part 'home_page/dashboard_tappable_tile.dart';
 
 /// The app's Home tab — the online-only Dashboard (BEEB-24). Provides
 /// [DashboardCubit] and reflects its state; a network fetch happens on
-/// every open (never from a local cache) and again on pull-to-refresh.
+/// every open (never from a local cache), again on pull-to-refresh, and
+/// automatically whenever an apiary/hive/inspection mutation elsewhere in
+/// the app succeeds (BEEB-31) — see [DashboardCubit]'s own doc comment.
 @RoutePage()
 final class HomePage extends StatelessWidget implements AutoRouteWrapper {
   const HomePage({super.key});

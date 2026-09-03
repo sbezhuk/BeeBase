@@ -13,6 +13,9 @@ import 'package:beebase/domain/repositories/apiary_reader.dart';
 import 'package:beebase/domain/repositories/hive_reader.dart';
 import 'package:beebase/domain/repositories/inspection_reader.dart';
 import 'package:beebase/domain/repositories/statistics_reader.dart';
+import 'package:beebase/presentation/apiary/apiary_list_refresh_notifier.dart';
+import 'package:beebase/presentation/hive/hive_list_refresh_notifier.dart';
+import 'package:beebase/presentation/inspection/inspection_list_refresh_notifier.dart';
 import 'package:beebase/utils/either.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -27,6 +30,15 @@ part 'mixin/dashboard_emitter.dart';
 /// fresh from statistics-service on load/refresh, never from a local cache,
 /// and shows a dedicated full-page offline state instead of stale data when
 /// there's no connectivity.
+///
+/// Stays current without a manual refresh (BEEB-31) by subscribing to the
+/// same [ApiaryListRefreshNotifier]/[HiveListRefreshNotifier]/
+/// [InspectionListRefreshNotifier] broadcasts the list/details cubits
+/// already react to for their own screens — the writer emitters fire these
+/// only after a create/update/delete actually succeeds, so a failed
+/// mutation never triggers a refetch here. Only the sections a given
+/// entity's stats are derived from are refetched, so e.g. an inspection
+/// edit doesn't re-fetch apiary stats.
 final class DashboardCubit extends Cubit<DashboardState> with DashboardEmitter {
   DashboardCubit({
     required this.statisticsReader,
@@ -34,9 +46,21 @@ final class DashboardCubit extends Cubit<DashboardState> with DashboardEmitter {
     required this.hiveReader,
     required this.inspectionReader,
     required this.connectivity,
+    required this.apiaryRefreshNotifier,
+    required this.hiveRefreshNotifier,
+    required this.inspectionRefreshNotifier,
   }) : super(const DashboardLoading()) {
     _connectivitySubscription = connectivity.status.listen(
       (isOnline) => emitOfflineIfConnectionLost(isOnline: isOnline),
+    );
+    _apiarySubscription = apiaryRefreshNotifier.onChanged.listen(
+      (_) => _refreshApiaryDerivedSections(),
+    );
+    _hiveSubscription = hiveRefreshNotifier.onChanged.listen(
+      (_) => _refreshApiaryDerivedSections(),
+    );
+    _inspectionSubscription = inspectionRefreshNotifier.onChanged.listen(
+      (_) => _refreshInspectionDerivedSections(),
     );
   }
 
@@ -45,7 +69,13 @@ final class DashboardCubit extends Cubit<DashboardState> with DashboardEmitter {
   final IHiveReader hiveReader;
   final IInspectionReader inspectionReader;
   final IConnectivityService connectivity;
+  final ApiaryListRefreshNotifier apiaryRefreshNotifier;
+  final HiveListRefreshNotifier hiveRefreshNotifier;
+  final InspectionListRefreshNotifier inspectionRefreshNotifier;
   StreamSubscription<bool>? _connectivitySubscription;
+  StreamSubscription<void>? _apiarySubscription;
+  StreamSubscription<void>? _hiveSubscription;
+  StreamSubscription<void>? _inspectionSubscription;
 
   /// Initial load — replaces the body with a full-screen spinner.
   Future<void> loadDashboard() => emitLoad(statisticsReader, connectivity);
@@ -67,6 +97,25 @@ final class DashboardCubit extends Cubit<DashboardState> with DashboardEmitter {
   Future<void> retryRecentActivity() =>
       emitRetryRecentActivity(statisticsReader);
 
+  /// Reacts to [apiaryRefreshNotifier]/[hiveRefreshNotifier]: an apiary or
+  /// hive create/edit/delete changes apiary/hive counts and hive
+  /// distribution, which only the overview and apiary-stats sections are
+  /// derived from. A no-op while the dashboard isn't [DashboardLoaded]
+  /// (e.g. still on its initial load) — that in-flight/upcoming load
+  /// already fetches fresh data.
+  Future<void> _refreshApiaryDerivedSections() =>
+      Future.wait([retryOverview(), retryApiaryStats()]);
+
+  /// Reacts to [inspectionRefreshNotifier]: an inspection create/edit/delete
+  /// changes inspection counts and the recent-activity feed, which only the
+  /// overview, inspection-stats, and recent-activity sections are derived
+  /// from.
+  Future<void> _refreshInspectionDerivedSections() => Future.wait([
+    retryOverview(),
+    retryInspectionStats(),
+    retryRecentActivity(),
+  ]);
+
   /// Fetch-then-navigate passthroughs for the Dashboard's tap targets — the
   /// stats endpoints only return id+name for these, not the full entity the
   /// existing `*DetailsRoute`s need, so the tapped tile fetches it first.
@@ -85,6 +134,9 @@ final class DashboardCubit extends Cubit<DashboardState> with DashboardEmitter {
   @override
   Future<void> close() {
     unawaited(_connectivitySubscription?.cancel());
+    unawaited(_apiarySubscription?.cancel());
+    unawaited(_hiveSubscription?.cancel());
+    unawaited(_inspectionSubscription?.cancel());
     return super.close();
   }
 }
