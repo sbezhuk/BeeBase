@@ -9,6 +9,7 @@ import 'package:beebase/core/offline/operation_queue.dart';
 import 'package:beebase/core/offline/operation_registry.dart';
 import 'package:beebase/core/offline/sqlite_offline_mutation_store.dart';
 import 'package:beebase/core/offline/sqlite_operation_queue.dart';
+import 'package:beebase/core/offline/sync_activity_tracker.dart';
 import 'package:beebase/core/offline/sync_engine.dart';
 import 'package:beebase/core/offline/sync_engine_impl.dart';
 import 'package:beebase/core/services/connectivity_service.dart';
@@ -113,14 +114,20 @@ Future<void> initDi() async {
   di.registerLazySingleton<LocationService>(
     () => LocationService(connectivity: di()),
   );
+  // A leaf with no dependencies of its own (see its doc for why the sync
+  // batch's "in progress" flag lives here rather than directly on
+  // `SyncEngine`) — must be registered before anything below that depends
+  // on it.
+  di.registerLazySingleton<SyncActivityTracker>(SyncActivityTracker.new);
   di.registerLazySingleton<ApiaryListRefreshNotifier>(
-    ApiaryListRefreshNotifier.new,
+    () => ApiaryListRefreshNotifier(syncActivity: di<SyncActivityTracker>()),
   );
   di.registerLazySingleton<HiveListRefreshNotifier>(
-    HiveListRefreshNotifier.new,
+    () => HiveListRefreshNotifier(syncActivity: di<SyncActivityTracker>()),
   );
   di.registerLazySingleton<InspectionListRefreshNotifier>(
-    InspectionListRefreshNotifier.new,
+    () =>
+        InspectionListRefreshNotifier(syncActivity: di<SyncActivityTracker>()),
   );
   di.registerLazySingleton<ConnectivityService>(ConnectivityService.new);
   di.registerLazySingleton<IConnectivityService>(
@@ -157,7 +164,8 @@ Future<void> initDi() async {
       database: di(),
       key: profileCacheKey,
       toJson: (profile) => profile.toJson(),
-      fromJson: (json) => ProfileResponse.fromJson(json as Map<String, dynamic>),
+      fromJson: (json) =>
+          ProfileResponse.fromJson(json as Map<String, dynamic>),
     ),
   );
   di.registerLazySingleton<LocalDataSource<List<ApiaryResponse>>>(
@@ -331,7 +339,12 @@ Future<void> initDi() async {
     }),
   );
   di.registerLazySingleton<SyncEngineImpl>(
-    () => SyncEngineImpl(queue: di(), registry: di(), connectivity: di()),
+    () => SyncEngineImpl(
+      queue: di(),
+      registry: di(),
+      connectivity: di(),
+      activity: di(),
+    ),
   );
   di.registerLazySingleton<SyncEngine>(() => di<SyncEngineImpl>());
   // #endregion

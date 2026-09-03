@@ -5,6 +5,7 @@ import 'package:beebase/core/offline/operation_queue.dart';
 import 'package:beebase/core/offline/operation_registry.dart';
 import 'package:beebase/core/offline/operation_result.dart';
 import 'package:beebase/core/offline/operation_status.dart';
+import 'package:beebase/core/offline/sync_activity_tracker.dart';
 import 'package:beebase/core/offline/sync_engine.dart';
 import 'package:beebase/core/services/connectivity_service.dart';
 import 'package:flutter/foundation.dart';
@@ -14,12 +15,14 @@ final class SyncEngineImpl implements SyncEngine {
     required this.queue,
     required this.registry,
     required this.connectivity,
+    required this.activity,
     this.retryDelay = const Duration(seconds: 2),
   });
 
   final OperationQueue queue;
   final OperationRegistry registry;
   final IConnectivityService connectivity;
+  final SyncActivityTracker activity;
 
   /// Delay between in-pass retry attempts in [syncNow] — overridable so
   /// tests don't need to wait on the real clock.
@@ -30,18 +33,15 @@ final class SyncEngineImpl implements SyncEngine {
   StreamSubscription<bool>? _connectivitySubscription;
   StreamSubscription<void>? _queueSubscription;
   bool _syncing = false;
-  // Starts `false` rather than `null` on purpose: a cold start that's
-  // already online with operations left pending from a previous offline
-  // session (app was killed/crashed before it could sync) must also count
-  // as "just reconnected" and trigger an automatic sync, not just a live
-  // offline→online transition.
-  bool _wasOnline = false;
 
   @override
   ValueListenable<bool> get syncAvailable => _syncAvailable;
 
   @override
   ValueListenable<bool> get hasPendingOperations => _hasPendingOperations;
+
+  @override
+  ValueListenable<bool> get isSyncing => activity.isSyncing;
 
   @override
   void start() {
@@ -57,24 +57,9 @@ final class SyncEngineImpl implements SyncEngine {
   @override
   Future<void> refreshAvailability() async {
     final online = await connectivity.isOnline;
-    final all = await queue.all();
-    final pending = all.where(_needsSync).toList();
-    final hasUnsynced = pending.isNotEmpty;
+    final hasUnsynced = (await queue.all()).any(_needsSync);
     _hasPendingOperations.value = hasUnsynced;
     _syncAvailable.value = online && hasUnsynced;
-
-    final justReconnected = online && !_wasOnline;
-    _wasOnline = online;
-
-    if (justReconnected) {
-      debugPrint('[SyncEngine] Connectivity restored.');
-      if (hasUnsynced) {
-        debugPrint(
-          '[SyncEngine] ${pending.length} pending operation(s) found on reconnect — starting automatic sync.',
-        );
-        await syncNow();
-      }
-    }
   }
 
   // `inProgress` is included so a row stranded there (a handler threw before
@@ -90,13 +75,12 @@ final class SyncEngineImpl implements SyncEngine {
 
   // How many times a single `syncNow()` call will re-attempt an operation
   // that keeps ending this same call still `failed`, before leaving it for
-  // the next external trigger (another connectivity event, app resume, or a
-  // manual "Sync now"). Covers a transient hiccup right at the reconnect
-  // moment (the OS reports link-layer connectivity a moment before the
-  // network is actually routable, a decode error from a response that
-  // arrives incomplete under a flaky first request, ...) without making the
-  // user wait for a second connectivity flip — or restart the app — to see
-  // data that, from the backend's perspective, may already be synced.
+  // the next manual "Sync now" (there is no automatic retry trigger —
+  // synchronization only ever starts from explicit user action, see the
+  // class doc). Covers a transient hiccup mid-sync (a decode error from a
+  // response that arrives incomplete, a momentary drop mid-batch) without
+  // making the user tap "Sync now" a second time for data that, from the
+  // backend's perspective, may already be synced.
   static const _maxAttemptsPerOperation = 3;
 
   @override
@@ -112,6 +96,15 @@ final class SyncEngineImpl implements SyncEngine {
       return;
     }
     _syncing = true;
+    // `activity` brackets the *entire* call — every attempt, every in-pass
+    // retry, every entity type — as a single continuous "syncing" span, so
+    // any UI keyed off `isSyncing` shows one uninterrupted loader for the
+    // whole process instead of flickering per operation. Started only once
+    // the guards above have passed (an offline/already-syncing call never
+    // touches it, so it never flips on for a call that does nothing) and
+    // always finished via `finally`, so a thrown exception can't leave it
+    // stuck `true`.
+    activity.start();
     try {
       var toProcess = (await queue.all()).where(_needsSync).toList();
       var attempt = 1;
@@ -130,7 +123,7 @@ final class SyncEngineImpl implements SyncEngine {
         }
         if (!await connectivity.isOnline) {
           debugPrint(
-            '[SyncEngine] Lost connectivity mid-sync — leaving anything still unsynced for the next reconnect.',
+            '[SyncEngine] Lost connectivity mid-sync — leaving anything still unsynced for the next manual sync.',
           );
           break;
         }
@@ -155,6 +148,7 @@ final class SyncEngineImpl implements SyncEngine {
       debugPrint('[SyncEngine] Sync finished.');
     } finally {
       _syncing = false;
+      activity.finish();
     }
   }
 

@@ -9,24 +9,31 @@ part 'mixin/sync_banner_emitter.dart';
 
 /// Drives the app-wide "offline data available" banner. Global/singleton,
 /// like [AuthenticationCubit] — one instance for the whole app lifetime, not
-/// recreated per screen. Listens to [SyncEngine.syncAvailable] (a
-/// `ValueListenable`, not a stream) and mirrors it to [SyncBannerHidden]/
-/// [SyncBannerAvailable], ignoring changes while a manual [sync] is in
-/// flight so per-operation status flips don't flicker the banner mid-sync.
+/// recreated per screen. Mirrors [SyncEngine.isSyncing]/[SyncEngine.
+/// syncAvailable] to [SyncBannerSyncing]/[SyncBannerAvailable]/
+/// [SyncBannerHidden] — [isSyncing] takes priority whenever it's true, which
+/// is what keeps the banner showing one continuous loader for the whole
+/// sync (see [SyncBannerEmitter.emitFromEngine]) rather than something this
+/// cubit has to track locally around a `syncNow()` call itself.
 class SyncBannerCubit extends Cubit<SyncBannerState> with SyncBannerEmitter {
   SyncBannerCubit({required this.engine}) : super(const SyncBannerHidden()) {
-    emitFromAvailability(engine);
-    engine.syncAvailable.addListener(_onAvailabilityChanged);
+    emitFromEngine(engine);
+    engine.syncAvailable.addListener(_onChanged);
+    engine.isSyncing.addListener(_onChanged);
   }
 
   final SyncEngine engine;
 
-  void _onAvailabilityChanged() {
-    if (state is SyncBannerSyncing) return;
-    emitFromAvailability(engine);
-  }
+  void _onChanged() => emitFromEngine(engine);
 
-  Future<void> sync() => emitSync(engine);
+  /// The only place `syncNow()` is ever called from this cubit — and,
+  /// short of the Profile screen's sync row calling it directly, the only
+  /// place at all: synchronization is exclusively user-initiated (see
+  /// `SyncEngine`'s own doc). This method itself no longer manages the
+  /// `Syncing` state around the call — `_onChanged` reacting to
+  /// [SyncEngine.isSyncing] does that instead, so it stays correct even if
+  /// something else ever called `syncNow()` too.
+  Future<void> sync() => engine.syncNow();
 
   /// Hides the banner locally without touching any pending data — it
   /// reappears the next time [SyncEngine.syncAvailable] flips (a fresh
@@ -36,7 +43,8 @@ class SyncBannerCubit extends Cubit<SyncBannerState> with SyncBannerEmitter {
 
   @override
   Future<void> close() {
-    engine.syncAvailable.removeListener(_onAvailabilityChanged);
+    engine.syncAvailable.removeListener(_onChanged);
+    engine.isSyncing.removeListener(_onChanged);
     return super.close();
   }
 }

@@ -10,8 +10,12 @@ sealed class Failure {
   final ErrorText message;
 
   @override
-  bool operator ==(Object other) => identical(this, other) || (other is Failure && other.message == message);
+  bool operator ==(Object other) =>
+      identical(this, other) || (other is Failure && other.message == message);
 
   @override
   int get hashCode => message.hashCode;
+
+  @override
+  String toString() => '$runtimeType($message)';
 }

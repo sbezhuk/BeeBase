@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 class _FakeSyncEngine implements SyncEngine {
   final ValueNotifier<bool> _available = ValueNotifier(false);
   final ValueNotifier<bool> _pending = ValueNotifier(false);
+  final ValueNotifier<bool> _syncing = ValueNotifier(false);
   int syncNowCallCount = 0;
   Completer<void>? syncGate;
 
@@ -22,6 +23,9 @@ class _FakeSyncEngine implements SyncEngine {
   ValueListenable<bool> get hasPendingOperations => _pending;
 
   @override
+  ValueListenable<bool> get isSyncing => _syncing;
+
+  @override
   void start() {}
 
   @override
@@ -30,7 +34,12 @@ class _FakeSyncEngine implements SyncEngine {
   @override
   Future<void> syncNow() async {
     syncNowCallCount++;
-    await syncGate?.future;
+    _syncing.value = true;
+    try {
+      await syncGate?.future;
+    } finally {
+      _syncing.value = false;
+    }
   }
 
   void setAvailable(bool value) => _available.value = value;
@@ -58,7 +67,10 @@ void main() {
         data: MediaQueryData(padding: EdgeInsets.only(bottom: bottomInset)),
         child: MaterialApp(
           home: Scaffold(
-            body: BlocProvider<SyncBannerCubit>.value(value: cubit, child: const OfflineSyncBanner()),
+            body: BlocProvider<SyncBannerCubit>.value(
+              value: cubit,
+              child: const OfflineSyncBanner(),
+            ),
           ),
         ),
       ),
@@ -71,7 +83,9 @@ void main() {
   // is unaffected either way, only the matched string differs from prod.
   const actionKey = 'sync.banner.action';
 
-  testWidgets('clears the bottom system inset instead of rendering under it', (tester) async {
+  testWidgets('clears the bottom system inset instead of rendering under it', (
+    tester,
+  ) async {
     const bottomInset = 34.0;
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -83,7 +97,13 @@ void main() {
 
     final cardBottom = tester.getBottomLeft(find.byType(AppSnackBarCard)).dy;
 
-    expect(cardBottom, lessThanOrEqualTo(tester.view.physicalSize.height / tester.view.devicePixelRatio - bottomInset));
+    expect(
+      cardBottom,
+      lessThanOrEqualTo(
+        tester.view.physicalSize.height / tester.view.devicePixelRatio -
+            bottomInset,
+      ),
+    );
   });
 
   testWidgets('renders nothing when there is nothing to sync', (tester) async {
@@ -92,7 +112,9 @@ void main() {
     expect(find.byType(AppSnackBarCard), findsNothing);
   });
 
-  testWidgets('tapping the sync action invokes the sync engine', (tester) async {
+  testWidgets('tapping the sync action invokes the sync engine', (
+    tester,
+  ) async {
     engine.setAvailable(true);
     await pumpBanner(tester);
 
@@ -102,7 +124,9 @@ void main() {
     expect(engine.syncNowCallCount, 1);
   });
 
-  testWidgets('shows a progress indicator and no action while syncing', (tester) async {
+  testWidgets('shows a progress indicator and no action while syncing', (
+    tester,
+  ) async {
     engine
       ..setAvailable(true)
       ..syncGate = Completer<void>();

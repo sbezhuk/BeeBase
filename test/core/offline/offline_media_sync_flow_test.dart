@@ -8,6 +8,7 @@ import 'package:beebase/core/offline/operation_result.dart';
 import 'package:beebase/core/offline/operation_status.dart';
 import 'package:beebase/core/offline/sqlite_offline_mutation_store.dart';
 import 'package:beebase/core/offline/sqlite_operation_queue.dart';
+import 'package:beebase/core/offline/sync_activity_tracker.dart';
 import 'package:beebase/core/offline/sync_engine_impl.dart';
 import 'package:beebase/core/services/connectivity_service.dart';
 import 'package:beebase/core/storage/local_media_store.dart';
@@ -126,8 +127,24 @@ void main() {
             .toList(),
       );
 
-      final apiaryRefreshNotifier = ApiaryListRefreshNotifier();
-      final hiveRefreshNotifier = HiveListRefreshNotifier();
+      final activity = SyncActivityTracker();
+      final apiaryRefreshNotifier = ApiaryListRefreshNotifier(
+        syncActivity: activity,
+      );
+      final hiveRefreshNotifier = HiveListRefreshNotifier(
+        syncActivity: activity,
+      );
+      // Each entity gets two operations synced in this batch (a create and
+      // an imageAdd) — asserting exactly one `onChanged` per notifier for
+      // the whole batch is what proves the sync-batch coalescing actually
+      // works end-to-end: a list screen open during this sync refreshes
+      // once when it finishes, not once per operation (see
+      // `SyncCoalescedSignal`'s doc for why that used to make its loading
+      // indicator flicker).
+      var apiaryRefreshCount = 0;
+      var hiveRefreshCount = 0;
+      apiaryRefreshNotifier.onChanged.listen((_) => apiaryRefreshCount++);
+      hiveRefreshNotifier.onChanged.listen((_) => hiveRefreshCount++);
 
       final apiaryRepository = ApiaryRepositoryImpl(
         dataSource: apiaryDataSource,
@@ -143,7 +160,10 @@ void main() {
         operationQueue: queue,
         offlineMutationStore: mutationStore,
       );
-      final ownerImageWriter = OwnerImageWriter(apiaryWriter: apiaryRepository, hiveWriter: hiveRepository);
+      final ownerImageWriter = OwnerImageWriter(
+        apiaryWriter: apiaryRepository,
+        hiveWriter: hiveRepository,
+      );
       final mediaRepository = MediaRepositoryImpl(
         dataSource: mediaDataSource,
         localDataSource: mediaLocalDataSource,
@@ -179,6 +199,7 @@ void main() {
         queue: queue,
         registry: registry,
         connectivity: connectivity,
+        activity: activity,
       );
 
       final apiaryPhotoFile = File(
@@ -203,17 +224,19 @@ void main() {
           );
       expect(LocalIdGenerator.isLocal(apiary.id), isTrue);
 
-      final apiaryPhoto = (await mediaRepository.attachMedia(
-        ownerType: MediaOwnerType.apiary,
-        ownerId: apiary.id,
-        localFilePath: apiaryPhotoFile.path,
-        originalFilename: 'apiary.jpg',
-        contentType: 'image/jpeg',
-      )).fold(
-        (failure) =>
-            throw StateError('apiary photo attach failed offline: $failure'),
-        (value) => value,
-      );
+      final apiaryPhoto =
+          (await mediaRepository.attachMedia(
+            ownerType: MediaOwnerType.apiary,
+            ownerId: apiary.id,
+            localFilePath: apiaryPhotoFile.path,
+            originalFilename: 'apiary.jpg',
+            contentType: 'image/jpeg',
+          )).fold(
+            (failure) => throw StateError(
+              'apiary photo attach failed offline: $failure',
+            ),
+            (value) => value,
+          );
 
       // Regression coverage for BEEB-27: the cached apiary must immediately
       // reflect the newly attached photo, not just the operation queue —
@@ -235,17 +258,18 @@ void main() {
           );
       expect(LocalIdGenerator.isLocal(hive.id), isTrue);
 
-      final hivePhoto = (await mediaRepository.attachMedia(
-        ownerType: MediaOwnerType.hive,
-        ownerId: hive.id,
-        localFilePath: hivePhotoFile.path,
-        originalFilename: 'hive.jpg',
-        contentType: 'image/jpeg',
-      )).fold(
-        (failure) =>
-            throw StateError('hive photo attach failed offline: $failure'),
-        (value) => value,
-      );
+      final hivePhoto =
+          (await mediaRepository.attachMedia(
+            ownerType: MediaOwnerType.hive,
+            ownerId: hive.id,
+            localFilePath: hivePhotoFile.path,
+            originalFilename: 'hive.jpg',
+            contentType: 'image/jpeg',
+          )).fold(
+            (failure) =>
+                throw StateError('hive photo attach failed offline: $failure'),
+            (value) => value,
+          );
 
       final hiveAfterAttach = await hiveRepository.getCachedHive(hive.id);
       expect(hiveAfterAttach?.images, contains(hivePhoto.id));
@@ -328,7 +352,9 @@ void main() {
         ),
       );
       final capturedApiaryImages = <List<String>>[];
-      when(() => apiaryDataSource.updateApiary('srv-apiary-1', any())).thenAnswer((invocation) async {
+      when(
+        () => apiaryDataSource.updateApiary('srv-apiary-1', any()),
+      ).thenAnswer((invocation) async {
         final request = invocation.positionalArguments[1] as ApiaryRequest;
         capturedApiaryImages.add(request.images ?? const []);
         return ApiaryResponse(
@@ -350,7 +376,9 @@ void main() {
         ),
       );
       final capturedHiveImages = <List<String>>[];
-      when(() => hiveDataSource.updateHive('srv-hive-1', any())).thenAnswer((invocation) async {
+      when(() => hiveDataSource.updateHive('srv-hive-1', any())).thenAnswer((
+        invocation,
+      ) async {
         final request = invocation.positionalArguments[1] as HiveRequest;
         capturedHiveImages.add(request.images ?? const []);
         return HiveResponse(
@@ -364,6 +392,18 @@ void main() {
       });
 
       await syncEngine.syncNow();
+      // `onChanged` is a broadcast stream, so delivery to `.listen()`
+      // callbacks is scheduled a microtask after `add()` rather than
+      // happening inline — this just lets that scheduled delivery run
+      // before asserting on it.
+      await Future<void>.delayed(Duration.zero);
+
+      // Both refresh notifiers coalesced their two per-batch notifies (a
+      // create and an imageAdd each) into exactly one `onChanged` event,
+      // fired only once the whole batch finished.
+      expect(apiaryRefreshCount, 1);
+      expect(hiveRefreshCount, 1);
+      expect(syncEngine.isSyncing.value, isFalse);
 
       final queuedAfterSync = await queue.all();
       expect(
@@ -414,9 +454,7 @@ void main() {
       // doesn't try to re-download something that's already on disk. ---
       online = false;
       final apiaryPhotos =
-          (await mediaRepository.getMedia(
-            ids: const ['srv-media-1'],
-          )).fold(
+          (await mediaRepository.getMedia(ids: const ['srv-media-1'])).fold(
             (failure) => throw StateError('offline getMedia failed: $failure'),
             (items) => items,
           );
@@ -504,7 +542,10 @@ void main() {
       operationQueue: queue,
       offlineMutationStore: mutationStore,
     );
-    final ownerImageWriter = OwnerImageWriter(apiaryWriter: apiaryRepository, hiveWriter: MockHiveWriter());
+    final ownerImageWriter = OwnerImageWriter(
+      apiaryWriter: apiaryRepository,
+      hiveWriter: MockHiveWriter(),
+    );
     final mediaRepository = MediaRepositoryImpl(
       dataSource: mediaDataSource,
       localDataSource: mediaLocalDataSource,
@@ -540,17 +581,18 @@ void main() {
         );
     expect(LocalIdGenerator.isLocal(apiary.id), isTrue);
 
-    final attachedPhoto = (await mediaRepository.attachMedia(
-      ownerType: MediaOwnerType.apiary,
-      ownerId: apiary.id,
-      localFilePath: photoFile.path,
-      originalFilename: 'race.jpg',
-      contentType: 'image/jpeg',
-    )).fold(
-      (failure) =>
-          throw StateError('photo attach failed offline: $failure'),
-      (value) => value,
-    );
+    final attachedPhoto =
+        (await mediaRepository.attachMedia(
+          ownerType: MediaOwnerType.apiary,
+          ownerId: apiary.id,
+          localFilePath: photoFile.path,
+          originalFilename: 'race.jpg',
+          contentType: 'image/jpeg',
+        )).fold(
+          (failure) =>
+              throw StateError('photo attach failed offline: $failure'),
+          (value) => value,
+        );
     expect(LocalIdGenerator.isLocal(attachedPhoto.id), isTrue);
 
     // --- Online, but sync ONLY the apiary's own create operation — the
@@ -599,10 +641,8 @@ void main() {
     // must still return the photo straight from the cache, without ever
     // touching the network (the server has never heard of a `local-`
     // prefixed id).
-    final items =
-        (await mediaRepository.getMedia(
-          ids: [attachedPhoto.id],
-        )).fold(
+    final items = (await mediaRepository.getMedia(ids: [attachedPhoto.id]))
+        .fold(
           (failure) => throw StateError(
             'getMedia failed during the sync race: $failure',
           ),

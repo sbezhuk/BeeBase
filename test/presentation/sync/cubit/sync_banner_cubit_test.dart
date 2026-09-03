@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 class _FakeSyncEngine implements SyncEngine {
   final ValueNotifier<bool> _available = ValueNotifier(false);
   final ValueNotifier<bool> _pending = ValueNotifier(false);
+  final ValueNotifier<bool> _syncing = ValueNotifier(false);
   int syncNowCallCount = 0;
   Future<void> Function()? onSyncNow;
 
@@ -16,6 +17,9 @@ class _FakeSyncEngine implements SyncEngine {
   ValueListenable<bool> get hasPendingOperations => _pending;
 
   @override
+  ValueListenable<bool> get isSyncing => _syncing;
+
+  @override
   void start() {}
 
   @override
@@ -24,9 +28,14 @@ class _FakeSyncEngine implements SyncEngine {
   @override
   Future<void> syncNow() async {
     syncNowCallCount++;
-    final callback = onSyncNow;
-    if (callback != null) {
-      await callback();
+    _syncing.value = true;
+    try {
+      final callback = onSyncNow;
+      if (callback != null) {
+        await callback();
+      }
+    } finally {
+      _syncing.value = false;
     }
   }
 
@@ -73,34 +82,57 @@ void main() {
     expect(cubit.state, isA<SyncBannerHidden>());
   });
 
-  test('sync() emits Syncing, calls the engine, then reflects the final availability', () async {
-    engine.setAvailable(true);
-    engine.onSyncNow = () async => engine.setAvailable(false);
-    final cubit = SyncBannerCubit(engine: engine);
-
-    final syncFuture = cubit.sync();
-    expect(cubit.state, isA<SyncBannerSyncing>());
-
-    await syncFuture;
-
-    expect(engine.syncNowCallCount, 1);
-    expect(cubit.state, isA<SyncBannerHidden>());
-  });
-
-  test('ignores availability flips from the queue while a manual sync is in flight', () async {
-    engine.setAvailable(true);
-    engine.onSyncNow = () async {
-      // A per-operation status flip mid-sync shouldn't flicker the banner.
-      engine.setAvailable(false);
+  test(
+    'sync() emits Syncing for the whole engine.syncNow() call, then reflects the final availability',
+    () async {
       engine.setAvailable(true);
-    };
-    final cubit = SyncBannerCubit(engine: engine);
+      engine.onSyncNow = () async {
+        // Mid-flight, driven purely by `isSyncing` staying true — no separate
+        // local "syncing" state to fall out of step with it.
+        expect(engine.isSyncing.value, isTrue);
+        engine.setAvailable(false);
+      };
+      final cubit = SyncBannerCubit(engine: engine);
 
-    await cubit.sync();
+      final syncFuture = cubit.sync();
+      expect(cubit.state, isA<SyncBannerSyncing>());
 
-    // Only the post-sync re-read matters, not the mid-flight flips.
-    expect(cubit.state, isA<SyncBannerAvailable>());
-  });
+      await syncFuture;
+
+      expect(engine.syncNowCallCount, 1);
+      expect(cubit.state, isA<SyncBannerHidden>());
+    },
+  );
+
+  test(
+    'sync() just calls engine.syncNow() — synchronization is exclusively user-initiated through this',
+    () async {
+      final cubit = SyncBannerCubit(engine: engine);
+
+      await cubit.sync();
+
+      expect(engine.syncNowCallCount, 1);
+    },
+  );
+
+  test(
+    'ignores availability flips from the queue while a manual sync is in flight',
+    () async {
+      engine.setAvailable(true);
+      engine.onSyncNow = () async {
+        // A per-operation status flip mid-sync shouldn't flicker the banner —
+        // `isSyncing` staying true throughout takes priority over these.
+        engine.setAvailable(false);
+        engine.setAvailable(true);
+      };
+      final cubit = SyncBannerCubit(engine: engine);
+
+      await cubit.sync();
+
+      // Only the post-sync re-read matters, not the mid-flight flips.
+      expect(cubit.state, isA<SyncBannerAvailable>());
+    },
+  );
 
   test('dismiss() hides the banner without touching the engine', () {
     engine.setAvailable(true);

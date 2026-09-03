@@ -7,6 +7,7 @@ import 'package:beebase/core/offline/operation_registry.dart';
 import 'package:beebase/core/offline/operation_result.dart';
 import 'package:beebase/core/offline/operation_status.dart';
 import 'package:beebase/core/offline/operation_type.dart';
+import 'package:beebase/core/offline/sync_activity_tracker.dart';
 import 'package:beebase/core/offline/sync_engine_impl.dart';
 import 'package:beebase/core/services/connectivity_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -43,6 +44,7 @@ void main() {
   late MockOperationHandler handler;
   late MockConnectivityService connectivity;
   late OperationRegistry registry;
+  late SyncActivityTracker activity;
   late SyncEngineImpl engine;
 
   setUpAll(() {
@@ -55,10 +57,16 @@ void main() {
     connectivity = MockConnectivityService();
     when(() => handler.entityType).thenReturn('apiary');
     registry = OperationRegistry({'apiary': handler});
+    // A real instance rather than a mock: it's a plain, dependency-free
+    // `ValueNotifier` wrapper, so asserting `activity.isSyncing.value`
+    // transitions directly is both simpler and more realistic than mocking
+    // start()/finish() calls would be.
+    activity = SyncActivityTracker();
     engine = SyncEngineImpl(
       queue: queue,
       registry: registry,
       connectivity: connectivity,
+      activity: activity,
     );
     when(() => connectivity.isOnline).thenAnswer((_) async => true);
     when(() => connectivity.status).thenAnswer((_) => const Stream.empty());
@@ -66,9 +74,9 @@ void main() {
     when(() => queue.all()).thenAnswer((_) async => []);
     when(() => queue.update(any())).thenAnswer((_) async {});
     when(() => queue.find(any())).thenAnswer((_) async => null);
-    // Default so tests that don't care about sync outcome (e.g. availability-
-    // only assertions) don't hit an un-stubbed call when refreshAvailability's
-    // reconnect detection auto-triggers a sync in the background.
+    // Default so a test that overrides `queue.all()` to return an operation
+    // for some other reason (without caring about the sync outcome itself)
+    // doesn't hit an un-stubbed call.
     when(
       () => handler.handle(any()),
     ).thenAnswer((_) async => const OperationSuccess());
@@ -449,6 +457,7 @@ void main() {
           queue: queue,
           registry: registry,
           connectivity: connectivity,
+          activity: activity,
           retryDelay: Duration.zero,
         );
       });
@@ -599,7 +608,8 @@ void main() {
     );
 
     test(
-      'start() automatically triggers syncNow when connectivity transitions from offline to online',
+      'start() does NOT call syncNow when connectivity transitions from offline to online — '
+      'synchronization is only ever user-initiated',
       () async {
         final statusController = StreamController<bool>();
         var online = false;
@@ -608,77 +618,39 @@ void main() {
         ).thenAnswer((_) => statusController.stream);
         when(() => connectivity.isOnline).thenAnswer((_) async => online);
         when(() => queue.all()).thenAnswer((_) async => [_pendingOp()]);
-        when(
-          () => handler.handle(any()),
-        ).thenAnswer((_) async => const OperationSuccess());
 
         engine.start();
         await Future<void>.delayed(Duration.zero);
-
         expect(engine.syncAvailable.value, isFalse);
-        verifyNever(() => handler.handle(any()));
 
         online = true;
         statusController.add(true);
         await Future<void>.delayed(Duration.zero);
 
-        verify(() => handler.handle(any())).called(1);
-        final updates = verify(
-          () => queue.update(captureAny()),
-        ).captured.cast<OfflineOperation>();
-        expect(updates.map((op) => op.status), [
-          OperationStatus.inProgress,
-          OperationStatus.synced,
-        ]);
-
-        await statusController.close();
-      },
-    );
-
-    test(
-      'start() does not re-trigger syncNow on a connectivity event that stays online',
-      () async {
-        final statusController = StreamController<bool>();
-        when(
-          () => connectivity.status,
-        ).thenAnswer((_) => statusController.stream);
-        when(() => queue.all()).thenAnswer((_) async => [_pendingOp()]);
-        when(
-          () => handler.handle(any()),
-        ).thenAnswer((_) async => const OperationSuccess());
-
-        engine.start();
-        await Future<void>.delayed(Duration.zero);
-        verify(() => handler.handle(any())).called(1);
-
-        // Already online (connectivity.isOnline defaults to true in setUp) —
-        // a further "online" event from the stream (e.g. switching wifi
-        // networks without ever going offline) must not fire another sync.
-        statusController.add(true);
-        await Future<void>.delayed(Duration.zero);
-
+        // Availability flips to reflect the reconnect...
+        expect(engine.syncAvailable.value, isTrue);
+        // ...but nothing was actually synced.
         verifyNever(() => handler.handle(any()));
+        verifyNever(() => queue.update(any()));
 
         await statusController.close();
       },
     );
 
     test(
-      'refreshAvailability() auto-syncs on a cold start that is already online with leftover pending operations',
+      'refreshAvailability() does NOT call syncNow on a cold start that is already online with leftover pending operations',
       () async {
         when(() => queue.all()).thenAnswer((_) async => [_pendingOp()]);
-        when(
-          () => handler.handle(any()),
-        ).thenAnswer((_) async => const OperationSuccess());
 
         await engine.refreshAvailability();
 
-        verify(() => handler.handle(any())).called(1);
+        expect(engine.syncAvailable.value, isTrue);
+        verifyNever(() => handler.handle(any()));
       },
     );
 
     test(
-      'start() reacts to the queue changing (a new operation enqueued while already online)',
+      'start() reacts to the queue changing but does not call syncNow either',
       () async {
         final changesController = StreamController<void>();
         when(() => queue.changes).thenAnswer((_) => changesController.stream);
@@ -693,6 +665,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
 
         expect(engine.syncAvailable.value, isTrue);
+        verifyNever(() => handler.handle(any()));
 
         await changesController.close();
       },
@@ -736,6 +709,95 @@ void main() {
       await engine.refreshAvailability();
 
       expect(engine.hasPendingOperations.value, isFalse);
+    });
+  });
+
+  group('isSyncing', () {
+    test('is false before any sync has run', () {
+      expect(engine.isSyncing.value, isFalse);
+    });
+
+    test(
+      'is true for the entire duration of syncNow and false once it returns',
+      () async {
+        when(() => queue.all()).thenAnswer((_) async => [_pendingOp()]);
+        final observedDuringHandle = Completer<bool>();
+        when(() => handler.handle(any())).thenAnswer((_) async {
+          // Captured mid-flight, from inside the operation being processed —
+          // this is what proves `isSyncing` stays true for the whole batch,
+          // not just around the outer `syncNow()` call.
+          observedDuringHandle.complete(engine.isSyncing.value);
+          return const OperationSuccess();
+        });
+
+        final syncFuture = engine.syncNow();
+
+        expect(await observedDuringHandle.future, isTrue);
+        await syncFuture;
+        expect(engine.isSyncing.value, isFalse);
+      },
+    );
+
+    test(
+      'never flips true for a call that no-ops (offline, or already syncing)',
+      () async {
+        when(() => connectivity.isOnline).thenAnswer((_) async => false);
+        when(() => queue.all()).thenAnswer((_) async => [_pendingOp()]);
+
+        await engine.syncNow();
+
+        expect(engine.isSyncing.value, isFalse);
+        verifyNever(() => handler.handle(any()));
+      },
+    );
+
+    test(
+      'stays true across every in-pass retry attempt, not just the first',
+      () async {
+        final op = _pendingOp(id: 'op-1');
+        final retryingEngine = SyncEngineImpl(
+          queue: queue,
+          registry: registry,
+          connectivity: connectivity,
+          activity: activity,
+          retryDelay: Duration.zero,
+        );
+        when(() => queue.all()).thenAnswer((_) async => [op]);
+        var attempts = 0;
+        final wasSyncingOnSecondAttempt = Completer<bool>();
+        when(() => handler.handle(any())).thenAnswer((_) async {
+          attempts++;
+          if (attempts == 2) {
+            wasSyncingOnSecondAttempt.complete(retryingEngine.isSyncing.value);
+          }
+          return attempts == 1
+              ? const OperationRetryableFailure('blip')
+              : const OperationSuccess();
+        });
+        when(() => queue.find('op-1')).thenAnswer((_) async {
+          if (attempts == 0) return op;
+          return op.copyWith(
+            status: attempts == 1
+                ? OperationStatus.failed
+                : OperationStatus.synced,
+          );
+        });
+
+        final syncFuture = retryingEngine.syncNow();
+
+        expect(await wasSyncingOnSecondAttempt.future, isTrue);
+        await syncFuture;
+        expect(retryingEngine.isSyncing.value, isFalse);
+      },
+    );
+
+    test('is still flipped back to false even if a handler throws', () async {
+      when(() => queue.all()).thenAnswer((_) async => [_pendingOp()]);
+      when(() => handler.handle(any())).thenThrow(Exception('boom'));
+
+      await engine.syncNow();
+
+      expect(engine.isSyncing.value, isFalse);
     });
   });
 }

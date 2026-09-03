@@ -1,4 +1,5 @@
-import 'dart:async';
+import 'package:beebase/core/offline/sync_activity.dart';
+import 'package:beebase/core/offline/sync_coalesced_signal.dart';
 
 /// Broadcasts a signal whenever an inspection is created, edited, or
 /// deleted.
@@ -9,12 +10,20 @@ import 'dart:async';
 /// callback only fires for a route revealed within the same navigator that
 /// popped. [InspectionListCubit] subscribes to [onChanged] instead to
 /// refresh itself regardless of which navigator the change came from.
+///
+/// Delegates to [SyncCoalescedSignal] so that a sync batch touching several
+/// inspections only triggers one refresh once the whole batch finishes,
+/// instead of one per synced operation — see that class's doc.
 final class InspectionListRefreshNotifier {
-  final _controller = StreamController<void>.broadcast();
+  InspectionListRefreshNotifier({
+    SyncActivity syncActivity = const NeverSyncingActivity(),
+  }) : _signal = SyncCoalescedSignal(syncActivity);
 
-  Stream<void> get onChanged => _controller.stream;
+  final SyncCoalescedSignal _signal;
 
-  void notify() => _controller.add(null);
+  Stream<void> get onChanged => _signal.onChanged;
 
-  void dispose() => _controller.close();
+  void notify() => _signal.notify();
+
+  void dispose() => _signal.dispose();
 }

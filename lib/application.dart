@@ -21,9 +21,11 @@ final class Application extends StatefulWidget {
   State<Application> createState() => _ApplicationState();
 }
 
-final class _ApplicationState extends State<Application> with WidgetsBindingObserver {
+final class _ApplicationState extends State<Application>
+    with WidgetsBindingObserver {
   late final AppRouter _appRouter;
-  late final StreamSubscription<AuthenticationState> _authenticationSubscription;
+  late final StreamSubscription<AuthenticationState>
+  _authenticationSubscription;
 
   @override
   void initState() {
@@ -32,7 +34,9 @@ final class _ApplicationState extends State<Application> with WidgetsBindingObse
     _appRouter = di<AppRouter>();
     // Any place in the app can lose the session (e.g. a 401 whose refresh
     // also failed) — react here so the redirect isn't tied to a screen.
-    _authenticationSubscription = di<AuthenticationCubit>().stream.listen((state) {
+    _authenticationSubscription = di<AuthenticationCubit>().stream.listen((
+      state,
+    ) {
       if (state is AuthenticationUnauthenticated) {
         _appRouter.replaceAll([const LoginRoute()]);
       }
@@ -41,11 +45,10 @@ final class _ApplicationState extends State<Application> with WidgetsBindingObse
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Re-derives whether the banner should show, in case connectivity
-    // changed while backgrounded without the connectivity stream catching
-    // it. If that re-check finds the device came back online with
-    // operations still pending, `SyncEngine.refreshAvailability` also starts
-    // an automatic sync itself — same as a live connectivity event would.
+    // Never triggers a sync — synchronization is user-initiated only (see
+    // the "Sync now" banner). This just re-derives whether the banner
+    // should show, in case connectivity changed while backgrounded without
+    // the connectivity stream catching it.
     if (state == AppLifecycleState.resumed) {
       di<SyncEngine>().refreshAvailability();
     }
@@ -73,7 +76,9 @@ final class _ApplicationState extends State<Application> with WidgetsBindingObse
         localizationsDelegates: context.localizationDelegates,
         supportedLocales: context.supportedLocales,
         locale: context.locale,
-        routerConfig: _appRouter.config(navigatorObservers: () => [AutoRouteObserver()]),
+        routerConfig: _appRouter.config(
+          navigatorObservers: () => [AutoRouteObserver()],
+        ),
       ),
     );
   }
@@ -91,7 +96,11 @@ ThemeData _buildTheme(AppColor colors, Brightness brightness) {
       error: colors.status.error,
       surface: colors.surface.card,
     ),
-    extensions: [const Spacing.standard(), colors, AppTextStyles.fromColors(colors)],
+    extensions: [
+      const Spacing.standard(),
+      colors,
+      AppTextStyles.fromColors(colors),
+    ],
     textSelectionTheme: TextSelectionThemeData(
       cursorColor: colors.brand.primary,
       selectionColor: colors.brand.primary.withValues(alpha: 0.3),
