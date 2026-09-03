@@ -152,27 +152,13 @@ final class IosAppScaffold extends StatelessWidget {
       slivers: [
         if (!pinAppBar) SliverToBoxAdapter(child: appBarContent),
         ...slivers,
+        // Tab-root case only: the floating glass tab bar overlays content
+        // instead of reserving space for it (see _floatingTabBarClearance),
+        // so the last item needs real bottom padding to scroll clear of it.
+        if (!showBackButton)
+          SliverToBoxAdapter(child: SizedBox(height: _floatingTabBarClearance + MediaQuery.paddingOf(context).bottom)),
       ],
     );
-    // Tab-root case only: the floating glass tab bar overlays content
-    // instead of reserving space for it (see _floatingTabBarClearance).
-    // Shrinking the scroll view's own box (rather than appending a trailing
-    // blank sliver inside it, as before) makes a `SliverFillRemaining(
-    // hasScrollBody: false)` among [slivers] — e.g. an empty-state view —
-    // lay out against a `viewportMainAxisExtent` that already excludes the
-    // bar, so it fills and centers within the space actually visible above
-    // it. A trailing sibling sliver can't do that: sliver layout is
-    // sequential, so a fill-remaining sliver ahead of it has already
-    // claimed the whole remaining extent by the time it would be laid out
-    // — which is why empty states used to sit visually low, partly behind
-    // the bar. Scrollable content ends up with the same clearance either
-    // way, since that reserved strip was always blank space regardless.
-    if (!showBackButton) {
-      scrollView = Padding(
-        padding: EdgeInsets.only(bottom: _floatingTabBarClearance + MediaQuery.paddingOf(context).bottom),
-        child: scrollView,
-      );
-    }
     if (fadeEdges) scrollView = FadingEdgeScrollView(child: scrollView);
     final refresh = onRefresh;
     final Widget content = refresh == null ? scrollView : RefreshIndicator.adaptive(onRefresh: refresh, child: scrollView);
