@@ -43,10 +43,58 @@
       "home": "Home",
       "apiaries": "Apiaries",
       "profile": "Profile"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "offline": {
+      "title": "No internet connection",
+      "subtitle": "Dashboard is available only when you are connected to the Internet.",
+      "retry": "Retry"
     },
-    "home": {
-      "title": "BeeBase",
-      "welcome": "Welcome to BeeBase"
+    "section_error": {
+      "retry": "Retry"
+    },
+    "overview": {
+      "title": "Overview",
+      "total_apiaries": "Apiaries",
+      "total_hives": "Hives",
+      "total_inspections": "Inspections",
+      "last_7_days": "Last 7 days",
+      "this_month": "This month",
+      "this_year": "This year",
+      "apiaries_without_hives": "Apiaries without hives",
+      "hives_without_inspections": "Hives without inspections",
+      "avg_hives_per_apiary": "Avg hives / apiary",
+      "avg_inspections_per_hive": "Avg inspections / hive",
+      "latest_inspection": "Latest inspection",
+      "empty_title": "No stats yet",
+      "empty_subtitle": "Add your first apiary to start seeing your Dashboard statistics."
+    },
+    "apiary_stats": {
+      "title": "Apiary Statistics",
+      "total_apiaries": "Apiaries",
+      "apiaries_without_hives": "Apiaries without hives",
+      "most_hives": "Most hives",
+      "distribution_title": "Hive Distribution",
+      "empty_title": "No Apiaries yet",
+      "empty_subtitle": "Create your first Apiary to start managing your Hives."
+    },
+    "inspection_stats": {
+      "title": "Inspection Statistics",
+      "total_inspections": "Inspections",
+      "most_inspections": "Most inspections",
+      "latest_inspection": "Latest inspection",
+      "activity_title": "Inspection Activity (30 days)",
+      "empty_title": "No Inspections yet",
+      "empty_subtitle": "Create your first Inspection to start tracking hive activity."
+    },
+    "recent_activity": {
+      "title": "Recent Activity",
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "empty_title": "No recent activity",
+      "empty_subtitle": "Inspections you record will show up here."
     }
   },
   "apiary": {

@@ -3,6 +3,7 @@ import 'package:beebase/core/networking/auth_endpoints.dart';
 import 'package:beebase/core/networking/hive_endpoints.dart';
 import 'package:beebase/core/networking/inspection_endpoints.dart';
 import 'package:beebase/core/networking/media_endpoints.dart';
+import 'package:beebase/core/networking/statistics_endpoints.dart';
 
 /// Path constants for the BeeBase API, shared between data sources and the
 /// networking layer (e.g. [TokenRefresher] needs the refresh path without
@@ -14,4 +15,5 @@ abstract final class ApiEndpoints {
   static const hives = HiveEndpoints();
   static const inspections = InspectionEndpoints();
   static const media = MediaEndpoints();
+  static const statistics = StatisticsEndpoints();
 }
