@@ -139,6 +139,7 @@ void main() {
       await update(await localDataSource.read());
     });
     when(() => operationQueue.all()).thenAnswer((_) async => []);
+    when(() => operationQueue.enqueue(any())).thenAnswer((_) async {});
     when(
       () => offlineMutationStore.saveWithPendingOperation<List<ApiaryResponse>>(
         cacheKey: any(named: 'cacheKey'),
