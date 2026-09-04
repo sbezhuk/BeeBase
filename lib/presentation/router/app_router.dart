@@ -23,6 +23,7 @@ import 'package:beebase/presentation/inspection/inspection_details_page.dart';
 import 'package:beebase/presentation/inspection/inspection_form_page.dart';
 import 'package:beebase/presentation/inspection/inspection_list_page.dart';
 import 'package:beebase/presentation/main/main_page.dart';
+import 'package:beebase/presentation/profile/change_password_otp_page.dart';
 import 'package:beebase/presentation/profile/change_password_page.dart';
 import 'package:beebase/presentation/profile/profile_edit_page.dart';
 import 'package:beebase/presentation/profile/profile_page.dart';
@@ -106,6 +107,11 @@ final class AppRouter extends RootStackRouter {
     AutoRoute(
       page: ChangePasswordRoute.page,
       path: '/profile/change-password',
+      guards: [authenticationGuard],
+    ),
+    AutoRoute(
+      page: ChangePasswordOtpRoute.page,
+      path: '/profile/change-password/otp',
       guards: [authenticationGuard],
     ),
   ];

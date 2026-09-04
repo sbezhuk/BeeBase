@@ -4,10 +4,10 @@ import 'package:beebase/presentation/authentication/cubit/forgot_password_otp_cu
 import 'package:beebase/presentation/authentication/extension/server_failure_message_extension.dart';
 import 'package:beebase/presentation/component/buttons/primary_button.dart';
 import 'package:beebase/presentation/component/honeycomb_pattern.dart';
-import 'package:beebase/presentation/component/text_field/app_text_field.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar.dart';
 import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar_variant.dart';
+import 'package:beebase/presentation/widgets/otp_input/otp_input_field.dart';
 import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';

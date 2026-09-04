@@ -16,11 +16,10 @@ final class _OtpField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppTextField(
+    return OtpInputField(
       controller: controller,
       label: 'authentication.totp_setup.otp_label'.tr(),
-      hintText: 'authentication.totp_setup.otp_hint'.tr(),
-      keyboardType: TextInputType.number,
+      autofocus: true,
       validator: _validate,
       onChanged: onChanged,
     );

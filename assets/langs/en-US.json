@@ -46,7 +46,6 @@
       "subtitle": "Scan this QR code with Google Authenticator, then enter the 6-digit code it generates.",
       "secret_fallback_label": "Can't scan? Enter this code manually",
       "otp_label": "6-digit code",
-      "otp_hint": "123456",
       "submit": "Verify & Continue",
       "validations": {
         "otp_invalid_format": "Enter the 6-digit code from Google Authenticator"
@@ -56,7 +55,6 @@
       "title": "Enter Your Code",
       "subtitle": "Enter the 6-digit code from Google Authenticator to finish signing in.",
       "otp_label": "6-digit code",
-      "otp_hint": "123456",
       "submit": "Verify",
       "validations": {
         "otp_invalid_format": "Enter the 6-digit code from Google Authenticator"
@@ -76,7 +74,6 @@
       "title": "Enter Your Code",
       "subtitle": "Enter the 6-digit code from Google Authenticator to continue.",
       "otp_label": "6-digit code",
-      "otp_hint": "123456",
       "submit": "Verify",
       "validations": {
         "otp_invalid_format": "Enter the 6-digit code from Google Authenticator"
@@ -368,15 +365,21 @@
       "new_password_hint": "New password",
       "confirm_password_label": "Confirm new password",
       "confirm_password_hint": "Confirm new password",
-      "otp_label": "6-digit code",
-      "otp_hint": "123456",
-      "submit": "Change Password",
-      "success_message": "Password changed. Please log in again.",
+      "submit": "Continue",
       "validations": {
         "current_password_required": "Current password is required",
         "password_too_short": "At least 8 characters",
-        "confirm_password_mismatch": "Passwords don't match",
-        "otp_invalid_format": "Enter the 6-digit code from Google Authenticator"
+        "confirm_password_mismatch": "Passwords don't match"
+      },
+      "otp": {
+        "title": "Verify to Change Password",
+        "subtitle": "Enter the 6-digit code from Google Authenticator to confirm your new password.",
+        "otp_label": "6-digit code",
+        "submit": "Change Password",
+        "success_message": "Password changed. Please log in again.",
+        "validations": {
+          "otp_invalid_format": "Enter the 6-digit code from Google Authenticator"
+        }
       }
     }
   },

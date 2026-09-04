@@ -124,6 +124,73 @@ class ApiaryListRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [ChangePasswordOtpPage]
+class ChangePasswordOtpRoute extends PageRouteInfo<ChangePasswordOtpRouteArgs> {
+  ChangePasswordOtpRoute({
+    required String currentPassword,
+    required String newPassword,
+    Key? key,
+    List<PageRouteInfo>? children,
+  }) : super(
+         ChangePasswordOtpRoute.name,
+         args: ChangePasswordOtpRouteArgs(
+           currentPassword: currentPassword,
+           newPassword: newPassword,
+           key: key,
+         ),
+         initialChildren: children,
+       );
+
+  static const String name = 'ChangePasswordOtpRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      final args = data.argsAs<ChangePasswordOtpRouteArgs>();
+      return WrappedRoute(
+        child: ChangePasswordOtpPage(
+          currentPassword: args.currentPassword,
+          newPassword: args.newPassword,
+          key: args.key,
+        ),
+      );
+    },
+  );
+}
+
+class ChangePasswordOtpRouteArgs {
+  const ChangePasswordOtpRouteArgs({
+    required this.currentPassword,
+    required this.newPassword,
+    this.key,
+  });
+
+  final String currentPassword;
+
+  final String newPassword;
+
+  final Key? key;
+
+  @override
+  String toString() {
+    return 'ChangePasswordOtpRouteArgs{currentPassword: $currentPassword, newPassword: $newPassword, key: $key}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! ChangePasswordOtpRouteArgs) return false;
+    return currentPassword == other.currentPassword &&
+        newPassword == other.newPassword &&
+        key == other.key;
+  }
+
+  @override
+  int get hashCode =>
+      currentPassword.hashCode ^ newPassword.hashCode ^ key.hashCode;
+}
+
+/// generated route for
 /// [ChangePasswordPage]
 class ChangePasswordRoute extends PageRouteInfo<void> {
   const ChangePasswordRoute({List<PageRouteInfo>? children})
@@ -134,7 +201,7 @@ class ChangePasswordRoute extends PageRouteInfo<void> {
   static PageInfo page = PageInfo(
     name,
     builder: (data) {
-      return WrappedRoute(child: const ChangePasswordPage());
+      return const ChangePasswordPage();
     },
   );
 }

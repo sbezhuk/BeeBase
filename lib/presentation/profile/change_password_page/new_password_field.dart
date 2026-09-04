@@ -1,17 +1,15 @@
 part of '../change_password_page.dart';
 
 final class _NewPasswordField extends StatelessWidget {
-  const _NewPasswordField({required this.controller, required this.serverError, required this.onChanged});
+  const _NewPasswordField({required this.controller});
 
   final TextEditingController controller;
-  final String? serverError;
-  final VoidCallback onChanged;
 
   String? _validate(String? value) {
     if (value == null || value.length < 8) {
       return 'profile.change_password.validations.password_too_short'.tr();
     }
-    return serverError;
+    return null;
   }
 
   @override
@@ -22,7 +20,6 @@ final class _NewPasswordField extends StatelessWidget {
       hintText: 'profile.change_password.new_password_hint'.tr(),
       obscureText: true,
       validator: _validate,
-      onChanged: onChanged,
     );
   }
 }
