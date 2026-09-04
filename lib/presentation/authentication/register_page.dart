@@ -59,7 +59,7 @@ final class _RegisterPageState extends State<RegisterPage> {
 
   void _handleStateChange(BuildContext context, RegisterState state) {
     if (state is RegisterSuccess) {
-      context.router.replaceAll([const HomeRoute()]);
+      context.router.push(TotpSetupRoute(challenge: state.challenge));
     } else if (state is RegisterError) {
       _handleRegisterError(state.failure);
     }

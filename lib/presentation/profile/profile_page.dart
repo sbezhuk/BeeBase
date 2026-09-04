@@ -27,6 +27,7 @@ part 'profile_page/profile_header.dart';
 part 'profile_page/profile_info_section.dart';
 part 'profile_page/profile_info_row.dart';
 part 'profile_page/profile_app_version.dart';
+part 'profile_page/profile_change_password_link.dart';
 part 'profile_page/profile_logout_link.dart';
 
 @RoutePage()
@@ -77,6 +78,8 @@ final class ProfilePage extends StatelessWidget implements AutoRouteWrapper {
                           SizedBox(height: context.spacing.xl),
                           const _ProfileAppVersion(),
                           SizedBox(height: context.spacing.lg),
+                          const _ProfileChangePasswordLink(),
+                          SizedBox(height: context.spacing.md),
                           const _ProfileLogoutLink(),
                         ],
                       ),

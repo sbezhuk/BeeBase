@@ -124,6 +124,87 @@ class ApiaryListRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [ChangePasswordPage]
+class ChangePasswordRoute extends PageRouteInfo<void> {
+  const ChangePasswordRoute({List<PageRouteInfo>? children})
+    : super(ChangePasswordRoute.name, initialChildren: children);
+
+  static const String name = 'ChangePasswordRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      return WrappedRoute(child: const ChangePasswordPage());
+    },
+  );
+}
+
+/// generated route for
+/// [ForgotPasswordEmailPage]
+class ForgotPasswordEmailRoute extends PageRouteInfo<void> {
+  const ForgotPasswordEmailRoute({List<PageRouteInfo>? children})
+    : super(ForgotPasswordEmailRoute.name, initialChildren: children);
+
+  static const String name = 'ForgotPasswordEmailRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      return WrappedRoute(child: const ForgotPasswordEmailPage());
+    },
+  );
+}
+
+/// generated route for
+/// [ForgotPasswordOtpPage]
+class ForgotPasswordOtpRoute extends PageRouteInfo<ForgotPasswordOtpRouteArgs> {
+  ForgotPasswordOtpRoute({
+    required String flowToken,
+    Key? key,
+    List<PageRouteInfo>? children,
+  }) : super(
+         ForgotPasswordOtpRoute.name,
+         args: ForgotPasswordOtpRouteArgs(flowToken: flowToken, key: key),
+         initialChildren: children,
+       );
+
+  static const String name = 'ForgotPasswordOtpRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      final args = data.argsAs<ForgotPasswordOtpRouteArgs>();
+      return WrappedRoute(
+        child: ForgotPasswordOtpPage(flowToken: args.flowToken, key: args.key),
+      );
+    },
+  );
+}
+
+class ForgotPasswordOtpRouteArgs {
+  const ForgotPasswordOtpRouteArgs({required this.flowToken, this.key});
+
+  final String flowToken;
+
+  final Key? key;
+
+  @override
+  String toString() {
+    return 'ForgotPasswordOtpRouteArgs{flowToken: $flowToken, key: $key}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! ForgotPasswordOtpRouteArgs) return false;
+    return flowToken == other.flowToken && key == other.key;
+  }
+
+  @override
+  int get hashCode => flowToken.hashCode ^ key.hashCode;
+}
+
+/// generated route for
 /// [HiveDetailsPage]
 class HiveDetailsRoute extends PageRouteInfo<HiveDetailsRouteArgs> {
   HiveDetailsRoute({
@@ -495,6 +576,55 @@ class InspectionListRouteArgs {
 }
 
 /// generated route for
+/// [LoginOtpPage]
+class LoginOtpRoute extends PageRouteInfo<LoginOtpRouteArgs> {
+  LoginOtpRoute({
+    required String challengeToken,
+    Key? key,
+    List<PageRouteInfo>? children,
+  }) : super(
+         LoginOtpRoute.name,
+         args: LoginOtpRouteArgs(challengeToken: challengeToken, key: key),
+         initialChildren: children,
+       );
+
+  static const String name = 'LoginOtpRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      final args = data.argsAs<LoginOtpRouteArgs>();
+      return WrappedRoute(
+        child: LoginOtpPage(challengeToken: args.challengeToken, key: args.key),
+      );
+    },
+  );
+}
+
+class LoginOtpRouteArgs {
+  const LoginOtpRouteArgs({required this.challengeToken, this.key});
+
+  final String challengeToken;
+
+  final Key? key;
+
+  @override
+  String toString() {
+    return 'LoginOtpRouteArgs{challengeToken: $challengeToken, key: $key}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! LoginOtpRouteArgs) return false;
+    return challengeToken == other.challengeToken && key == other.key;
+  }
+
+  @override
+  int get hashCode => challengeToken.hashCode ^ key.hashCode;
+}
+
+/// generated route for
 /// [LoginPage]
 class LoginRoute extends PageRouteInfo<void> {
   const LoginRoute({List<PageRouteInfo>? children})
@@ -605,4 +735,118 @@ class RegisterRoute extends PageRouteInfo<void> {
       return WrappedRoute(child: const RegisterPage());
     },
   );
+}
+
+/// generated route for
+/// [ResetPasswordPage]
+class ResetPasswordRoute extends PageRouteInfo<ResetPasswordRouteArgs> {
+  ResetPasswordRoute({
+    required String resetToken,
+    Key? key,
+    List<PageRouteInfo>? children,
+  }) : super(
+         ResetPasswordRoute.name,
+         args: ResetPasswordRouteArgs(resetToken: resetToken, key: key),
+         initialChildren: children,
+       );
+
+  static const String name = 'ResetPasswordRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      final args = data.argsAs<ResetPasswordRouteArgs>();
+      return WrappedRoute(
+        child: ResetPasswordPage(resetToken: args.resetToken, key: args.key),
+      );
+    },
+  );
+}
+
+class ResetPasswordRouteArgs {
+  const ResetPasswordRouteArgs({required this.resetToken, this.key});
+
+  final String resetToken;
+
+  final Key? key;
+
+  @override
+  String toString() {
+    return 'ResetPasswordRouteArgs{resetToken: $resetToken, key: $key}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! ResetPasswordRouteArgs) return false;
+    return resetToken == other.resetToken && key == other.key;
+  }
+
+  @override
+  int get hashCode => resetToken.hashCode ^ key.hashCode;
+}
+
+/// generated route for
+/// [ResetPasswordSuccessPage]
+class ResetPasswordSuccessRoute extends PageRouteInfo<void> {
+  const ResetPasswordSuccessRoute({List<PageRouteInfo>? children})
+    : super(ResetPasswordSuccessRoute.name, initialChildren: children);
+
+  static const String name = 'ResetPasswordSuccessRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      return const ResetPasswordSuccessPage();
+    },
+  );
+}
+
+/// generated route for
+/// [TotpSetupPage]
+class TotpSetupRoute extends PageRouteInfo<TotpSetupRouteArgs> {
+  TotpSetupRoute({
+    required TotpSetupChallenge challenge,
+    Key? key,
+    List<PageRouteInfo>? children,
+  }) : super(
+         TotpSetupRoute.name,
+         args: TotpSetupRouteArgs(challenge: challenge, key: key),
+         initialChildren: children,
+       );
+
+  static const String name = 'TotpSetupRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      final args = data.argsAs<TotpSetupRouteArgs>();
+      return WrappedRoute(
+        child: TotpSetupPage(challenge: args.challenge, key: args.key),
+      );
+    },
+  );
+}
+
+class TotpSetupRouteArgs {
+  const TotpSetupRouteArgs({required this.challenge, this.key});
+
+  final TotpSetupChallenge challenge;
+
+  final Key? key;
+
+  @override
+  String toString() {
+    return 'TotpSetupRouteArgs{challenge: $challenge, key: $key}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! TotpSetupRouteArgs) return false;
+    return challenge == other.challenge && key == other.key;
+  }
+
+  @override
+  int get hashCode => challenge.hashCode ^ key.hashCode;
 }

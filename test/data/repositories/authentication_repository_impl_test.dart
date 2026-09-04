@@ -5,14 +5,23 @@ import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/core/storage/token_storage.dart';
 import 'package:beebase/data/data_source/interface/authentication_data_source.dart';
 import 'package:beebase/data/data_source/interface/local_data_source.dart';
+import 'package:beebase/data/data_source/interface/password_change_data_source.dart';
+import 'package:beebase/data/data_source/interface/password_reset_data_source.dart';
+import 'package:beebase/data/models/password_reset_otp_verified_response.dart';
+import 'package:beebase/data/models/password_reset_requested_response.dart';
 import 'package:beebase/data/models/session_response.dart';
 import 'package:beebase/data/models/user_response.dart';
 import 'package:beebase/data/repositories/authentication_repository_impl.dart';
+import 'package:beebase/domain/entity/auth_challenge.dart';
 import 'package:beebase/utils/either.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockAuthenticationDataSource extends Mock implements IAuthenticationDataSource {}
+
+class MockPasswordChangeDataSource extends Mock implements IPasswordChangeDataSource {}
+
+class MockPasswordResetDataSource extends Mock implements IPasswordResetDataSource {}
 
 class MockTokenStorage extends Mock implements TokenStorage {}
 
@@ -20,6 +29,8 @@ class MockUserLocalDataSource extends Mock implements LocalDataSource<UserRespon
 
 void main() {
   late MockAuthenticationDataSource dataSource;
+  late MockPasswordChangeDataSource passwordChangeDataSource;
+  late MockPasswordResetDataSource passwordResetDataSource;
   late MockTokenStorage tokenStorage;
   late MockUserLocalDataSource userLocalDataSource;
   late AuthenticationRepositoryImpl repository;
@@ -31,6 +42,13 @@ void main() {
     refreshTokenExpiresAt: 2000,
     user: userResponse,
   );
+  final totpSetupChallenge = TotpSetupChallenge(
+    setupToken: 'setup-token',
+    otpauthUri: 'otpauth://totp/BeeBase:bee@example.com?secret=JBSWY3DPEHPK3PXP&issuer=BeeBase',
+    secret: 'JBSWY3DPEHPK3PXP',
+    expiresAt: DateTime(2026),
+  );
+  final loginOtpChallenge = LoginOtpChallenge(challengeToken: 'challenge-token', expiresAt: DateTime(2026));
 
   setUpAll(() {
     registerFallbackValue(userResponse);
@@ -38,10 +56,14 @@ void main() {
 
   setUp(() {
     dataSource = MockAuthenticationDataSource();
+    passwordChangeDataSource = MockPasswordChangeDataSource();
+    passwordResetDataSource = MockPasswordResetDataSource();
     tokenStorage = MockTokenStorage();
     userLocalDataSource = MockUserLocalDataSource();
     repository = AuthenticationRepositoryImpl(
       dataSource: dataSource,
+      passwordChangeDataSource: passwordChangeDataSource,
+      passwordResetDataSource: passwordResetDataSource,
       tokenStorage: tokenStorage,
       userLocalDataSource: userLocalDataSource,
     );
@@ -53,27 +75,20 @@ void main() {
   });
 
   group('register', () {
-    test('stores the access token and returns the mapped user on success', () async {
+    test('returns the TOTP setup challenge without storing a token', () async {
       when(
-        () => dataSource.register(
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-        ),
-      ).thenAnswer((_) async => sessionResponse);
+        () => dataSource.register(email: any(named: 'email'), password: any(named: 'password')),
+      ).thenAnswer((_) async => totpSetupChallenge);
 
       final result = await repository.register(email: 'bee@example.com', password: 'password123');
 
-      expect(result, isA<Right<Failure, dynamic>>());
-      result.fold((_) => fail('expected Right'), (user) => expect(user.email, 'bee@example.com'));
-      verify(() => tokenStorage.saveAccessToken('access-token')).called(1);
+      result.fold((_) => fail('expected Right'), (challenge) => expect(challenge, totpSetupChallenge));
+      verifyNever(() => tokenStorage.saveAccessToken(any()));
     });
 
     test('maps a 409 email_taken exception to a ServerFailure', () async {
       when(
-        () => dataSource.register(
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-        ),
+        () => dataSource.register(email: any(named: 'email'), password: any(named: 'password')),
       ).thenThrow(const ServerException(statusCode: 409, code: 'email_taken', message: 'already registered'));
 
       final result = await repository.register(email: 'bee@example.com', password: 'password123');
@@ -82,32 +97,27 @@ void main() {
         (failure) => expect(failure, isA<ServerFailure>().having((f) => f.code, 'code', 'email_taken')),
         (_) => fail('expected Left'),
       );
-      verifyNever(() => tokenStorage.saveAccessToken(any()));
     });
   });
 
   group('login', () {
-    test('stores the access token and returns the mapped user on success', () async {
+    test('returns the challenge without storing a token', () async {
       when(
-        () => dataSource.login(
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-        ),
-      ).thenAnswer((_) async => sessionResponse);
+        () => dataSource.login(email: any(named: 'email'), password: any(named: 'password')),
+      ).thenAnswer((_) async => loginOtpChallenge);
 
       final result = await repository.login(email: 'bee@example.com', password: 'password123');
 
-      result.fold((_) => fail('expected Right'), (user) => expect(user.id, 'user-1'));
-      verify(() => tokenStorage.saveAccessToken('access-token')).called(1);
+      result.fold((_) => fail('expected Right'), (challenge) => expect(challenge, loginOtpChallenge));
+      verifyNever(() => tokenStorage.saveAccessToken(any()));
     });
 
-    test('maps invalid_credentials to a ServerFailure without storing a token', () async {
+    test('maps invalid_credentials to a ServerFailure', () async {
       when(
-        () => dataSource.login(
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-        ),
-      ).thenThrow(const ServerException(statusCode: 401, code: 'invalid_credentials', message: 'invalid email or password'));
+        () => dataSource.login(email: any(named: 'email'), password: any(named: 'password')),
+      ).thenThrow(
+        const ServerException(statusCode: 401, code: 'invalid_credentials', message: 'invalid email or password'),
+      );
 
       final result = await repository.login(email: 'bee@example.com', password: 'wrong');
 
@@ -115,7 +125,179 @@ void main() {
         (failure) => expect(failure, isA<ServerFailure>().having((f) => f.code, 'code', 'invalid_credentials')),
         (_) => fail('expected Left'),
       );
+    });
+  });
+
+  group('verifyTotpSetup', () {
+    test('stores the access token and returns the mapped user on success', () async {
+      when(
+        () => dataSource.verifyTotpSetup(setupToken: any(named: 'setupToken'), otp: any(named: 'otp')),
+      ).thenAnswer((_) async => sessionResponse);
+
+      final result = await repository.verifyTotpSetup(setupToken: 'setup-token', otp: '123456');
+
+      result.fold((_) => fail('expected Right'), (user) => expect(user.email, 'bee@example.com'));
+      verify(() => tokenStorage.saveAccessToken('access-token')).called(1);
+    });
+
+    test('maps otp_invalid to a ServerFailure without storing a token', () async {
+      when(
+        () => dataSource.verifyTotpSetup(setupToken: any(named: 'setupToken'), otp: any(named: 'otp')),
+      ).thenThrow(const ServerException(statusCode: 401, code: 'otp_invalid', message: 'wrong code'));
+
+      final result = await repository.verifyTotpSetup(setupToken: 'setup-token', otp: '000000');
+
+      expect(result, isA<Left<Failure, dynamic>>());
       verifyNever(() => tokenStorage.saveAccessToken(any()));
+    });
+  });
+
+  group('verifyLoginOtp', () {
+    test('stores the access token and returns the mapped user on success', () async {
+      when(
+        () => dataSource.verifyLoginOtp(challengeToken: any(named: 'challengeToken'), otp: any(named: 'otp')),
+      ).thenAnswer((_) async => sessionResponse);
+
+      final result = await repository.verifyLoginOtp(challengeToken: 'challenge-token', otp: '123456');
+
+      result.fold((_) => fail('expected Right'), (user) => expect(user.id, 'user-1'));
+      verify(() => tokenStorage.saveAccessToken('access-token')).called(1);
+    });
+
+    test('maps otp_locked to a ServerFailure', () async {
+      when(
+        () => dataSource.verifyLoginOtp(challengeToken: any(named: 'challengeToken'), otp: any(named: 'otp')),
+      ).thenThrow(const ServerException(statusCode: 429, code: 'otp_locked', message: 'too many attempts'));
+
+      final result = await repository.verifyLoginOtp(challengeToken: 'challenge-token', otp: '000000');
+
+      result.fold(
+        (failure) => expect(failure, isA<ServerFailure>().having((f) => f.code, 'code', 'otp_locked')),
+        (_) => fail('expected Left'),
+      );
+    });
+  });
+
+  group('changePassword', () {
+    test('succeeds', () async {
+      when(
+        () => passwordChangeDataSource.changePassword(
+          currentPassword: any(named: 'currentPassword'),
+          newPassword: any(named: 'newPassword'),
+          otp: any(named: 'otp'),
+        ),
+      ).thenAnswer((_) async {});
+
+      final result = await repository.changePassword(
+        currentPassword: 'old-password',
+        newPassword: 'new-password',
+        otp: '123456',
+      );
+
+      expect(result, isA<Right<Failure, dynamic>>());
+    });
+
+    test('maps current_password_invalid to a ServerFailure', () async {
+      when(
+        () => passwordChangeDataSource.changePassword(
+          currentPassword: any(named: 'currentPassword'),
+          newPassword: any(named: 'newPassword'),
+          otp: any(named: 'otp'),
+        ),
+      ).thenThrow(
+        const ServerException(statusCode: 401, code: 'current_password_invalid', message: 'wrong password'),
+      );
+
+      final result = await repository.changePassword(
+        currentPassword: 'wrong-password',
+        newPassword: 'new-password',
+        otp: '123456',
+      );
+
+      result.fold(
+        (failure) => expect(failure, isA<ServerFailure>().having((f) => f.code, 'code', 'current_password_invalid')),
+        (_) => fail('expected Left'),
+      );
+    });
+  });
+
+  group('requestPasswordReset', () {
+    test('returns the mapped flow', () async {
+      when(() => passwordResetDataSource.requestPasswordReset(email: any(named: 'email'))).thenAnswer(
+        (_) async => PasswordResetRequestedResponse(flowToken: 'flow-token', expiresAt: 1000),
+      );
+
+      final result = await repository.requestPasswordReset(email: 'bee@example.com');
+
+      result.fold((_) => fail('expected Right'), (flow) => expect(flow.flowToken, 'flow-token'));
+    });
+  });
+
+  group('verifyPasswordResetOtp', () {
+    test('returns the mapped verification on success', () async {
+      when(
+        () => passwordResetDataSource.verifyPasswordResetOtp(
+          flowToken: any(named: 'flowToken'),
+          otp: any(named: 'otp'),
+        ),
+      ).thenAnswer((_) async => PasswordResetOtpVerifiedResponse(resetToken: 'reset-token', expiresAt: 1000));
+
+      final result = await repository.verifyPasswordResetOtp(flowToken: 'flow-token', otp: '123456');
+
+      result.fold((_) => fail('expected Right'), (verification) => expect(verification.resetToken, 'reset-token'));
+    });
+
+    test('maps otp_invalid to a ServerFailure', () async {
+      when(
+        () => passwordResetDataSource.verifyPasswordResetOtp(
+          flowToken: any(named: 'flowToken'),
+          otp: any(named: 'otp'),
+        ),
+      ).thenThrow(const ServerException(statusCode: 401, code: 'otp_invalid', message: 'wrong code'));
+
+      final result = await repository.verifyPasswordResetOtp(flowToken: 'flow-token', otp: '000000');
+
+      expect(result, isA<Left<Failure, dynamic>>());
+    });
+  });
+
+  group('confirmPasswordReset', () {
+    test('succeeds', () async {
+      when(
+        () => passwordResetDataSource.confirmPasswordReset(
+          resetToken: any(named: 'resetToken'),
+          newPassword: any(named: 'newPassword'),
+          confirmPassword: any(named: 'confirmPassword'),
+        ),
+      ).thenAnswer((_) async {});
+
+      final result = await repository.confirmPasswordReset(
+        resetToken: 'reset-token',
+        newPassword: 'new-password',
+        confirmPassword: 'new-password',
+      );
+
+      expect(result, isA<Right<Failure, dynamic>>());
+    });
+
+    test('maps password_reset_token_invalid to a ServerFailure', () async {
+      when(
+        () => passwordResetDataSource.confirmPasswordReset(
+          resetToken: any(named: 'resetToken'),
+          newPassword: any(named: 'newPassword'),
+          confirmPassword: any(named: 'confirmPassword'),
+        ),
+      ).thenThrow(
+        const ServerException(statusCode: 400, code: 'password_reset_token_invalid', message: 'expired'),
+      );
+
+      final result = await repository.confirmPasswordReset(
+        resetToken: 'reset-token',
+        newPassword: 'new-password',
+        confirmPassword: 'new-password',
+      );
+
+      expect(result, isA<Left<Failure, dynamic>>());
     });
   });
 

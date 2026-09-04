@@ -1,13 +1,11 @@
 import 'dart:async';
 
 import 'package:beebase/core/networking/failures/failure.dart';
-import 'package:beebase/domain/entity/user.dart';
+import 'package:beebase/domain/entity/auth_challenge.dart';
 import 'package:beebase/domain/repositories/authentication_repository.dart';
-import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';
 import 'package:beebase/presentation/authentication/cubit/login_cubit/login_cubit.dart';
 import 'package:beebase/presentation/authentication/login_page.dart';
 import 'package:beebase/utils/either.dart';
-import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,21 +14,13 @@ import 'package:mocktail/mocktail.dart';
 class MockAuthenticationRepository extends Mock
     implements AuthenticationRepository {}
 
-class MockAuthenticationCubit extends MockCubit<AuthenticationState>
-    implements AuthenticationCubit {}
-
 void main() {
   late MockAuthenticationRepository repository;
-  late MockAuthenticationCubit authenticationCubit;
   late LoginCubit loginCubit;
 
   setUp(() {
     repository = MockAuthenticationRepository();
-    authenticationCubit = MockAuthenticationCubit();
-    loginCubit = LoginCubit(
-      repository: repository,
-      authenticationCubit: authenticationCubit,
-    );
+    loginCubit = LoginCubit(repository: repository);
   });
 
   Future<void> pumpLoginPage(WidgetTester tester) {
@@ -101,7 +91,7 @@ void main() {
   testWidgets('shows a loading indicator while the request is in flight', (
     tester,
   ) async {
-    final completer = Completer<Either<Failure, User>>();
+    final completer = Completer<Either<Failure, AuthChallenge>>();
     when(
       () => repository.login(
         email: any(named: 'email'),

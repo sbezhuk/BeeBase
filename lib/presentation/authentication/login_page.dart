@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
+import 'package:beebase/domain/entity/auth_challenge.dart';
 import 'package:beebase/presentation/authentication/auth_field_errors.dart';
 import 'package:beebase/presentation/authentication/cubit/login_cubit/login_cubit.dart';
 import 'package:beebase/presentation/component/buttons/primary_button.dart';
@@ -19,6 +20,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 part 'login_page/create_account_prompt.dart';
 part 'login_page/email_field.dart';
+part 'login_page/forgot_password_action.dart';
 part 'login_page/form_content.dart';
 part 'login_page/password_field.dart';
 part 'login_page/submit_button.dart';
@@ -58,7 +60,12 @@ final class _LoginPageState extends State<LoginPage> {
 
   void _handleStateChange(BuildContext context, LoginState state) {
     if (state is LoginSuccess) {
-      context.router.replaceAll([const HomeRoute()]);
+      switch (state.challenge) {
+        case LoginOtpChallenge challenge:
+          context.router.push(LoginOtpRoute(challengeToken: challenge.challengeToken));
+        case TotpSetupChallenge challenge:
+          context.router.push(TotpSetupRoute(challenge: challenge));
+      }
     } else if (state is LoginError) {
       _handleLoginError(state.failure);
     }

@@ -1,13 +1,20 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/domain/entity/apiary.dart';
+import 'package:beebase/domain/entity/auth_challenge.dart';
 import 'package:beebase/domain/entity/hive.dart';
 import 'package:beebase/domain/entity/inspection.dart';
 import 'package:beebase/domain/entity/user.dart';
 import 'package:beebase/presentation/apiary/apiary_details_page.dart';
 import 'package:beebase/presentation/apiary/apiary_form_page.dart';
 import 'package:beebase/presentation/apiary/apiary_list_page.dart';
+import 'package:beebase/presentation/authentication/forgot_password_email_page.dart';
+import 'package:beebase/presentation/authentication/forgot_password_otp_page.dart';
+import 'package:beebase/presentation/authentication/login_otp_page.dart';
 import 'package:beebase/presentation/authentication/login_page.dart';
 import 'package:beebase/presentation/authentication/register_page.dart';
+import 'package:beebase/presentation/authentication/reset_password_page.dart';
+import 'package:beebase/presentation/authentication/reset_password_success_page.dart';
+import 'package:beebase/presentation/authentication/totp_setup_page.dart';
 import 'package:beebase/presentation/hive/hive_details_page.dart';
 import 'package:beebase/presentation/hive/hive_form_page.dart';
 import 'package:beebase/presentation/hive/hive_list_page.dart';
@@ -16,6 +23,7 @@ import 'package:beebase/presentation/inspection/inspection_details_page.dart';
 import 'package:beebase/presentation/inspection/inspection_form_page.dart';
 import 'package:beebase/presentation/inspection/inspection_list_page.dart';
 import 'package:beebase/presentation/main/main_page.dart';
+import 'package:beebase/presentation/profile/change_password_page.dart';
 import 'package:beebase/presentation/profile/profile_edit_page.dart';
 import 'package:beebase/presentation/profile/profile_page.dart';
 import 'package:beebase/presentation/router/guardes/authentication_guard.dart';
@@ -33,6 +41,12 @@ final class AppRouter extends RootStackRouter {
   List<AutoRoute> get routes => [
     AutoRoute(page: LoginRoute.page, path: '/login'),
     AutoRoute(page: RegisterRoute.page, path: '/register'),
+    AutoRoute(page: TotpSetupRoute.page, path: '/totp-setup'),
+    AutoRoute(page: LoginOtpRoute.page, path: '/login/otp'),
+    AutoRoute(page: ForgotPasswordEmailRoute.page, path: '/forgot-password'),
+    AutoRoute(page: ForgotPasswordOtpRoute.page, path: '/forgot-password/otp'),
+    AutoRoute(page: ResetPasswordRoute.page, path: '/forgot-password/reset'),
+    AutoRoute(page: ResetPasswordSuccessRoute.page, path: '/forgot-password/success'),
     AutoRoute(
       page: MainRoute.page,
       path: '/',
@@ -87,6 +101,11 @@ final class AppRouter extends RootStackRouter {
     AutoRoute(
       page: ProfileEditRoute.page,
       path: '/profile/edit',
+      guards: [authenticationGuard],
+    ),
+    AutoRoute(
+      page: ChangePasswordRoute.page,
+      path: '/profile/change-password',
       guards: [authenticationGuard],
     ),
   ];

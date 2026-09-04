@@ -13,7 +13,8 @@
       "validations": {
         "email_invalid": "Enter a valid email",
         "password_too_short": "At least 8 characters"
-      }
+      },
+      "forgot_password_action": "Forgot Password?"
     },
     "register": {
       "title": "Start Your Own Hive",
@@ -36,6 +37,65 @@
         "email_invalid": "Enter a valid email",
         "password_too_short": "At least 8 characters"
       }
+    },
+    "totp_setup": {
+      "title": "Set Up Google Authenticator",
+      "subtitle": "Scan this QR code with Google Authenticator, then enter the 6-digit code it generates.",
+      "secret_fallback_label": "Can't scan? Enter this code manually",
+      "otp_label": "6-digit code",
+      "otp_hint": "123456",
+      "submit": "Verify & Continue",
+      "validations": {
+        "otp_invalid_format": "Enter the 6-digit code from Google Authenticator"
+      }
+    },
+    "login_otp": {
+      "title": "Enter Your Code",
+      "subtitle": "Enter the 6-digit code from Google Authenticator to finish signing in.",
+      "otp_label": "6-digit code",
+      "otp_hint": "123456",
+      "submit": "Verify",
+      "validations": {
+        "otp_invalid_format": "Enter the 6-digit code from Google Authenticator"
+      }
+    },
+    "forgot_password": {
+      "title": "Forgot Password?",
+      "subtitle": "Enter your account email and we'll help you get back in.",
+      "email_label": "Email",
+      "email_hint": "Enter email",
+      "submit": "Continue",
+      "validations": {
+        "email_invalid": "Enter a valid email"
+      }
+    },
+    "forgot_password_otp": {
+      "title": "Enter Your Code",
+      "subtitle": "Enter the 6-digit code from Google Authenticator to continue.",
+      "otp_label": "6-digit code",
+      "otp_hint": "123456",
+      "submit": "Verify",
+      "validations": {
+        "otp_invalid_format": "Enter the 6-digit code from Google Authenticator"
+      }
+    },
+    "reset_password": {
+      "title": "Set a New Password",
+      "subtitle": "Choose a new password for your account.",
+      "new_password_label": "New password",
+      "new_password_hint": "New password",
+      "confirm_password_label": "Confirm new password",
+      "confirm_password_hint": "Confirm new password",
+      "submit": "Reset Password",
+      "validations": {
+        "password_too_short": "At least 8 characters",
+        "confirm_password_mismatch": "Passwords don't match"
+      }
+    },
+    "reset_password_success": {
+      "title": "Password Reset",
+      "subtitle": "Your password has been changed. You can now log in with your new password.",
+      "back_to_login": "Back to Login"
     }
   },
   "main": {
@@ -281,7 +341,8 @@
         "failed": "Some data couldn't sync. Tap to try again."
       },
       "language": "Language",
-      "language_sheet_title": "Choose language"
+      "language_sheet_title": "Choose language",
+      "change_password": "Change password"
     },
     "edit": {
       "title": "Edit Profile",
@@ -294,6 +355,25 @@
       "validations": {
         "first_name_required": "First name is required",
         "last_name_required": "Last name is required"
+      }
+    },
+    "change_password": {
+      "title": "Change Password",
+      "current_password_label": "Current password",
+      "current_password_hint": "Current password",
+      "new_password_label": "New password",
+      "new_password_hint": "New password",
+      "confirm_password_label": "Confirm new password",
+      "confirm_password_hint": "Confirm new password",
+      "otp_label": "6-digit code",
+      "otp_hint": "123456",
+      "submit": "Change Password",
+      "success_message": "Password changed. Please log in again.",
+      "validations": {
+        "current_password_required": "Current password is required",
+        "password_too_short": "At least 8 characters",
+        "confirm_password_mismatch": "Passwords don't match",
+        "otp_invalid_format": "Enter the 6-digit code from Google Authenticator"
       }
     }
   },
@@ -345,7 +425,27 @@
       "last_name_required": "Last name is required.",
       "last_name_too_long": "Last name is too long.",
       "avatar_invalid": "This photo couldn't be used as an avatar.",
-      "avatar_not_found": "This photo couldn't be found. Please try uploading it again."
+      "avatar_not_found": "This photo couldn't be found. Please try uploading it again.",
+      "invalid_refresh_token": "Your session has expired. Please log in again.",
+      "otp_invalid": "Invalid code. Please try again.",
+      "otp_locked": "Too many failed attempts. Please try again later.",
+      "totp_setup_token_invalid": "This setup session has expired. Please start again.",
+      "login_challenge_invalid": "This login session has expired. Please log in again.",
+      "current_password_invalid": "Current password is incorrect.",
+      "password_reset_flow_invalid": "This password reset session has expired. Please start again.",
+      "password_reset_token_invalid": "This password reset session has expired. Please start again.",
+      "missing_authorization": "Your session has expired. Please log in again.",
+      "invalid_access_token": "Your session has expired. Please log in again.",
+      "invalid_body": "Something went wrong. Please try again.",
+      "internal_error": "Something went wrong. Please try again.",
+      "otp_required": "Enter the 6-digit code",
+      "otp_invalid_format": "Enter the 6-digit code from Google Authenticator",
+      "setup_token_required": "This setup session has expired. Please start again.",
+      "challenge_token_required": "This login session has expired. Please log in again.",
+      "current_password_required": "Current password is required.",
+      "confirm_password_mismatch": "Passwords don't match.",
+      "flow_token_required": "This password reset session has expired. Please start again.",
+      "reset_token_required": "This password reset session has expired. Please start again."
     }
   }
 }

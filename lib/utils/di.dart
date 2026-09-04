@@ -30,6 +30,8 @@ import 'package:beebase/data/data_source/interface/hive_data_source.dart';
 import 'package:beebase/data/data_source/interface/inspection_data_source.dart';
 import 'package:beebase/data/data_source/interface/local_data_source.dart';
 import 'package:beebase/data/data_source/interface/media_data_source.dart';
+import 'package:beebase/data/data_source/interface/password_change_data_source.dart';
+import 'package:beebase/data/data_source/interface/password_reset_data_source.dart';
 import 'package:beebase/data/data_source/interface/profile_data_source.dart';
 import 'package:beebase/data/data_source/interface/statistics_data_source.dart';
 import 'package:beebase/data/data_source/media_data_source.dart';
@@ -68,6 +70,8 @@ import 'package:beebase/domain/repositories/inspection_writer.dart';
 import 'package:beebase/domain/repositories/media_reader.dart';
 import 'package:beebase/domain/repositories/media_writer.dart';
 import 'package:beebase/domain/repositories/owner_image_writer.dart';
+import 'package:beebase/domain/repositories/password_changer.dart';
+import 'package:beebase/domain/repositories/password_reset_repository.dart';
 import 'package:beebase/domain/repositories/profile_reader.dart';
 import 'package:beebase/domain/repositories/profile_writer.dart';
 import 'package:beebase/domain/repositories/statistics_reader.dart';
@@ -77,8 +81,13 @@ import 'package:beebase/presentation/apiary/cubit/apiary_details_cubit/apiary_de
 import 'package:beebase/presentation/apiary/cubit/apiary_form_cubit/apiary_form_cubit.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_list_cubit/apiary_list_cubit.dart';
 import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';
+import 'package:beebase/presentation/authentication/cubit/forgot_password_email_cubit/forgot_password_email_cubit.dart';
+import 'package:beebase/presentation/authentication/cubit/forgot_password_otp_cubit/forgot_password_otp_cubit.dart';
 import 'package:beebase/presentation/authentication/cubit/login_cubit/login_cubit.dart';
+import 'package:beebase/presentation/authentication/cubit/login_otp_cubit/login_otp_cubit.dart';
 import 'package:beebase/presentation/authentication/cubit/register_cubit/register_cubit.dart';
+import 'package:beebase/presentation/authentication/cubit/reset_password_cubit/reset_password_cubit.dart';
+import 'package:beebase/presentation/authentication/cubit/totp_setup_cubit/totp_setup_cubit.dart';
 import 'package:beebase/presentation/connectivity/cubit/connectivity_cubit/connectivity_cubit.dart';
 import 'package:beebase/presentation/home/cubit/dashboard_cubit/dashboard_cubit.dart';
 import 'package:beebase/presentation/hive/cubit/hive_delete_cubit/hive_delete_cubit.dart';
@@ -91,6 +100,7 @@ import 'package:beebase/presentation/inspection/cubit/inspection_list_cubit/insp
 import 'package:beebase/presentation/inspection/inspection_list_refresh_notifier.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/presentation/profile/avatar_path_resolver.dart';
+import 'package:beebase/presentation/profile/cubit/change_password_cubit/change_password_cubit.dart';
 import 'package:beebase/presentation/profile/cubit/profile_cubit/profile_cubit.dart';
 import 'package:beebase/presentation/profile/cubit/profile_edit_cubit/profile_edit_cubit.dart';
 import 'package:beebase/presentation/router/app_router.dart';
@@ -244,6 +254,12 @@ Future<void> initDi() async {
   di.registerLazySingleton<IAuthenticationDataSource>(
     () => di<AuthenticationDataSource>(),
   );
+  di.registerLazySingleton<IPasswordChangeDataSource>(
+    () => di<AuthenticationDataSource>(),
+  );
+  di.registerLazySingleton<IPasswordResetDataSource>(
+    () => di<AuthenticationDataSource>(),
+  );
   di.registerLazySingleton<ApiaryDataSource>(
     () => ApiaryDataSource(dioClient: di(), resolver: di()),
   );
@@ -350,12 +366,23 @@ Future<void> initDi() async {
   // #endregion
 
   // #region Repositories
-  di.registerLazySingleton<AuthenticationRepository>(
+  di.registerLazySingleton<AuthenticationRepositoryImpl>(
     () => AuthenticationRepositoryImpl(
       dataSource: di(),
+      passwordChangeDataSource: di(),
+      passwordResetDataSource: di(),
       tokenStorage: di(),
       userLocalDataSource: di(),
     ),
+  );
+  di.registerLazySingleton<AuthenticationRepository>(
+    () => di<AuthenticationRepositoryImpl>(),
+  );
+  di.registerLazySingleton<IPasswordChanger>(
+    () => di<AuthenticationRepositoryImpl>(),
+  );
+  di.registerLazySingleton<IPasswordResetFlow>(
+    () => di<AuthenticationRepositoryImpl>(),
   );
   di.registerLazySingleton<ApiaryRepositoryImpl>(
     () => ApiaryRepositoryImpl(
@@ -453,11 +480,25 @@ Future<void> initDi() async {
   di.registerLazySingleton<ConnectivityCubit>(
     () => ConnectivityCubit(connectivity: di()),
   );
-  di.registerFactory<LoginCubit>(
-    () => LoginCubit(repository: di(), authenticationCubit: di()),
+  di.registerFactory<LoginCubit>(() => LoginCubit(repository: di()));
+  di.registerFactory<RegisterCubit>(() => RegisterCubit(repository: di()));
+  di.registerFactory<TotpSetupCubit>(
+    () => TotpSetupCubit(repository: di(), authenticationCubit: di()),
   );
-  di.registerFactory<RegisterCubit>(
-    () => RegisterCubit(repository: di(), authenticationCubit: di()),
+  di.registerFactory<LoginOtpCubit>(
+    () => LoginOtpCubit(repository: di(), authenticationCubit: di()),
+  );
+  di.registerFactory<ChangePasswordCubit>(
+    () => ChangePasswordCubit(repository: di(), authenticationCubit: di()),
+  );
+  di.registerFactory<ForgotPasswordEmailCubit>(
+    () => ForgotPasswordEmailCubit(repository: di()),
+  );
+  di.registerFactory<ForgotPasswordOtpCubit>(
+    () => ForgotPasswordOtpCubit(repository: di()),
+  );
+  di.registerFactory<ResetPasswordCubit>(
+    () => ResetPasswordCubit(repository: di()),
   );
   di.registerFactory<DashboardCubit>(
     () => DashboardCubit(

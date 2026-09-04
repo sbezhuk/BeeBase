@@ -7,9 +7,10 @@ part of 'register_request.dart';
 // **************************************************************************
 
 RegisterRequest _$RegisterRequestFromJson(Map<String, dynamic> json) =>
-    RegisterRequest(email: json['email'] as String, password: json['password'] as String);
+    RegisterRequest(
+      email: json['email'] as String,
+      password: json['password'] as String,
+    );
 
-Map<String, dynamic> _$RegisterRequestToJson(RegisterRequest instance) => <String, dynamic>{
-  'email': instance.email,
-  'password': instance.password,
-};
+Map<String, dynamic> _$RegisterRequestToJson(RegisterRequest instance) =>
+    <String, dynamic>{'email': instance.email, 'password': instance.password};

@@ -1,0 +1,20 @@
+part of '../forgot_password_otp_page.dart';
+
+final class _SubmitButton extends StatelessWidget {
+  const _SubmitButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ForgotPasswordOtpCubit, ForgotPasswordOtpState>(
+      builder: (context, state) {
+        return PrimaryButton(
+          label: 'authentication.forgot_password_otp.submit'.tr(),
+          isLoading: state is ForgotPasswordOtpLoading,
+          onPressed: onPressed,
+        );
+      },
+    );
+  }
+}

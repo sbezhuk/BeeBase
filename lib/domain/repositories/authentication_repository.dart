@@ -1,11 +1,16 @@
 import 'package:beebase/core/networking/failures/failure.dart';
+import 'package:beebase/domain/entity/auth_challenge.dart';
 import 'package:beebase/domain/entity/user.dart';
 import 'package:beebase/utils/either.dart';
 
 abstract interface class AuthenticationRepository {
-  Future<Either<Failure, User>> register({required String email, required String password});
+  Future<Either<Failure, TotpSetupChallenge>> register({required String email, required String password});
 
-  Future<Either<Failure, User>> login({required String email, required String password});
+  Future<Either<Failure, AuthChallenge>> login({required String email, required String password});
+
+  Future<Either<Failure, User>> verifyTotpSetup({required String setupToken, required String otp});
+
+  Future<Either<Failure, User>> verifyLoginOtp({required String challengeToken, required String otp});
 
   Future<Either<Failure, User>> getCurrentUser();
 
