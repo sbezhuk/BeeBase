@@ -76,6 +76,7 @@ final class AppSnackBarCard extends StatelessWidget {
         // more than one line (exactly the case for real, sentence-length
         // copy like the offline-sync message).
         child: Stack(
+          alignment: Alignment.center,
           children: [
             Positioned(left: 0, top: 0, bottom: 0, width: 4, child: ColoredBox(color: variant.accentColor(colors))),
             Padding(
