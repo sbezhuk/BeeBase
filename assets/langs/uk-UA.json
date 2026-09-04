@@ -13,7 +13,8 @@
       "validations": {
         "email_invalid": "Введіть дійсну електронну пошту",
         "password_too_short": "Щонайменше 8 символів"
-      }
+      },
+      "forgot_password_action": "Забули пароль?"
     },
     "register": {
       "title": "Створіть свій вулик",
@@ -22,6 +23,8 @@
       "email_hint": "Введіть електронну пошту",
       "password_label": "Пароль",
       "password_hint": "Пароль",
+      "confirm_password_label": "Підтвердьте пароль",
+      "confirm_password_hint": "Підтвердьте пароль",
       "submit": "Зареєструватися",
       "have_account_prompt": "Уже маєте вулик? ",
       "have_account_action": "Увійти",
@@ -34,8 +37,65 @@
       },
       "validations": {
         "email_invalid": "Введіть дійсну електронну пошту",
-        "password_too_short": "Щонайменше 8 символів"
+        "password_too_short": "Щонайменше 8 символів",
+        "confirm_password_mismatch": "Паролі не збігаються"
       }
+    },
+    "totp_setup": {
+      "title": "Налаштування Google Authenticator",
+      "subtitle": "Зіскануйте цей QR-код за допомогою Google Authenticator, а потім введіть згенерований 6-значний код.",
+      "secret_fallback_label": "Не вдається зісканувати? Введіть цей код вручну",
+      "otp_label": "6-значний код",
+      "submit": "Підтвердити та продовжити",
+      "validations": {
+        "otp_invalid_format": "Введіть 6-значний код із Google Authenticator"
+      }
+    },
+    "login_otp": {
+      "title": "Введіть ваш код",
+      "subtitle": "Введіть 6-значний код із Google Authenticator, щоб завершити вхід.",
+      "otp_label": "6-значний код",
+      "submit": "Підтвердити",
+      "validations": {
+        "otp_invalid_format": "Введіть 6-значний код із Google Authenticator"
+      }
+    },
+    "forgot_password": {
+      "title": "Забули пароль?",
+      "subtitle": "Введіть електронну пошту вашого облікового запису, і ми допоможемо вам повернути доступ.",
+      "email_label": "Електронна пошта",
+      "email_hint": "Введіть електронну пошту",
+      "submit": "Продовжити",
+      "validations": {
+        "email_invalid": "Введіть дійсну електронну пошту"
+      }
+    },
+    "forgot_password_otp": {
+      "title": "Введіть ваш код",
+      "subtitle": "Введіть 6-значний код із Google Authenticator, щоб продовжити.",
+      "otp_label": "6-значний код",
+      "submit": "Підтвердити",
+      "validations": {
+        "otp_invalid_format": "Введіть 6-значний код із Google Authenticator"
+      }
+    },
+    "reset_password": {
+      "title": "Встановіть новий пароль",
+      "subtitle": "Виберіть новий пароль для вашого облікового запису.",
+      "new_password_label": "Новий пароль",
+      "new_password_hint": "Новий пароль",
+      "confirm_password_label": "Підтвердьте новий пароль",
+      "confirm_password_hint": "Підтвердьте новий пароль",
+      "submit": "Скинути пароль",
+      "validations": {
+        "password_too_short": "Щонайменше 8 символів",
+        "confirm_password_mismatch": "Паролі не збігаються"
+      }
+    },
+    "reset_password_success": {
+      "title": "Пароль скинуто",
+      "subtitle": "Ваш пароль змінено. Тепер ви можете увійти з новим паролем.",
+      "back_to_login": "Назад до входу"
     }
   },
   "main": {
@@ -285,7 +345,8 @@
         "failed": "Деякі дані не вдалося синхронізувати. Торкніться, щоб повторити."
       },
       "language": "Мова",
-      "language_sheet_title": "Виберіть мову"
+      "language_sheet_title": "Виберіть мову",
+      "change_password": "Змінити пароль"
     },
     "edit": {
       "title": "Редагувати профіль",
@@ -298,6 +359,31 @@
       "validations": {
         "first_name_required": "Ім'я є обов'язковим",
         "last_name_required": "Прізвище є обов'язковим"
+      }
+    },
+    "change_password": {
+      "title": "Змінити пароль",
+      "current_password_label": "Поточний пароль",
+      "current_password_hint": "Поточний пароль",
+      "new_password_label": "Новий пароль",
+      "new_password_hint": "Новий пароль",
+      "confirm_password_label": "Підтвердьте новий пароль",
+      "confirm_password_hint": "Підтвердьте новий пароль",
+      "submit": "Продовжити",
+      "validations": {
+        "current_password_required": "Поточний пароль є обов'язковим",
+        "password_too_short": "Щонайменше 8 символів",
+        "confirm_password_mismatch": "Паролі не збігаються"
+      },
+      "otp": {
+        "title": "Підтвердьте зміну пароля",
+        "subtitle": "Введіть 6-значний код із Google Authenticator, щоб підтвердити свій новий пароль.",
+        "otp_label": "6-значний код",
+        "submit": "Змінити пароль",
+        "success_message": "Пароль змінено. Увійдіть знову.",
+        "validations": {
+          "otp_invalid_format": "Введіть 6-значний код із Google Authenticator"
+        }
       }
     }
   },
@@ -349,7 +435,27 @@
       "last_name_required": "Прізвище є обов'язковим.",
       "last_name_too_long": "Прізвище занадто довге.",
       "avatar_invalid": "Це фото не можна використати як аватар.",
-      "avatar_not_found": "Це фото не вдалося знайти. Спробуйте завантажити його ще раз."
+      "avatar_not_found": "Це фото не вдалося знайти. Спробуйте завантажити його ще раз.",
+      "invalid_refresh_token": "Термін дії вашого сеансу закінчився. Увійдіть ще раз.",
+      "otp_invalid": "Недійсний код. Спробуйте ще раз.",
+      "otp_locked": "Забагато невдалих спроб. Спробуйте пізніше.",
+      "totp_setup_token_invalid": "Термін дії сеансу налаштування закінчився. Почніть знову.",
+      "login_challenge_invalid": "Термін дії сеансу входу закінчився. Увійдіть ще раз.",
+      "current_password_invalid": "Поточний пароль неправильний.",
+      "password_reset_flow_invalid": "Термін дії сеансу скидання пароля закінчився. Почніть знову.",
+      "password_reset_token_invalid": "Термін дії сеансу скидання пароля закінчився. Почніть знову.",
+      "missing_authorization": "Термін дії вашого сеансу закінчився. Увійдіть ще раз.",
+      "invalid_access_token": "Термін дії вашого сеансу закінчився. Увійдіть ще раз.",
+      "invalid_body": "Щось пішло не так. Спробуйте ще раз.",
+      "internal_error": "Щось пішло не так. Спробуйте ще раз.",
+      "otp_required": "Введіть 6-значний код",
+      "otp_invalid_format": "Введіть 6-значний код із Google Authenticator",
+      "setup_token_required": "Термін дії сеансу налаштування закінчився. Почніть знову.",
+      "challenge_token_required": "Термін дії сеансу входу закінчився. Увійдіть ще раз.",
+      "current_password_required": "Поточний пароль є обов'язковим.",
+      "confirm_password_mismatch": "Паролі не збігаються.",
+      "flow_token_required": "Термін дії сеансу скидання пароля закінчився. Почніть знову.",
+      "reset_token_required": "Термін дії сеансу скидання пароля закінчився. Почніть знову."
     }
   }
 }
