@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/data/data_source/interface/apiary_local_data_source.dart';
-import 'package:beebase/data/sync/apiary_synchronizer.dart';
+import 'package:beebase/data/data_source/interface/hive_local_data_source.dart';
+import 'package:beebase/data/sync/data_synchronizer.dart';
 import 'package:beebase/domain/entity/user.dart';
 import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';
 import 'package:beebase/presentation/profile/avatar_image_resolver.dart';
@@ -38,7 +39,10 @@ final class ProfilePage extends StatelessWidget implements AutoRouteWrapper {
 
   @override
   Widget wrappedRoute(BuildContext context) {
-    return BlocProvider(create: (_) => di.get<ProfileCubit>()..load(), child: this);
+    return BlocProvider(
+      create: (_) => di.get<ProfileCubit>()..load(),
+      child: this,
+    );
   }
 
   @override
@@ -59,7 +63,8 @@ final class ProfilePage extends StatelessWidget implements AutoRouteWrapper {
                   label: 'profile.page.edit'.tr(),
                   materialIcon: Icons.edit_outlined,
                   cupertinoIcon: CupertinoIcons.pencil,
-                  onPressed: () => context.router.push(ProfileEditRoute(user: user)),
+                  onPressed: () =>
+                      context.router.push(ProfileEditRoute(user: user)),
                 ),
           slivers: [
             SliverPadding(

@@ -3,6 +3,7 @@ import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/core/networking/network_info.dart';
 import 'package:beebase/data/data_source/interface/apiary_data_source.dart';
 import 'package:beebase/data/data_source/interface/apiary_local_data_source.dart';
+import 'package:beebase/data/data_source/interface/hive_local_data_source.dart';
 import 'package:beebase/data/models/apiary_request.dart';
 import 'package:beebase/data/models/extensions/apiary_extension.dart';
 import 'package:beebase/data/models/page_request.dart';
@@ -19,11 +20,17 @@ final class ApiaryRepositoryImpl extends Repository
   ApiaryRepositoryImpl({
     required this.dataSource,
     this.localDataSource,
+    this.hiveLocalDataSource,
     this.networkInfo,
   });
 
   final IApiaryDataSource dataSource;
   final IApiaryLocalDataSource? localDataSource;
+
+  /// Used only to cascade-remove a deleted offline-only apiary's offline-only
+  /// hives — see [deleteApiary]. Never queried for anything else here; Hive's
+  /// own offline behavior lives entirely in `HiveRepositoryImpl`.
+  final IHiveLocalDataSource? hiveLocalDataSource;
   final INetworkInfo? networkInfo;
 
   Future<bool> get _isOnline async =>
@@ -41,8 +48,9 @@ final class ApiaryRepositoryImpl extends Repository
           final paginated = await dataSource.getApiaries(
             PageRequest(page: page, limit: limit),
           );
-          final serverItems =
-              paginated.items.map((response) => response.toEntity()).toList();
+          final serverItems = paginated.items
+              .map((response) => response.toEntity())
+              .toList();
 
           if (localDataSource != null) {
             await localDataSource!.saveServerApiaries(serverItems);
@@ -66,7 +74,8 @@ final class ApiaryRepositoryImpl extends Repository
             // Substitute server items with local pending versions where needed.
             final mergedServerItems = <Apiary>[];
             for (final serverItem in serverItems) {
-              final localVersion = pendingByServerId[serverItem.id] ??
+              final localVersion =
+                  pendingByServerId[serverItem.id] ??
                   pendingByServerId[serverItem.serverId ?? serverItem.id];
               if (localVersion == null) {
                 // No local pending changes — use server version as-is.
@@ -82,8 +91,9 @@ final class ApiaryRepositoryImpl extends Repository
 
             if (page == 1) {
               // Prepend offline-created items (no serverId yet) in front.
-              final pendingCreates =
-                  pending.where((a) => a.syncStatus == SyncStatus.pendingCreate);
+              final pendingCreates = pending.where(
+                (a) => a.syncStatus == SyncStatus.pendingCreate,
+              );
               return Page(
                 items: [...pendingCreates, ...mergedServerItems],
                 hasNext: paginated.pagination.hasNext,
@@ -107,10 +117,7 @@ final class ApiaryRepositoryImpl extends Repository
               page: page,
               limit: limit,
             );
-            return Page(
-              items: localItems,
-              hasNext: localItems.length >= limit,
-            );
+            return Page(items: localItems, hasNext: localItems.length >= limit);
           }
           rethrow;
         }
@@ -122,16 +129,12 @@ final class ApiaryRepositoryImpl extends Repository
           page: page,
           limit: limit,
         );
-        return Page(
-          items: localItems,
-          hasNext: localItems.length >= limit,
-        );
+        return Page(items: localItems, hasNext: localItems.length >= limit);
       }
 
       return const Page(items: [], hasNext: false);
     });
   }
-
 
   @override
   Future<Either<Failure, Apiary>> getApiary(String id) {
@@ -175,7 +178,6 @@ final class ApiaryRepositoryImpl extends Repository
     });
   }
 
-
   @override
   Future<Either<Failure, Apiary>> createApiary({
     required String name,
@@ -194,8 +196,7 @@ final class ApiaryRepositoryImpl extends Repository
           lat: lat,
           lon: lon,
         );
-        final created =
-            (await dataSource.createApiary(request)).toEntity();
+        final created = (await dataSource.createApiary(request)).toEntity();
         if (localDataSource != null) {
           await localDataSource!.saveServerApiaries([created]);
         }
@@ -235,10 +236,12 @@ final class ApiaryRepositoryImpl extends Repository
   }) {
     return on(() async {
       final online = await _isOnline;
-      final existingLocal =
-          localDataSource != null ? await localDataSource!.getApiaryById(id) : null;
+      final existingLocal = localDataSource != null
+          ? await localDataSource!.getApiaryById(id)
+          : null;
       final isLocalOnly =
-          existingLocal != null && existingLocal.syncStatus == SyncStatus.pendingCreate;
+          existingLocal != null &&
+          existingLocal.syncStatus == SyncStatus.pendingCreate;
 
       if (online && !isLocalOnly) {
         final request = ApiaryRequest(
@@ -248,8 +251,7 @@ final class ApiaryRepositoryImpl extends Repository
           lat: lat,
           lon: lon,
         );
-        final updated =
-            (await dataSource.updateApiary(id, request)).toEntity();
+        final updated = (await dataSource.updateApiary(id, request)).toEntity();
         if (localDataSource != null) {
           await localDataSource!.saveServerApiaries([updated]);
         }
@@ -262,23 +264,24 @@ final class ApiaryRepositoryImpl extends Repository
           ? SyncStatus.pendingCreate
           : SyncStatus.pendingUpdate;
 
-      final updatedApiary = (existingLocal ??
-              Apiary(
-                id: id,
-                localId: id,
+      final updatedApiary =
+          (existingLocal ??
+                  Apiary(
+                    id: id,
+                    localId: id,
+                    name: name,
+                    createdAt: now,
+                    updatedAt: now,
+                  ))
+              .copyWith(
                 name: name,
-                createdAt: now,
+                description: description,
+                location: location,
+                lat: lat,
+                lon: lon,
                 updatedAt: now,
-              ))
-          .copyWith(
-        name: name,
-        description: description,
-        location: location,
-        lat: lat,
-        lon: lon,
-        updatedAt: now,
-        syncStatus: newStatus,
-      );
+                syncStatus: newStatus,
+              );
 
       if (localDataSource != null) {
         await localDataSource!.updateApiary(updatedApiary);
@@ -298,7 +301,8 @@ final class ApiaryRepositoryImpl extends Repository
           ? await localDataSource!.getApiaryById(apiaryId)
           : null;
       final isLocalOnly =
-          existingLocal != null && existingLocal.syncStatus == SyncStatus.pendingCreate;
+          existingLocal != null &&
+          existingLocal.syncStatus == SyncStatus.pendingCreate;
 
       if (online && !isLocalOnly) {
         final current = await dataSource.getApiary(apiaryId);
@@ -329,8 +333,10 @@ final class ApiaryRepositoryImpl extends Repository
         // Without this, a synced apiary with offline photo attachments would never
         // enter getPendingSyncApiaries() and the photos would never be uploaded.
         final newStatus = existingLocal.syncStatus == SyncStatus.pendingCreate
-            ? SyncStatus.pendingCreate  // never synced yet → keep as pendingCreate
-            : SyncStatus.pendingUpdate; // synced → mark dirty so synchronizer picks it up
+            ? SyncStatus
+                  .pendingCreate // never synced yet → keep as pendingCreate
+            : SyncStatus
+                  .pendingUpdate; // synced → mark dirty so synchronizer picks it up
         final updated = existingLocal.copyWith(
           images: newImages,
           updatedAt: DateTime.now(),
@@ -352,7 +358,8 @@ final class ApiaryRepositoryImpl extends Repository
           ? await localDataSource!.getApiaryById(apiaryId)
           : null;
       final isLocalOnly =
-          existingLocal != null && existingLocal.syncStatus == SyncStatus.pendingCreate;
+          existingLocal != null &&
+          existingLocal.syncStatus == SyncStatus.pendingCreate;
 
       if (online && !isLocalOnly) {
         final current = await dataSource.getApiary(apiaryId);
@@ -388,8 +395,9 @@ final class ApiaryRepositoryImpl extends Repository
             message: 'Photos from online objects cannot be deleted offline',
           );
         }
-        final newImages =
-            existingLocal.images.where((id) => id != mediaId).toList();
+        final newImages = existingLocal.images
+            .where((id) => id != mediaId)
+            .toList();
         final newStatus = existingLocal.syncStatus == SyncStatus.pendingCreate
             ? SyncStatus.pendingCreate
             : SyncStatus.pendingUpdate;
@@ -403,7 +411,6 @@ final class ApiaryRepositoryImpl extends Repository
     });
   }
 
-
   @override
   Future<Either<Failure, void>> deleteApiary(String id) {
     return on(
@@ -413,7 +420,8 @@ final class ApiaryRepositoryImpl extends Repository
             ? await localDataSource!.getApiaryById(id)
             : null;
         final isLocalOnly =
-            existingLocal != null && existingLocal.syncStatus == SyncStatus.pendingCreate;
+            existingLocal != null &&
+            existingLocal.syncStatus == SyncStatus.pendingCreate;
 
         if (online && !isLocalOnly) {
           await dataSource.deleteApiary(id);
@@ -426,7 +434,14 @@ final class ApiaryRepositoryImpl extends Repository
         // Offline mode:
         if (localDataSource != null) {
           if (isLocalOnly) {
-            // Created offline and never synced to server: safe to permanently remove locally
+            // Created offline and never synced to server: safe to permanently
+            // remove locally. Its hives (if any) can only reference this
+            // apiary by local id — see `Hive.apiaryLocalId` — and a hive
+            // never syncs before its parent apiary does, so none of them
+            // can have reached the backend either; remove them too rather
+            // than leaving orphaned local rows behind.
+            final localId = existingLocal.localId ?? id;
+            await hiveLocalDataSource?.deleteHivesByApiaryLocalId(localId);
             await localDataSource!.deleteApiaryPermanently(id);
           } else {
             // Exists on backend: mark pendingDelete until successful sync

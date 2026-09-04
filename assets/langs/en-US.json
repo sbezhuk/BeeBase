@@ -214,6 +214,13 @@
     "sync_blocked_action": "OK"
   },
   "hive": {
+    "sync_status": {
+      "synced": "Synced",
+      "pendingCreate": "Not synced (pending upload)",
+      "pendingUpdate": "Not synced (pending update)",
+      "pendingDelete": "Pending deletion",
+      "syncing": "Syncing..."
+    },
     "list": {
       "add_hive": "Add Hive",
       "empty_title": "No hives yet",
@@ -229,6 +236,7 @@
       "added_on": "Added {date}",
       "delete_confirm_title": "Delete hive?",
       "delete_confirm_message": "This will permanently remove this hive. This action cannot be undone.",
+      "delete_offline_blocked": "Deleting this hive is only available in online mode.",
       "manage_inspections": "Manage Inspections"
     },
     "form": {
@@ -244,7 +252,10 @@
       "validations": {
         "name_required": "Hive name is required"
       }
-    }
+    },
+    "sync_blocked_title": "Unsynchronized Changes",
+    "sync_blocked_message": "This hive has local changes that haven't been synced to the server yet. Please sync your data from the Profile tab before editing.",
+    "sync_blocked_action": "OK"
   },
   "inspection": {
     "list": {

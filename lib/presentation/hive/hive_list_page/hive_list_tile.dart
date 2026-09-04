@@ -36,11 +36,29 @@ final class _HiveListTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      hive.name,
-                      style: context.textStyles.body,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            hive.name,
+                            style: context.textStyles.body,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (hive.syncStatus != SyncStatus.synced) ...[
+                          SizedBox(width: context.spacing.xs),
+                          Tooltip(
+                            message: 'hive.sync_status.${hive.syncStatus.name}'
+                                .tr(),
+                            child: Icon(
+                              Icons.cloud_upload_outlined,
+                              size: 16,
+                              color: colors.brand.primary,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     if (hasDescription) ...[
                       SizedBox(height: context.spacing.xs),

@@ -19,11 +19,14 @@ final class _ProfileSyncSectionState extends State<ProfileSyncSection> {
 
   Future<void> _loadPendingCount() async {
     try {
-      final localDataSource = di<IApiaryLocalDataSource>();
-      final pending = await localDataSource.getPendingSyncApiaries();
+      final apiaryLocalDataSource = di<IApiaryLocalDataSource>();
+      final hiveLocalDataSource = di<IHiveLocalDataSource>();
+      final pendingApiaries = await apiaryLocalDataSource
+          .getPendingSyncApiaries();
+      final pendingHives = await hiveLocalDataSource.getPendingSyncHives();
       if (mounted) {
         setState(() {
-          _pendingCount = pending.length;
+          _pendingCount = pendingApiaries.length + pendingHives.length;
         });
       }
     } catch (_) {
@@ -39,8 +42,8 @@ final class _ProfileSyncSectionState extends State<ProfileSyncSection> {
     });
 
     try {
-      final synchronizer = di<IApiarySynchronizer>();
-      final result = await synchronizer.syncApiaries();
+      final synchronizer = di<IDataSynchronizer>();
+      final result = await synchronizer.syncAll();
 
       if (!mounted) return;
 

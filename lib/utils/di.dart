@@ -15,10 +15,12 @@ import 'package:beebase/data/data_source/apiary_local_data_source_impl.dart';
 import 'package:beebase/data/data_source/interface/apiary_local_data_source.dart';
 import 'package:beebase/data/data_source/authentication_data_source.dart';
 import 'package:beebase/data/data_source/hive_data_source.dart';
+import 'package:beebase/data/data_source/hive_local_data_source_impl.dart';
 import 'package:beebase/data/data_source/inspection_data_source.dart';
 import 'package:beebase/data/data_source/interface/apiary_data_source.dart';
 import 'package:beebase/data/data_source/interface/authentication_data_source.dart';
 import 'package:beebase/data/data_source/interface/hive_data_source.dart';
+import 'package:beebase/data/data_source/interface/hive_local_data_source.dart';
 import 'package:beebase/data/data_source/interface/inspection_data_source.dart';
 import 'package:beebase/data/data_source/interface/media_data_source.dart';
 import 'package:beebase/data/data_source/interface/password_change_data_source.dart';
@@ -37,6 +39,8 @@ import 'package:beebase/data/repositories/owner_image_writer.dart';
 import 'package:beebase/data/repositories/profile_repository_impl.dart';
 import 'package:beebase/data/repositories/statistics_repository_impl.dart';
 import 'package:beebase/data/sync/apiary_synchronizer.dart';
+import 'package:beebase/data/sync/data_synchronizer.dart';
+import 'package:beebase/data/sync/hive_synchronizer.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/entity/hive.dart';
 import 'package:beebase/domain/entity/inspection.dart';
@@ -135,7 +139,9 @@ Future<void> initDi() async {
     ..registerLazySingleton<MediaImageCacheManager>(
       () => MediaImageCacheManager(accessToken: di<TokenStorage>().accessToken),
     )
-    ..registerLazySingleton<IMediaImageCache>(() => di<MediaImageCacheManager>())
+    ..registerLazySingleton<IMediaImageCache>(
+      () => di<MediaImageCacheManager>(),
+    )
     // `CachedMediaImage` resolves the manager by its `flutter_cache_manager`
     // supertype rather than the concrete class, so a widget test can stand
     // in its own without touching the filesystem.
@@ -194,6 +200,12 @@ Future<void> initDi() async {
     () => HiveDataSource(dioClient: di(), resolver: di()),
   );
   di.registerLazySingleton<IHiveDataSource>(() => di<HiveDataSource>());
+  di.registerLazySingleton<HiveLocalDataSourceImpl>(
+    () => HiveLocalDataSourceImpl(database: di()),
+  );
+  di.registerLazySingleton<IHiveLocalDataSource>(
+    () => di<HiveLocalDataSourceImpl>(),
+  );
   di.registerLazySingleton<InspectionDataSource>(
     () => InspectionDataSource(dioClient: di(), resolver: di()),
   );
@@ -238,6 +250,7 @@ Future<void> initDi() async {
     () => ApiaryRepositoryImpl(
       dataSource: di(),
       localDataSource: di(),
+      hiveLocalDataSource: di(),
       networkInfo: di(),
     ),
   );
@@ -252,14 +265,34 @@ Future<void> initDi() async {
       refreshNotifier: di(),
     ),
   );
-  di.registerLazySingleton<IApiarySynchronizer>(
-    () => di<ApiarySynchronizer>(),
-  );
+  di.registerLazySingleton<IApiarySynchronizer>(() => di<ApiarySynchronizer>());
   di.registerLazySingleton<HiveRepositoryImpl>(
-    () => HiveRepositoryImpl(dataSource: di()),
+    () => HiveRepositoryImpl(
+      dataSource: di(),
+      localDataSource: di(),
+      networkInfo: di(),
+    ),
   );
   di.registerLazySingleton<IHiveReader>(() => di<HiveRepositoryImpl>());
   di.registerLazySingleton<IHiveWriter>(() => di<HiveRepositoryImpl>());
+  di.registerLazySingleton<HiveSynchronizer>(
+    () => HiveSynchronizer(
+      localDataSource: di(),
+      apiaryLocalDataSource: di(),
+      hiveRemoteDataSource: di(),
+      mediaRemoteDataSource: di(),
+      networkInfo: di(),
+      refreshNotifier: di(),
+    ),
+  );
+  di.registerLazySingleton<IHiveSynchronizer>(() => di<HiveSynchronizer>());
+  di.registerLazySingleton<DataSynchronizer>(
+    () => DataSynchronizer(
+      apiarySynchronizer: di<IApiarySynchronizer>(),
+      hiveSynchronizer: di<IHiveSynchronizer>(),
+    ),
+  );
+  di.registerLazySingleton<IDataSynchronizer>(() => di<DataSynchronizer>());
   di.registerLazySingleton<IOwnerImageWriter>(
     () => OwnerImageWriter(apiaryWriter: di(), hiveWriter: di()),
   );
@@ -434,15 +467,12 @@ Future<void> initDi() async {
       // media-service "what's attached to owner X" the old owner-scoped way.
       resolveImages: switch (ownerType) {
         MediaOwnerType.apiary =>
-          (id) async => (await di<IApiaryReader>().getApiary(id)).fold(
-            (_) => const <String>[],
-            (apiary) => apiary.images,
-          ),
-        MediaOwnerType.hive =>
-          (id) async => (await di<IHiveReader>().getHive(id)).fold(
-            (_) => const <String>[],
-            (hive) => hive.images,
-          ),
+          (id) async => (await di<IApiaryReader>().getApiary(
+            id,
+          )).fold((_) => const <String>[], (apiary) => apiary.images),
+        MediaOwnerType.hive => (id) async => (await di<IHiveReader>().getHive(
+          id,
+        )).fold((_) => const <String>[], (hive) => hive.images),
       },
     ),
   );
