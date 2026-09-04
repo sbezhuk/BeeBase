@@ -4,6 +4,7 @@ final class _RegisterFormContent extends StatelessWidget {
   const _RegisterFormContent({
     required this.emailController,
     required this.passwordController,
+    required this.confirmPasswordController,
     required this.emailServerError,
     required this.passwordServerError,
     required this.onEmailChanged,
@@ -13,6 +14,7 @@ final class _RegisterFormContent extends StatelessWidget {
 
   final TextEditingController emailController;
   final TextEditingController passwordController;
+  final TextEditingController confirmPasswordController;
   final String? emailServerError;
   final String? passwordServerError;
   final VoidCallback onEmailChanged;
@@ -53,6 +55,8 @@ final class _RegisterFormContent extends StatelessWidget {
                     serverError: passwordServerError,
                     onChanged: onPasswordChanged,
                   ),
+                  SizedBox(height: context.spacing.md),
+                  _ConfirmPasswordField(controller: confirmPasswordController, passwordController: passwordController),
                   SizedBox(height: context.spacing.lg),
                   _SubmitButton(onPressed: onSubmit),
                   SizedBox(height: context.spacing.xl),

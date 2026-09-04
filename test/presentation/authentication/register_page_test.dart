@@ -11,8 +11,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-class MockAuthenticationRepository extends Mock
-    implements AuthenticationRepository {}
+class MockAuthenticationRepository extends Mock implements AuthenticationRepository {}
 
 void main() {
   late MockAuthenticationRepository repository;
@@ -26,71 +25,65 @@ void main() {
   Future<void> pumpRegisterPage(WidgetTester tester) {
     return tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider<RegisterCubit>.value(
-          value: registerCubit,
-          child: const RegisterPage(),
-        ),
+        home: BlocProvider<RegisterCubit>.value(value: registerCubit, child: const RegisterPage()),
       ),
     );
   }
 
-  testWidgets(
-    'shows validation errors and does not call the repository with invalid input',
-    (tester) async {
-      await pumpRegisterPage(tester);
+  testWidgets('shows validation errors and does not call the repository with invalid input', (tester) async {
+    await pumpRegisterPage(tester);
 
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Sign up'));
-      await tester.pump();
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Sign up'));
+    await tester.pump();
 
-      expect(find.text('Enter a valid email'), findsOneWidget);
-      expect(find.text('At least 8 characters'), findsOneWidget);
-      verifyNever(
-        () => repository.register(
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-        ),
-      );
-    },
-  );
+    expect(find.text('Enter a valid email'), findsOneWidget);
+    expect(find.text('At least 8 characters'), findsOneWidget);
+    verifyNever(
+      () => repository.register(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+      ),
+    );
+  });
 
-  testWidgets('submits the entered credentials and shows the server error', (
-    tester,
-  ) async {
+  testWidgets('shows a validation error when the passwords do not match', (tester) async {
+    await pumpRegisterPage(tester);
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Email'), 'bee@example.com');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Password'), 'password123');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Confirm password'), 'somethingElse123');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Sign up'));
+    await tester.pump();
+
+    expect(find.text("Passwords don't match"), findsOneWidget);
+    verifyNever(
+      () => repository.register(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+      ),
+    );
+  });
+
+  testWidgets('submits the entered credentials and shows the server error', (tester) async {
     when(
       () => repository.register(
         email: any(named: 'email'),
         password: any(named: 'password'),
       ),
-    ).thenAnswer(
-      (_) async => Left(
-        ServerFailure(code: 'email_taken', message: 'already registered'),
-      ),
-    );
+    ).thenAnswer((_) async => Left(ServerFailure(code: 'email_taken', message: 'already registered')));
     await pumpRegisterPage(tester);
 
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Email'),
-      'bee@example.com',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Password'),
-      'password123',
-    );
+    await tester.enterText(find.widgetWithText(TextFormField, 'Email'), 'bee@example.com');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Password'), 'password123');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Confirm password'), 'password123');
     await tester.tap(find.widgetWithText(ElevatedButton, 'Sign up'));
     await tester.pumpAndSettle();
 
-    verify(
-      () => repository.register(
-        email: 'bee@example.com',
-        password: 'password123',
-      ),
-    ).called(1);
+    verify(() => repository.register(email: 'bee@example.com', password: 'password123')).called(1);
     expect(find.text('already registered'), findsOneWidget);
   });
 
-  testWidgets('shows a loading indicator while the request is in flight', (
-    tester,
-  ) async {
+  testWidgets('shows a loading indicator while the request is in flight', (tester) async {
     final completer = Completer<Either<Failure, TotpSetupChallenge>>();
     when(
       () => repository.register(
@@ -100,22 +93,15 @@ void main() {
     ).thenAnswer((_) => completer.future);
     await pumpRegisterPage(tester);
 
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Email'),
-      'bee@example.com',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Password'),
-      'password123',
-    );
+    await tester.enterText(find.widgetWithText(TextFormField, 'Email'), 'bee@example.com');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Password'), 'password123');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Confirm password'), 'password123');
     await tester.tap(find.widgetWithText(ElevatedButton, 'Sign up'));
     await tester.pump();
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-    completer.complete(
-      Left(ServerFailure(code: 'email_taken', message: 'already registered')),
-    );
+    completer.complete(Left(ServerFailure(code: 'email_taken', message: 'already registered')));
     await tester.pump();
   });
 }

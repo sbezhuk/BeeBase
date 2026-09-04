@@ -17,6 +17,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+part 'register_page/confirm_password_field.dart';
 part 'register_page/email_field.dart';
 part 'register_page/form_content.dart';
 part 'register_page/login_prompt.dart';
@@ -41,6 +42,7 @@ final class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   String? _emailServerError;
   String? _passwordServerError;
 
@@ -48,6 +50,7 @@ final class _RegisterPageState extends State<RegisterPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -109,6 +112,7 @@ final class _RegisterPageState extends State<RegisterPage> {
                   child: _RegisterFormContent(
                     emailController: _emailController,
                     passwordController: _passwordController,
+                    confirmPasswordController: _confirmPasswordController,
                     emailServerError: _emailServerError,
                     passwordServerError: _passwordServerError,
                     onEmailChanged: () => setState(() => _emailServerError = null),
