@@ -23,7 +23,7 @@ void main() {
   final apiary = Apiary(
     id: 'apiary-1',
     name: 'Back Garden',
-    location: 'Current location (address unavailable while offline)',
+    location: 'Current location',
     lat: 40,
     lon: -74,
     createdAt: DateTime(2026),

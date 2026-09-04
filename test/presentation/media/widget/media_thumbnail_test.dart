@@ -74,8 +74,8 @@ void main() {
 
   testWidgets(
     'swapping in the server-synced replacement (same slot, different '
-    'localId — what MediaGalleryCubit.load() produces once an offline photo '
-    "finishes syncing) switches the source to the attachment's imageUrl",
+    'localId — what MediaGalleryCubit.load() produces once a photo '
+    "finishes uploading) switches the source to the attachment's imageUrl",
     (tester) async {
       await pump(
         tester,

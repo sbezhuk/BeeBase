@@ -47,8 +47,8 @@ void main() {
   }
 
   testWidgets(
-    'a photo with no imageUrl yet renders from its offline original — this is '
-    'what keeps a picture taken offline visible before its upload syncs',
+    'a photo with no imageUrl yet renders from its local original file — this is '
+    'what keeps a staged picture visible before its upload completes',
     (tester) async {
       await pump(
         tester,

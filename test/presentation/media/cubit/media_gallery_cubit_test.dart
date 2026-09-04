@@ -852,9 +852,7 @@ void main() {
     // every method below emits again after an `await`, and the widget that
     // owns this cubit (an Apiary/Hive form or details page) can be popped —
     // closing the cubit via its BlocProvider — while that await is still
-    // pending. This is far more likely offline, since the offline attach
-    // path (a local DB write) resolves almost immediately compared to a real
-    // network round trip, making the close-before-resume race easy to hit.
+    // pending.
     test('load() resuming after close() does not throw', () async {
       final getMediaCompleter =
           Completer<Either<Failure, List<MediaAttachment>>>();
