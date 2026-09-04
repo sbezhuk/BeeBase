@@ -5,6 +5,7 @@ final class MediaAttachment {
     required this.contentType,
     required this.sizeBytes,
     this.imageUrl,
+    this.localFilePath,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -18,6 +19,12 @@ final class MediaAttachment {
   /// `CachedMediaImage`).
   final String? imageUrl;
 
+  /// Absolute path to the local file when this attachment is stored offline
+  /// only (not yet uploaded). `CachedMediaImage` falls back to rendering from
+  /// this path when [imageUrl] is null, keeping a picked photo visible in the
+  /// gallery even without an internet connection.
+  final String? localFilePath;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -30,6 +37,7 @@ final class MediaAttachment {
           other.contentType == contentType &&
           other.sizeBytes == sizeBytes &&
           other.imageUrl == imageUrl &&
+          other.localFilePath == localFilePath &&
           other.createdAt == createdAt &&
           other.updatedAt == updatedAt);
 
@@ -40,6 +48,7 @@ final class MediaAttachment {
     contentType,
     sizeBytes,
     imageUrl,
+    localFilePath,
     createdAt,
     updatedAt,
   );

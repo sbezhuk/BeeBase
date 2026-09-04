@@ -1,4 +1,6 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:beebase/data/data_source/interface/apiary_local_data_source.dart';
+import 'package:beebase/data/sync/apiary_synchronizer.dart';
 import 'package:beebase/domain/entity/user.dart';
 import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';
 import 'package:beebase/presentation/profile/avatar_image_resolver.dart';
@@ -8,6 +10,8 @@ import 'package:beebase/presentation/profile/widget/profile_avatar.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold_action.dart';
+import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar.dart';
+import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar_variant.dart';
 import 'package:beebase/presentation/widgets/confirmation_sheet/confirmation_sheet.dart';
 import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/extensions/theme_colors.dart';
@@ -20,6 +24,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 part 'profile_page/profile_language_section.dart';
+part 'profile_page/profile_sync_section.dart';
 part 'profile_page/profile_header.dart';
 part 'profile_page/profile_info_section.dart';
 part 'profile_page/profile_info_row.dart';
@@ -70,6 +75,8 @@ final class ProfilePage extends StatelessWidget implements AutoRouteWrapper {
                           _ProfileInfoSection(user: user),
                           SizedBox(height: context.spacing.xl),
                           const _ProfileLanguageSection(),
+                          SizedBox(height: context.spacing.xl),
+                          const ProfileSyncSection(),
                           SizedBox(height: context.spacing.xl),
                           const _ProfileAppVersion(),
                           SizedBox(height: context.spacing.lg),

@@ -1,6 +1,8 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:beebase/core/networking/network_info.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
+import 'package:beebase/domain/enum/sync_status.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_delete_cubit/apiary_delete_cubit.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_details_cubit/apiary_details_cubit.dart';
 import 'package:beebase/presentation/apiary/extension/apiary_date_x.dart';
@@ -21,6 +23,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 
 part 'apiary_details_page/apiary_details_body.dart';
 part 'apiary_details_page/apiary_details_detail_row.dart';
@@ -84,9 +87,37 @@ final class _ApiaryDetailsPageState extends State<ApiaryDetailsPage> {
   }
 
   Future<void> _edit(BuildContext context, Apiary apiary) async {
+    // If the apiary has unsynchronized local changes, block online editing to
+    // prevent accidentally overwriting the pending local data. Offline users
+    // can always edit — the guard only fires when connectivity is available.
+    if (apiary.syncStatus.isPending) {
+      final networkInfo = di.get<INetworkInfo>();
+      final isOnline = await networkInfo.isConnected;
+      if (isOnline && context.mounted) {
+        _showSyncBlockedDialog(context);
+        return;
+      }
+    }
+    if (!context.mounted) return;
     final detailsCubit = context.read<ApiaryDetailsCubit>();
     final updated = await context.router.push<Apiary>(ApiaryFormRoute(apiary: apiary));
     if (updated != null) detailsCubit.setApiary(updated);
+  }
+
+  void _showSyncBlockedDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('apiary.sync_blocked_title'.tr()),
+        content: Text('apiary.sync_blocked_message'.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text('apiary.sync_blocked_action'.tr()),
+          ),
+        ],
+      ),
+    );
   }
 
   void _handleStateChange(BuildContext context, ApiaryDeleteState state) {

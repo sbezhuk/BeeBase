@@ -5,10 +5,14 @@ import 'package:beebase/core/location/location_service.dart';
 import 'package:beebase/core/media/media_image_cache.dart';
 import 'package:beebase/core/media/media_image_cache_manager.dart';
 import 'package:beebase/core/networking/interceptors/interceptor_resolver.dart';
+import 'package:beebase/core/networking/network_info.dart';
 import 'package:beebase/core/services/session_service.dart';
+import 'package:beebase/core/storage/database/apiary_database.dart';
 import 'package:beebase/core/storage/secure_storage.dart';
 import 'package:beebase/core/storage/token_storage.dart';
 import 'package:beebase/data/data_source/apiary_data_source.dart';
+import 'package:beebase/data/data_source/apiary_local_data_source_impl.dart';
+import 'package:beebase/data/data_source/interface/apiary_local_data_source.dart';
 import 'package:beebase/data/data_source/authentication_data_source.dart';
 import 'package:beebase/data/data_source/hive_data_source.dart';
 import 'package:beebase/data/data_source/inspection_data_source.dart';
@@ -32,6 +36,7 @@ import 'package:beebase/data/repositories/media_repository_impl.dart';
 import 'package:beebase/data/repositories/owner_image_writer.dart';
 import 'package:beebase/data/repositories/profile_repository_impl.dart';
 import 'package:beebase/data/repositories/statistics_repository_impl.dart';
+import 'package:beebase/data/sync/apiary_synchronizer.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/entity/hive.dart';
 import 'package:beebase/domain/entity/inspection.dart';
@@ -95,6 +100,9 @@ Future<void> initDi() async {
   di.registerLazySingleton<TokenStorage>(
     () => TokenStorage(secureStorage: di()),
   );
+  di.registerLazySingleton<ApiaryDatabase>(() => ApiaryDatabase());
+  di.registerLazySingleton<NetworkInfo>(() => NetworkInfo()..startMonitoring());
+  di.registerLazySingleton<INetworkInfo>(() => di<NetworkInfo>());
   di.registerLazySingleton<SessionService>(() => SessionService());
   di.registerLazySingleton<LocationService>(LocationService.new);
   di.registerLazySingleton<ApiaryListRefreshNotifier>(
@@ -176,6 +184,12 @@ Future<void> initDi() async {
     () => ApiaryDataSource(dioClient: di(), resolver: di()),
   );
   di.registerLazySingleton<IApiaryDataSource>(() => di<ApiaryDataSource>());
+  di.registerLazySingleton<ApiaryLocalDataSourceImpl>(
+    () => ApiaryLocalDataSourceImpl(database: di()),
+  );
+  di.registerLazySingleton<IApiaryLocalDataSource>(
+    () => di<ApiaryLocalDataSourceImpl>(),
+  );
   di.registerLazySingleton<HiveDataSource>(
     () => HiveDataSource(dioClient: di(), resolver: di()),
   );
@@ -221,10 +235,26 @@ Future<void> initDi() async {
     () => di<AuthenticationRepositoryImpl>(),
   );
   di.registerLazySingleton<ApiaryRepositoryImpl>(
-    () => ApiaryRepositoryImpl(dataSource: di()),
+    () => ApiaryRepositoryImpl(
+      dataSource: di(),
+      localDataSource: di(),
+      networkInfo: di(),
+    ),
   );
   di.registerLazySingleton<IApiaryReader>(() => di<ApiaryRepositoryImpl>());
   di.registerLazySingleton<IApiaryWriter>(() => di<ApiaryRepositoryImpl>());
+  di.registerLazySingleton<ApiarySynchronizer>(
+    () => ApiarySynchronizer(
+      localDataSource: di(),
+      apiaryRemoteDataSource: di(),
+      mediaRemoteDataSource: di(),
+      networkInfo: di(),
+      refreshNotifier: di(),
+    ),
+  );
+  di.registerLazySingleton<IApiarySynchronizer>(
+    () => di<ApiarySynchronizer>(),
+  );
   di.registerLazySingleton<HiveRepositoryImpl>(
     () => HiveRepositoryImpl(dataSource: di()),
   );
@@ -247,6 +277,8 @@ Future<void> initDi() async {
       dataSource: di(),
       imageCache: di(),
       ownerImageWriter: di(),
+      localDataSource: di(),
+      networkInfo: di(),
     ),
   );
   di.registerLazySingleton<IMediaReader>(() => di<MediaRepositoryImpl>());

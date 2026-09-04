@@ -27,7 +27,29 @@ final class _ApiaryListTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(apiary.name, style: context.textStyles.body, maxLines: 1, overflow: TextOverflow.ellipsis),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        apiary.name,
+                        style: context.textStyles.body,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (apiary.syncStatus != SyncStatus.synced) ...[
+                      SizedBox(width: context.spacing.xs),
+                      Tooltip(
+                        message: 'apiary.sync_status.${apiary.syncStatus.name}'.tr(),
+                        child: Icon(
+                          Icons.cloud_upload_outlined,
+                          size: 16,
+                          color: colors.brand.primary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
                 if (hasLocation) ...[
                   SizedBox(height: context.spacing.xs),
                   Row(

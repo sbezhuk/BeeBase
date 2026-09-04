@@ -151,6 +151,13 @@
   },
   "apiary": {
     "photo_placeholder": "Photo coming soon",
+    "sync_status": {
+      "synced": "Synced",
+      "pendingCreate": "Not synced (pending upload)",
+      "pendingUpdate": "Not synced (pending update)",
+      "pendingDelete": "Pending deletion",
+      "syncing": "Syncing..."
+    },
     "list": {
       "title": "Apiaries",
       "add_apiary": "Add Apiary",
@@ -200,7 +207,10 @@
       "validations": {
         "name_required": "Apiary name is required"
       }
-    }
+    },
+    "sync_blocked_title": "Unsynchronized Changes",
+    "sync_blocked_message": "This apiary has local changes that haven't been synced to the server yet. Please sync your data from the Profile tab before editing.",
+    "sync_blocked_action": "OK"
   },
   "hive": {
     "list": {
@@ -307,7 +317,16 @@
       "logout_confirm_message": "You'll need to sign in again to access your apiaries and hives.",
       "language": "Language",
       "language_sheet_title": "Choose language",
-      "change_password": "Change password"
+      "change_password": "Change password",
+      "sync_section": "Synchronization",
+      "sync_data": "Sync data",
+      "sync_now": "Sync now",
+      "sync_all_synced": "All data is up to date",
+      "sync_pending_count": "{count} pending changes",
+      "sync_in_progress": "Syncing data...",
+      "sync_success": "Successfully synchronized {count} items",
+      "sync_failed": "Sync failed. Will retry automatically.",
+      "sync_no_internet": "No internet connection to sync"
     },
     "edit": {
       "title": "Edit Profile",
