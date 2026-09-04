@@ -178,6 +178,7 @@
       "added_on": "Added {date}",
       "delete_confirm_title": "Delete apiary?",
       "delete_confirm_message": "This will permanently remove this apiary. This action cannot be undone.",
+      "delete_offline_blocked": "Deleting this apiary is only available in online mode.",
       "manage_hives": "Manage Hives",
       "hives_count": "{count} hives",
       "no_hives": "No hives"

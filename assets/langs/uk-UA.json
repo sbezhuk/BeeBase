@@ -181,6 +181,7 @@
       "added_on": "Додано {date}",
       "delete_confirm_title": "Видалити пасіку?",
       "delete_confirm_message": "Це остаточно видалить цю пасіку. Цю дію неможливо скасувати.",
+      "delete_offline_blocked": "Видалення цієї пасіки доступне лише в онлайн-режимі.",
       "manage_hives": "Керувати вуликами",
       "hives_count": "{count} вуликів",
       "no_hives": "Немає вуликів"

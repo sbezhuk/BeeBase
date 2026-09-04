@@ -39,6 +39,12 @@ final class Apiary {
   /// Synchronization status of this apiary.
   final SyncStatus syncStatus;
 
+  /// Whether this apiary already has a counterpart on the backend. Apiaries
+  /// created offline stay [SyncStatus.pendingCreate] until their first
+  /// successful sync, so they exist only in SQLite; every other status means
+  /// the record was created online and the server owns it too.
+  bool get existsOnServer => syncStatus != SyncStatus.pendingCreate;
+
   Apiary copyWith({
     String? id,
     String? name,
