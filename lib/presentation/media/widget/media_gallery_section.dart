@@ -1,13 +1,16 @@
+import 'package:beebase/core/networking/network_info.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_item.dart';
 import 'package:beebase/presentation/media/widget/media_thumbnail.dart';
 import 'package:beebase/presentation/widgets/confirmation_sheet/confirmation_sheet.dart';
+import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
 import 'package:beebase/utils/extensions/theme_text_styles.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 
 part 'media_gallery_section/media_gallery_add_tile.dart';
 part 'media_gallery_section/media_gallery_item_tile.dart';

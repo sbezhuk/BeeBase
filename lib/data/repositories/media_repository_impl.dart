@@ -83,6 +83,31 @@ final class MediaRepositoryImpl extends Repository
           ? await dataSource.listMedia(ids: remoteIds)
           : <MediaResponse>[];
 
+      // Cache remote media for offline viewing.
+      if (localDataSource != null) {
+        for (final item in remoteItems) {
+          if (item.imageUrl != null) {
+            final cachedPath = await imageCache.getCachedFilePath(item.imageUrl!);
+            if (cachedPath != null) {
+              final localMedia = LocalMedia(
+                localId: item.id,
+                serverId: item.id,
+                ownerType: '',
+                ownerId: '',
+                localFilePath: cachedPath,
+                originalFilename: item.originalFilename,
+                contentType: item.contentType,
+                sizeBytes: item.sizeBytes,
+                syncStatus: SyncStatus.synced,
+                createdAt: item.createdAt,
+              );
+              await localDataSource!.saveLocalMedia(localMedia);
+              localMediaMap[item.id] = localMedia;
+            }
+          }
+        }
+      }
+
       // Merge remote + local, preserving localFilePath for offline items.
       final byId = {for (final r in remoteItems) r.id: r};
       return <MediaAttachment>[
@@ -93,7 +118,7 @@ final class MediaRepositoryImpl extends Repository
               originalFilename: localMediaMap[id]!.originalFilename,
               contentType: localMediaMap[id]!.contentType,
               sizeBytes: localMediaMap[id]!.sizeBytes,
-              imageUrl: null,
+              imageUrl: byId[id]?.imageUrl,
               localFilePath: localMediaMap[id]!.localFilePath,
               createdAt: localMediaMap[id]!.createdAt,
               updatedAt: localMediaMap[id]!.createdAt,
@@ -103,6 +128,7 @@ final class MediaRepositoryImpl extends Repository
       ];
     });
   }
+
 
   @override
   Future<Either<Failure, MediaAttachment>> attachMedia({
@@ -195,6 +221,16 @@ final class MediaRepositoryImpl extends Repository
     final online = await _isOnline;
 
     if (!online && localDataSource != null) {
+      final isLocalOnly =
+          id.startsWith('local-media-') || id.startsWith('staged-');
+      if (!isLocalOnly) {
+        return Left(
+          ServerFailure(
+            code: 'cannot_delete_offline',
+            message: 'Photos from online objects cannot be deleted offline.',
+          ),
+        );
+      }
       final detachResult = await ownerImageWriter.removeImage(
         ownerType: ownerType,
         ownerId: ownerId,
@@ -224,10 +260,14 @@ final class MediaRepositoryImpl extends Repository
         if (imageUrl != null) {
           await imageCache.evict(imageUrl);
         }
+        if (localDataSource != null) {
+          await localDataSource!.deleteLocalMedia(id);
+        }
         return const Right(null);
       });
     });
   }
+
 
   Future<String?> _imageUrlOf(String id) async {
     final result = await on(() => dataSource.listMedia(ids: [id]));

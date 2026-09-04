@@ -441,9 +441,25 @@ void main() {
     });
 
     test(
-        'removeApiaryImage offline on synced apiary promotes syncStatus to pendingUpdate',
+        'removeApiaryImage offline on server photo fails because online photos cannot be deleted offline',
         () async {
       final apiaryWithImage = sampleSyncedApiary.copyWith(images: ['existing-img-id']);
+      when(() => localDataSource.getApiaryById('server-1'))
+          .thenAnswer((_) async => apiaryWithImage);
+
+      final result = await repository.removeApiaryImage(
+        apiaryId: 'server-1',
+        mediaId: 'existing-img-id',
+      );
+
+      expect(result.isLeft, isTrue);
+      verifyNever(() => localDataSource.updateApiary(any()));
+    });
+
+    test(
+        'removeApiaryImage offline on local-only photo succeeds and removes it',
+        () async {
+      final apiaryWithImage = sampleSyncedApiary.copyWith(images: ['local-media-123']);
       when(() => localDataSource.getApiaryById('server-1'))
           .thenAnswer((_) async => apiaryWithImage);
       when(() => localDataSource.updateApiary(any()))
@@ -451,15 +467,14 @@ void main() {
 
       final result = await repository.removeApiaryImage(
         apiaryId: 'server-1',
-        mediaId: 'existing-img-id',
+        mediaId: 'local-media-123',
       );
 
       expect(result.isRight, isTrue);
       final captured = verify(() => localDataSource.updateApiary(captureAny())).captured;
       final updated = captured.first as Apiary;
-      expect(updated.syncStatus, SyncStatus.pendingUpdate,
-          reason: 'Removing a photo offline should mark the apiary as pendingUpdate');
-      expect(updated.images, isNot(contains('existing-img-id')));
+      expect(updated.images, isNot(contains('local-media-123')));
     });
   });
 }
+

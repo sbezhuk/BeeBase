@@ -379,10 +379,17 @@ final class ApiaryRepositoryImpl extends Repository
 
       // Offline mode
       if (localDataSource != null && existingLocal != null) {
+        final isLocalOnly =
+            mediaId.startsWith('local-media-') || mediaId.startsWith('staged-');
+        if (!isLocalOnly) {
+          throw const ServerException(
+            statusCode: 400,
+            code: 'cannot_delete_offline',
+            message: 'Photos from online objects cannot be deleted offline',
+          );
+        }
         final newImages =
             existingLocal.images.where((id) => id != mediaId).toList();
-        // Same rationale as addApiaryImage: promote synced apiary to pendingUpdate
-        // so the synchronizer picks up the removal on the next sync.
         final newStatus = existingLocal.syncStatus == SyncStatus.pendingCreate
             ? SyncStatus.pendingCreate
             : SyncStatus.pendingUpdate;
@@ -395,6 +402,7 @@ final class ApiaryRepositoryImpl extends Repository
       }
     });
   }
+
 
   @override
   Future<Either<Failure, void>> deleteApiary(String id) {

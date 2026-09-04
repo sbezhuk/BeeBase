@@ -296,8 +296,12 @@
       "delete": "Delete",
       "cancel": "Cancel",
       "uploading": "Uploading…",
-      "upload_failed_retry": "Upload failed — tap to retry"
+      "upload_failed_retry": "Upload failed — tap to retry",
+      "delete_offline_blocked_title": "Cannot Delete Offline",
+      "delete_offline_blocked_message": "Photos from online objects cannot be deleted while offline. Please connect to the internet to delete this photo.",
+      "delete_offline_blocked_action": "OK"
     },
+
     "errors": {
       "update_not_supported": "Media cannot be updated."
     }

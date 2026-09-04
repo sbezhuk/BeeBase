@@ -74,7 +74,16 @@ final class _MediaGalleryRemoveButton extends StatelessWidget {
     );
   }
 
-  void _confirmRemove(BuildContext context) {
+  Future<void> _confirmRemove(BuildContext context) async {
+    if (item.isServerMedia && di.isRegistered<INetworkInfo>()) {
+      final isOnline = await di<INetworkInfo>().isConnected;
+      if (!isOnline && context.mounted) {
+        _showOfflineDeleteBlockedDialog(context);
+        return;
+      }
+    }
+    if (!context.mounted) return;
+
     final cubit = context.read<MediaGalleryCubit>();
     showConfirmationSheet(
       context: context,
@@ -86,4 +95,21 @@ final class _MediaGalleryRemoveButton extends StatelessWidget {
       onConfirm: () => cubit.remove(item.localId),
     );
   }
+
+  void _showOfflineDeleteBlockedDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('media.gallery.delete_offline_blocked_title'.tr()),
+        content: Text('media.gallery.delete_offline_blocked_message'.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text('media.gallery.delete_offline_blocked_action'.tr()),
+          ),
+        ],
+      ),
+    );
+  }
 }
+
