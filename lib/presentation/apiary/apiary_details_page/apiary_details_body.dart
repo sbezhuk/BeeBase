@@ -31,10 +31,6 @@ final class _ApiaryDetailsBody extends StatelessWidget {
                   Text('apiary.details.section_label'.tr(), style: context.textStyles.label.copyWith(color: colors.honey.muted)),
                   SizedBox(height: context.spacing.xs),
                   Text(apiary.name, style: context.textStyles.title),
-                  if (apiary.syncStatus != ApiarySyncStatus.synced) ...[
-                    SizedBox(height: context.spacing.xs),
-                    ApiarySyncBadge(status: apiary.syncStatus),
-                  ],
                   SizedBox(height: context.spacing.sm),
                   _ApiaryDetailsDetailRow(
                     icon: Icons.calendar_today_outlined,

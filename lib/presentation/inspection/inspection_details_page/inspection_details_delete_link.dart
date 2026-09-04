@@ -4,13 +4,6 @@ part of '../inspection_details_page.dart';
 /// [_HiveDeleteLink]. Deletion is a rare, deliberate action here, so it
 /// stays visually quiet until confirmed, while edit (the common action)
 /// lives up in the nav bar instead.
-///
-/// A never-synced ([Inspection.isLocalOnly]) inspection is always
-/// deletable, online or off. A synced inspection requires live connectivity
-/// — [InspectionRepositoryImpl] enforces this too, but hiding the link here
-/// (via [ConnectivityCubit]) avoids the user hitting the confirm sheet just
-/// to see it fail, and explains why via
-/// [inspection.details.delete_requires_connection].
 final class _InspectionDeleteLink extends StatelessWidget {
   const _InspectionDeleteLink({required this.inspection, required this.isDeleting});
 
@@ -18,25 +11,7 @@ final class _InspectionDeleteLink extends StatelessWidget {
   final bool isDeleting;
 
   @override
-  Widget build(BuildContext context) {
-    if (inspection.isLocalOnly) {
-      return _buildLink(context);
-    }
-    return BlocBuilder<ConnectivityCubit, ConnectivityState>(
-      builder: (context, state) {
-        if (state is ConnectivityOffline) {
-          return Center(
-            child: Text(
-              'inspection.details.delete_requires_connection'.tr(),
-              textAlign: TextAlign.center,
-              style: context.textStyles.label.copyWith(color: context.colors.text.secondary),
-            ),
-          );
-        }
-        return _buildLink(context);
-      },
-    );
-  }
+  Widget build(BuildContext context) => _buildLink(context);
 
   Widget _buildLink(BuildContext context) {
     final colors = context.colors;

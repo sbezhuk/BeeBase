@@ -73,8 +73,7 @@ final class AppSnackBarCard extends StatelessWidget {
         // sizing a `Row` that contains an `Expanded` + wrapping `Text` is a
         // known Flutter pitfall that can blow the computed height up to
         // several times the content's actual size once the message needs
-        // more than one line (exactly the case for real, sentence-length
-        // copy like the offline-sync message).
+        // more than one line (for real, sentence-length copy).
         child: Stack(
           alignment: Alignment.center,
           children: [

@@ -53,10 +53,6 @@ final class _HiveListTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                    if (hive.syncStatus != HiveSyncStatus.synced) ...[
-                      SizedBox(height: context.spacing.xs),
-                      HiveSyncBadge(status: hive.syncStatus),
-                    ],
                   ],
                 ),
               ),

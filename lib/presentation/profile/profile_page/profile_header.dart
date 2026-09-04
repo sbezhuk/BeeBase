@@ -18,9 +18,8 @@ final class _ProfileHeader extends StatelessWidget {
       child: Column(
         children: [
           ProfileAvatar(
-            resolver: di<AvatarPathResolver>(),
+            resolver: di<AvatarImageResolver>(),
             avatarId: user.avatarId,
-            localFilePath: user.avatarLocalFilePath,
             size: 96,
           ),
           SizedBox(height: context.spacing.md),

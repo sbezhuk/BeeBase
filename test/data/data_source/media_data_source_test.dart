@@ -33,6 +33,7 @@ void main() {
     sizeBytes: 1024,
     createdAt: DateTime(2026),
     updatedAt: DateTime(2026),
+    imageUrl: 'https://api.beebase.test/api/v1/media/media-1/download',
   );
 
   setUp(() {
@@ -98,7 +99,9 @@ void main() {
     tearDown(() => tempDir.delete(recursive: true));
 
     test(
-      'posts multipart form data (including the idempotency key) and returns the uploaded id',
+      'posts multipart form data and returns '
+      "the server's own record — including the image_url every later render "
+      'of the photo goes through',
       () async {
         when(
           () => innerDioClient.post<Map<String, dynamic>>(
@@ -117,10 +120,13 @@ void main() {
           filePath: file.path,
           originalFilename: 'photo.jpg',
           contentType: 'image/jpeg',
-          idempotencyKey: 'op-1',
         );
 
-        expect(result, 'media-1');
+        expect(result.id, 'media-1');
+        expect(
+          result.imageUrl,
+          'https://api.beebase.test/api/v1/media/media-1/download',
+        );
         final captured =
             verify(
                   () => innerDioClient.post<Map<String, dynamic>>(
@@ -131,58 +137,11 @@ void main() {
                 ).captured.single
                 as FormData;
         final fields = Map.fromEntries(captured.fields);
-        expect(fields['media_id'], 'op-1');
         expect(fields.containsKey('owner_type'), isFalse);
         expect(fields.containsKey('owner_id'), isFalse);
         expect(captured.files.single.key, 'file');
       },
     );
-
-    test('omits media_id when no idempotency key is given', () async {
-      when(
-        () => innerDioClient.post<Map<String, dynamic>>(
-          any(),
-          data: any(named: 'data'),
-          onSendProgress: any(named: 'onSendProgress'),
-        ),
-      ).thenAnswer(
-        (_) async => Response(
-          requestOptions: RequestOptions(),
-          data: mediaResponse.toJson(),
-        ),
-      );
-
-      await dataSource.uploadMedia(
-        filePath: file.path,
-        originalFilename: 'photo.jpg',
-        contentType: 'image/jpeg',
-      );
-
-      final captured =
-          verify(
-                () => innerDioClient.post<Map<String, dynamic>>(
-                  ApiEndpoints.media.list,
-                  data: captureAny(named: 'data'),
-                  onSendProgress: any(named: 'onSendProgress'),
-                ),
-              ).captured.single
-              as FormData;
-      final fields = Map.fromEntries(captured.fields);
-      expect(fields.containsKey('media_id'), isFalse);
-    });
-  });
-
-  test('downloadMedia fetches raw bytes from the download endpoint', () async {
-    when(() => innerDioClient.getBytes(any())).thenAnswer(
-      (_) async => Response(requestOptions: RequestOptions(), data: [1, 2, 3]),
-    );
-
-    final bytes = await dataSource.downloadMedia('media-1');
-
-    expect(bytes, [1, 2, 3]);
-    verify(
-      () => innerDioClient.getBytes(ApiEndpoints.media.download('media-1')),
-    ).called(1);
   });
 
   test('deleteMedia calls delete on the byId endpoint', () async {

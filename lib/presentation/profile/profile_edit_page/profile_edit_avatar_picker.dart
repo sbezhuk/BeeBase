@@ -11,7 +11,7 @@ final class _ProfileEditAvatarPicker extends StatelessWidget {
     required this.onTap,
   });
 
-  final AvatarPathResolver resolver;
+  final AvatarImageResolver resolver;
   final String? avatarId;
   final String? localFilePath;
   final VoidCallback onTap;

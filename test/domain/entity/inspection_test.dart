@@ -1,47 +1,44 @@
-import 'package:beebase/core/offline/local_id_generator.dart';
 import 'package:beebase/domain/entity/inspection.dart';
-import 'package:beebase/domain/enum/local/inspection_sync_status.dart';
 import 'package:beebase/domain/enum/backend/inspection_type.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  Inspection buildInspection({
-    String id = 'inspection-1',
-    InspectionSyncStatus syncStatus = InspectionSyncStatus.synced,
-  }) {
-    return Inspection(
-      id: id,
-      hiveId: 'hive-1',
-      date: DateTime(2026, 1, 1),
-      type: InspectionType.routine,
-      notes: 'notes',
-      createdAt: DateTime(2026),
-      updatedAt: DateTime(2026),
-      syncStatus: syncStatus,
-    );
-  }
+  final inspection1 = Inspection(
+    id: 'inspection-1',
+    hiveId: 'hive-1',
+    date: DateTime(2026, 1, 1),
+    type: InspectionType.routine,
+    notes: 'notes',
+    createdAt: DateTime(2026, 1, 1),
+    updatedAt: DateTime(2026, 1, 1),
+  );
+  final inspection2 = Inspection(
+    id: 'inspection-1',
+    hiveId: 'hive-1',
+    date: DateTime(2026, 1, 1),
+    type: InspectionType.routine,
+    notes: 'notes',
+    createdAt: DateTime(2026, 1, 1),
+    updatedAt: DateTime(2026, 1, 1),
+  );
+  final inspection3 = Inspection(
+    id: 'inspection-2',
+    hiveId: 'hive-1',
+    date: DateTime(2026, 1, 1),
+    type: InspectionType.health,
+    notes: 'notes',
+    createdAt: DateTime(2026, 1, 1),
+    updatedAt: DateTime(2026, 1, 1),
+  );
 
-  test('isLocalOnly is true for a locally-generated id', () {
-    final inspection = buildInspection(id: LocalIdGenerator.generate());
-    expect(inspection.isLocalOnly, isTrue);
-  });
+  group('equality and hashCode', () {
+    test('same-field instances are equal and have identical hashCodes', () {
+      expect(inspection1, inspection2);
+      expect(inspection1.hashCode, inspection2.hashCode);
+    });
 
-  test('isLocalOnly is false for a server-assigned id', () {
-    expect(buildInspection().isLocalOnly, isFalse);
-  });
-
-  test('copyWith replaces only syncStatus', () {
-    final inspection = buildInspection();
-    final updated = inspection.copyWith(syncStatus: InspectionSyncStatus.pending);
-    expect(updated.syncStatus, InspectionSyncStatus.pending);
-    expect(updated.id, inspection.id);
-    expect(updated.hiveId, inspection.hiveId);
-    expect(updated.date, inspection.date);
-  });
-
-  test('equality and hashCode are based on all fields', () {
-    expect(buildInspection(), buildInspection());
-    expect(buildInspection().hashCode, buildInspection().hashCode);
-    expect(buildInspection(), isNot(buildInspection(syncStatus: InspectionSyncStatus.pending)));
+    test('instances with different fields are not equal', () {
+      expect(inspection1 == inspection3, isFalse);
+    });
   });
 }

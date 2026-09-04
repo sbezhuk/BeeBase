@@ -3,7 +3,6 @@ import 'package:beebase/core/networking/http/dio_client.dart';
 import 'package:beebase/core/networking/interceptors/authentication_interceptor.dart';
 import 'package:beebase/core/networking/interceptors/interceptor_resolver.dart';
 import 'package:beebase/data/data_source/interface/inspection_data_source.dart';
-import 'package:beebase/data/models/idempotency_key_header.dart';
 import 'package:beebase/data/models/inspection_request.dart';
 import 'package:beebase/data/models/inspection_response.dart';
 import 'package:beebase/data/models/page_request.dart';
@@ -49,15 +48,11 @@ final class InspectionDataSource implements IInspectionDataSource {
   @override
   Future<InspectionResponse> createInspection(
     String hiveId,
-    InspectionRequest request, {
-    String? idempotencyKey,
-  }) async {
+    InspectionRequest request,
+  ) async {
     final response = await _dioClient.post<Map<String, dynamic>>(
       ApiEndpoints.inspections.create(),
       data: {'hive_id': hiveId, ...request.toJson()},
-      headers: idempotencyKey == null
-          ? null
-          : IdempotencyKeyHeader(idempotencyKey: idempotencyKey).toJson(),
     );
     return InspectionResponse.fromJson(response.data!);
   }

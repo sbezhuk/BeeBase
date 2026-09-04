@@ -1,6 +1,3 @@
-import 'package:beebase/core/offline/local_id_generator.dart';
-import 'package:beebase/domain/enum/local/hive_sync_status.dart';
-
 final class Hive {
   const Hive({
     required this.id,
@@ -10,7 +7,6 @@ final class Hive {
     required this.createdAt,
     required this.updatedAt,
     this.images = const [],
-    this.syncStatus = HiveSyncStatus.synced,
   });
 
   final String id;
@@ -27,29 +23,8 @@ final class Hive {
 
   /// Media ids currently attached to this hive — hive-service's own source
   /// of truth (see `HiveResponse.images`), not something media-service is
-  /// asked about anymore. Only as fresh as the last fetch/cache read that
-  /// produced this instance.
+  /// asked about anymore.
   final List<String> images;
-
-  final HiveSyncStatus syncStatus;
-
-  /// Whether this hive was created while offline and has never reached the
-  /// server yet — the only data that stays freely deletable while offline
-  /// (see `HiveRepositoryImpl.deleteHive`).
-  bool get isLocalOnly => LocalIdGenerator.isLocal(id);
-
-  Hive copyWith({HiveSyncStatus? syncStatus}) {
-    return Hive(
-      id: id,
-      apiaryId: apiaryId,
-      name: name,
-      notes: notes,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
-      images: images,
-      syncStatus: syncStatus ?? this.syncStatus,
-    );
-  }
 
   @override
   bool operator ==(Object other) =>
@@ -61,12 +36,11 @@ final class Hive {
           other.notes == notes &&
           other.createdAt == createdAt &&
           other.updatedAt == updatedAt &&
-          _listEquals(other.images, images) &&
-          other.syncStatus == syncStatus);
+          _listEquals(other.images, images));
 
   @override
   int get hashCode =>
-      Object.hash(id, apiaryId, name, notes, createdAt, updatedAt, Object.hashAll(images), syncStatus);
+      Object.hash(id, apiaryId, name, notes, createdAt, updatedAt, Object.hashAll(images));
 }
 
 bool _listEquals(List<String> a, List<String> b) {

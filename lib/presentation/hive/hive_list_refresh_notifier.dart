@@ -1,5 +1,4 @@
-import 'package:beebase/core/offline/sync_activity.dart';
-import 'package:beebase/core/offline/sync_coalesced_signal.dart';
+import 'dart:async';
 
 /// Broadcasts a signal whenever a hive is created, edited, or deleted.
 ///
@@ -9,20 +8,16 @@ import 'package:beebase/core/offline/sync_coalesced_signal.dart';
 /// only fires for a route revealed within the same navigator that popped.
 /// [HiveListCubit] subscribes to [onChanged] instead to refresh itself
 /// regardless of which navigator the change came from.
-///
-/// Delegates to [SyncCoalescedSignal] so that a sync batch touching several
-/// hives only triggers one refresh once the whole batch finishes, instead
-/// of one per synced operation — see that class's doc.
 final class HiveListRefreshNotifier {
-  HiveListRefreshNotifier({
-    SyncActivity syncActivity = const NeverSyncingActivity(),
-  }) : _signal = SyncCoalescedSignal(syncActivity);
+  HiveListRefreshNotifier();
 
-  final SyncCoalescedSignal _signal;
+  final StreamController<void> _controller = StreamController<void>.broadcast();
 
-  Stream<void> get onChanged => _signal.onChanged;
+  Stream<void> get onChanged => _controller.stream;
 
-  void notify() => _signal.notify();
+  void notify() {
+    if (!_controller.isClosed) _controller.add(null);
+  }
 
-  void dispose() => _signal.dispose();
+  void dispose() => unawaited(_controller.close());
 }

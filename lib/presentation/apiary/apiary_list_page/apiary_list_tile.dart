@@ -28,10 +28,6 @@ final class _ApiaryListTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(apiary.name, style: context.textStyles.body, maxLines: 1, overflow: TextOverflow.ellipsis),
-                if (apiary.syncStatus != ApiarySyncStatus.synced) ...[
-                  SizedBox(height: context.spacing.xs),
-                  ApiarySyncBadge(status: apiary.syncStatus),
-                ],
                 if (hasLocation) ...[
                   SizedBox(height: context.spacing.xs),
                   Row(

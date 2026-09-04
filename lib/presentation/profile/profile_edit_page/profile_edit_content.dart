@@ -15,7 +15,7 @@ final class _ProfileEditContent extends StatelessWidget {
   final TextEditingController lastNameController;
   final String? avatarId;
   final String? avatarLocalFilePath;
-  final AvatarPathResolver resolver;
+  final AvatarImageResolver resolver;
   final VoidCallback onAvatarTap;
   final VoidCallback onSubmit;
 

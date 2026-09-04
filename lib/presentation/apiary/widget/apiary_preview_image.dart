@@ -1,5 +1,4 @@
 import 'package:beebase/domain/entity/apiary.dart';
-import 'package:beebase/domain/enum/local/apiary_sync_status.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_photo_placeholder.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/presentation/media/widget/media_thumbnail.dart';
@@ -34,12 +33,6 @@ final class ApiaryPreviewImage extends StatelessWidget {
       );
     }
 
-    return apiary.syncStatus == ApiarySyncStatus.synced
-        ? ApiaryPhotoPlaceholder(height: height)
-        : ApiaryPhotoPlaceholder(
-            height: height,
-            titleKey: 'apiary.offline_photo_placeholder.title',
-            subtitleKey: 'apiary.offline_photo_placeholder.subtitle',
-          );
+    return ApiaryPhotoPlaceholder(height: height);
   }
 }

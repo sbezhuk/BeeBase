@@ -1,12 +1,7 @@
-import 'dart:async';
-
-import 'package:beebase/core/services/connectivity_service.dart';
-import 'package:beebase/core/storage/local_media_store.dart';
 import 'package:beebase/domain/entity/media_attachment.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/domain/repositories/media_reader.dart';
 import 'package:beebase/domain/repositories/media_writer.dart';
-import 'package:beebase/presentation/connectivity/cubit/connectivity_cubit/connectivity_cubit.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/presentation/media/widget/media_gallery_section.dart';
 import 'package:beebase/utils/either.dart';
@@ -19,43 +14,14 @@ class MockMediaReader extends Mock implements IMediaReader {}
 
 class MockMediaWriter extends Mock implements IMediaWriter {}
 
-class _FakeConnectivityService implements IConnectivityService {
-  final _controller = StreamController<bool>.broadcast();
-
-  @override
-  Future<bool> get isOnline async => true;
-
-  @override
-  Stream<bool> get status => _controller.stream;
-
-  void emit(bool online) => _controller.add(online);
-
-  Future<void> dispose() => _controller.close();
-}
-
 void main() {
   late MockMediaReader reader;
   late MockMediaWriter writer;
-  // Built inside the test body (via pumpGallery), not here — a
-  // StreamController-backed subscription created in setUp runs outside the
-  // testWidgets fake-async zone, so pump() never delivers its events. See
-  // connectivity_banner_test.dart for the same fix.
-  late _FakeConnectivityService connectivity;
-  late ConnectivityCubit connectivityCubit;
   late MediaGalleryCubit galleryCubit;
 
-  final syncedAttachment = MediaAttachment(
+  final attachment = MediaAttachment(
     id: 'media-1',
     originalFilename: 'photo.jpg',
-    contentType: 'image/jpeg',
-    sizeBytes: 4,
-    createdAt: DateTime(2026),
-    updatedAt: DateTime(2026),
-  );
-
-  final localOnlyAttachment = MediaAttachment(
-    id: 'local-pending-1',
-    originalFilename: 'photo2.jpg',
     contentType: 'image/jpeg',
     sizeBytes: 4,
     createdAt: DateTime(2026),
@@ -73,8 +39,6 @@ void main() {
 
   tearDown(() async {
     await galleryCubit.close();
-    await connectivityCubit.close();
-    await connectivity.dispose();
   });
 
   Future<void> pumpGallery(
@@ -84,25 +48,16 @@ void main() {
     when(
       () => reader.getMedia(ids: any(named: 'ids')),
     ).thenAnswer((_) async => Right([attachment]));
-    when(
-      () => reader.cacheDownloadedMedia(any(), any()),
-    ).thenAnswer((_) async {});
 
     galleryCubit = MediaGalleryCubit(
       reader: reader,
       writer: writer,
-      localMediaStore: const LocalMediaStore(),
       ownerType: MediaOwnerType.apiary,
       ownerId: 'apiary-1',
       resolveImages: (_) async => [attachment.id],
     );
     await galleryCubit.load();
 
-    connectivity = _FakeConnectivityService();
-    connectivityCubit = ConnectivityCubit(connectivity: connectivity);
-
-    // Taller than the default 800x600 test surface so the confirmation
-    // sheet's content fits without overflowing/landing off-screen.
     tester.view.physicalSize = const Size(800, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -111,11 +66,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: MultiBlocProvider(
-            providers: [
-              BlocProvider<ConnectivityCubit>.value(value: connectivityCubit),
-              BlocProvider<MediaGalleryCubit>.value(value: galleryCubit),
-            ],
+          body: BlocProvider<MediaGalleryCubit>.value(
+            value: galleryCubit,
             child: const MediaGallerySection(),
           ),
         ),
@@ -134,15 +86,6 @@ void main() {
     );
   }
 
-  // Discrete pumps throughout this file, never pumpAndSettle — MediaThumbnail
-  // never fully settles (see media_thumbnail_test.dart), so pumpAndSettle
-  // hangs anywhere in this widget tree.
-  //
-  // The confirm button is invoked directly via its InkWell.onTap rather than
-  // a simulated tap: the sheet's entrance transition, layered on top of
-  // MediaThumbnail's own perpetual rebuilds, leaves its hit-test geometry
-  // unreliable at any fixed pump duration, even though the button is
-  // genuinely visible and correctly labelled on screen.
   Future<void> confirmDelete(WidgetTester tester) async {
     await tester.tap(find.byIcon(Icons.close));
     await tester.pump(const Duration(milliseconds: 300));
@@ -156,22 +99,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
   }
 
-  group('an already-synced photo (exists on the server)', () {
-    testWidgets('the remove button is hidden entirely while offline', (
-      tester,
-    ) async {
-      await pumpGallery(tester, syncedAttachment);
-
-      connectivity.emit(false);
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.byIcon(Icons.close), findsNothing);
-    });
-
-    testWidgets('the remove action works normally while online', (
-      tester,
-    ) async {
+  group('remove button interaction', () {
+    testWidgets('shows remove button and invokes remove on confirmation', (tester) async {
       when(
         () => writer.removeMedia(
           ownerType: MediaOwnerType.apiary,
@@ -179,7 +108,8 @@ void main() {
           id: 'media-1',
         ),
       ).thenAnswer((_) async => const Right(null));
-      await pumpGallery(tester, syncedAttachment);
+
+      await pumpGallery(tester, attachment);
 
       expect(removeButtonDetector(tester).onTap, isNotNull);
       expect(find.byTooltip('media.gallery.remove'), findsOneWidget);
@@ -194,59 +124,24 @@ void main() {
       ).called(1);
     });
 
-    testWidgets('the remove button reappears once back online', (tester) async {
-      when(
+    testWidgets('tapping remove shows confirmation sheet', (tester) async {
+      await pumpGallery(tester, attachment);
+
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('media.gallery.delete_confirm_title'), findsOneWidget);
+      verifyNever(
         () => writer.removeMedia(
-          ownerType: MediaOwnerType.apiary,
-          ownerId: 'apiary-1',
-          id: 'media-1',
+          ownerType: any(named: 'ownerType'),
+          ownerId: any(named: 'ownerId'),
+          id: any(named: 'id'),
         ),
-      ).thenAnswer((_) async => const Right(null));
-      await pumpGallery(tester, syncedAttachment);
-
-      connectivity.emit(false);
-      await tester.pump();
-      await tester.pump();
-      expect(find.byIcon(Icons.close), findsNothing);
-
-      connectivity.emit(true);
-      await tester.pump();
-      await tester.pump();
-      expect(removeButtonDetector(tester).onTap, isNotNull);
-
-      await confirmDelete(tester);
-      verify(
-        () => writer.removeMedia(
-          ownerType: MediaOwnerType.apiary,
-          ownerId: 'apiary-1',
-          id: 'media-1',
-        ),
-      ).called(1);
+      );
     });
 
-    testWidgets(
-      'tapping remove shows a confirmation sheet before deleting anything',
-      (tester) async {
-        await pumpGallery(tester, syncedAttachment);
-
-        await tester.tap(find.byIcon(Icons.close));
-        await tester.pump(const Duration(milliseconds: 300));
-
-        expect(find.text('media.gallery.delete_confirm_title'), findsOneWidget);
-        verifyNever(
-          () => writer.removeMedia(
-            ownerType: any(named: 'ownerType'),
-            ownerId: any(named: 'ownerId'),
-            id: any(named: 'id'),
-          ),
-        );
-      },
-    );
-
-    testWidgets('cancelling the confirmation sheet does not delete the photo', (
-      tester,
-    ) async {
-      await pumpGallery(tester, syncedAttachment);
+    testWidgets('cancelling the confirmation sheet does not delete the photo', (tester) async {
+      await pumpGallery(tester, attachment);
 
       await tester.tap(find.byIcon(Icons.close));
       await tester.pump(const Duration(milliseconds: 300));
@@ -267,37 +162,6 @@ void main() {
           id: any(named: 'id'),
         ),
       );
-    });
-  });
-
-  group('a photo attached offline and not yet synchronized', () {
-    testWidgets('the remove action stays enabled while offline', (
-      tester,
-    ) async {
-      when(
-        () => writer.removeMedia(
-          ownerType: MediaOwnerType.apiary,
-          ownerId: 'apiary-1',
-          id: 'local-pending-1',
-        ),
-      ).thenAnswer((_) async => const Right(null));
-      await pumpGallery(tester, localOnlyAttachment);
-
-      connectivity.emit(false);
-      await tester.pump();
-      await tester.pump();
-
-      expect(removeButtonDetector(tester).onTap, isNotNull);
-      expect(find.byTooltip('media.gallery.remove'), findsOneWidget);
-
-      await confirmDelete(tester);
-      verify(
-        () => writer.removeMedia(
-          ownerType: MediaOwnerType.apiary,
-          ownerId: 'apiary-1',
-          id: 'local-pending-1',
-        ),
-      ).called(1);
     });
   });
 }

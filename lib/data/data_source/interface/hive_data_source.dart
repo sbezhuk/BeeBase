@@ -10,11 +10,7 @@ abstract interface class IHiveDataSource {
 
   Future<HiveResponse> getHive(String id);
 
-  Future<HiveResponse> createHive(
-    HiveRequest request, {
-    required String apiaryId,
-    String? idempotencyKey,
-  });
+  Future<HiveResponse> createHive(HiveRequest request, {required String apiaryId});
 
   Future<HiveResponse> updateHive(String id, HiveRequest request);
 

@@ -35,10 +35,6 @@ final class _InspectionDetailsBody extends StatelessWidget {
             ),
             SizedBox(height: context.spacing.xs),
             Text(inspection.date.toInspectionDisplayDate(), style: context.textStyles.title),
-            if (inspection.syncStatus != InspectionSyncStatus.synced) ...[
-              SizedBox(height: context.spacing.xs),
-              InspectionSyncBadge(status: inspection.syncStatus),
-            ],
             SizedBox(height: context.spacing.sm),
             _InspectionDetailsDetailRow(icon: Icons.category_outlined, text: inspection.type.label),
             SizedBox(height: context.spacing.xs),

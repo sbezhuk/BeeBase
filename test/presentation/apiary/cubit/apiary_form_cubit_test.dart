@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:beebase/core/location/location_service.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
-import 'package:beebase/core/storage/local_media_store.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/entity/media_attachment.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
@@ -25,8 +24,6 @@ class MockLocationService extends Mock implements LocationService {}
 class MockMediaReader extends Mock implements IMediaReader {}
 
 class MockMediaWriter extends Mock implements IMediaWriter {}
-
-class MockLocalMediaStore extends Mock implements LocalMediaStore {}
 
 class MockImagePicker extends Mock implements ImagePicker {}
 
@@ -163,21 +160,12 @@ void main() {
   group('attaching staged photos after create', () {
     late MockMediaReader mediaReader;
     late MockMediaWriter mediaWriter;
-    late MockLocalMediaStore localMediaStore;
     late MockImagePicker imagePicker;
 
     setUp(() {
       mediaReader = MockMediaReader();
       mediaWriter = MockMediaWriter();
-      localMediaStore = MockLocalMediaStore();
       imagePicker = MockImagePicker();
-      when(
-        () => localMediaStore.save(
-          any(),
-          id: any(named: 'id'),
-          extension: any(named: 'extension'),
-        ),
-      ).thenAnswer((_) async => '/tmp/staged.jpg');
     });
 
     test(
@@ -214,7 +202,6 @@ void main() {
         final mediaGalleryCubit = MediaGalleryCubit(
           reader: mediaReader,
           writer: mediaWriter,
-          localMediaStore: localMediaStore,
           ownerType: MediaOwnerType.apiary,
           imagePicker: imagePicker,
         );
@@ -260,7 +247,6 @@ void main() {
         final mediaGalleryCubit = MediaGalleryCubit(
           reader: mediaReader,
           writer: mediaWriter,
-          localMediaStore: localMediaStore,
           ownerType: MediaOwnerType.apiary,
           imagePicker: imagePicker,
         );

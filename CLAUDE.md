@@ -1,196 +1,1076 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code when working in this repository.
 
-## Commands
+## 1. Project Overview
 
-Only one flavor exists today: **`production`** (`android/app/build.gradle.kts` → `productFlavors { create("production") {...} }`). All build types (`debug`, `release`, and even a leftover `anothercustombuild` entry) map to the same root `.env` file — there is no dev/staging environment wired up yet, despite the flavor-style scaffolding. `.env` is gitignored and must exist locally (see keys in `.env` at repo root: `API_END_POINT`, `MAPBOX_PUBLIC_KEY`, `APPLE_*`, `GOOGLE_*`, `ENVIRONMENT`).
+This is a Flutter mobile application built with:
 
-```bash
-# Install dependencies
-flutter pub get
+* Clean Architecture
+* Cubit / `flutter_bloc`
+* `get_it` for dependency injection
+* Dio for networking
+* AutoRoute for navigation
+* `json_serializable` for code generation
+* Easy Localization for localization
+* Flutter `ThemeExtension` for design tokens
 
-# Run (only flavor/entry point that exists)
-flutter run --flavor production --target lib/main_prod.dart
+### Architecture
 
-# Codegen — REQUIRED after editing AutoRoute routes, json_serializable models/enums, or DI-related annotations
-flutter pub run build_runner build --delete-conflicting-outputs
-flutter pub run build_runner watch --delete-conflicting-outputs   # keep running while developing
+Dependencies flow inward:
 
-# Regenerate after editing assets/langs/en-US.json
-flutter pub run easy_localization:generate
-
-# Before every PR
-flutter analyze     # must be clean; analysis_options.yaml promotes several lints to errors
-dart format .
-
-# Build
-flutter build apk --flavor production --target lib/main_prod.dart
+```text
+presentation → domain ← data
+                  ↑
+                core
 ```
 
-Generated files (`*.g.dart`, `*.gr.dart`) are gitignored and excluded from `flutter analyze` (`analysis_options.yaml`) — regenerate with `build_runner` rather than hand-editing them.
+Responsibilities:
 
-## Architecture
+* `presentation` — UI, Cubits, widgets, routing
+* `domain` — business entities, enums, repository contracts
+* `data` — API clients, DTOs, mappers, repository implementations
+* `core` — networking, storage, services, failures
+* `utils` — generic utilities, configuration, DI, extensions
 
-Clean architecture, three layers under `lib/`, dependencies point inward (`presentation` → `domain` ← `data`), with `core/` as cross-cutting infrastructure shared by all. Entry point is `lib/main_prod.dart` → `lib/application.dart`. `main()` initializes `EasyLocalization`, loads `AppConfig` (`Enviroment.production` — the enum currently has a single value, so this doesn't actually branch on environment yet), runs `initDi()`, preloads SVG/image assets (`utils/images/preload_resources.dart`), sets the Mapbox access token, then `runApp`.
+Do not put business logic in `utils/`.
+
+---
+
+## 2. Project Structure
 
 ```text
 lib/
- ├─ core/                   # Cross-cutting: networking (DioClient, interceptors, failures), storage, services
- ├─ data/
- │   ├─ data_source/        # API clients; interface/ holds narrow reader/writer interfaces
- │   ├─ models/             # Response/request DTOs; extensions/ holds DTO → entity mappers
- │   └─ repositories/       # *_impl classes: wrap data sources, map to entities, return Either
- ├─ domain/
- │   ├─ entity/             # Core business models
- │   ├─ enum/                # Domain enums
- │   └─ repositories/       # Repository interfaces (reader/writer) + base Repository class
- ├─ presentation/
- │   ├─ <feature>/          # authentication, gear, profile, session, search, user_invites, main, notification
- │   │   ├─ cubit/          #   one subfolder per cubit: *_cubit.dart, state/ (sealed state + one file per variant, part), mixin/*_emitter.dart (part)
- │   │   ├─ widget(s)/      #   feature-specific UI (naming inconsistent, see Conventions)
- │   │   └─ extension(s)/   #   feature-specific extensions (naming inconsistent, see Conventions)
- │   ├─ component/          # Design-system primitives: AppColor, AppFont/AppTextStyles, AppImage, buttons/, checkbox/
- │   ├─ widgets/            # Shared composite widgets (bottom nav bar, cropper, text field)
- │   └─ router/             # AutoRoute config (app_router.dart), guardes/, wrapper_pages/, placeholders/
- ├─ utils/                  # Either, AppConfig, di, themes/ (ThemeExtensions), extensions/, images/
- ├─ application.dart        # MaterialApp.router + ThemeData.extensions
- └─ main_prod.dart          # Only entry point (single "production" flavor)
+├── core/
+│   ├── networking/
+│   ├── storage/
+│   └── services/
+│
+├── data/
+│   ├── data_source/
+│   │   └── interface/
+│   ├── models/
+│   │   ├── extensions/
+│   │   └── ...
+│   └── repositories/
+│
+├── domain/
+│   ├── entity/
+│   ├── enum/
+│   └── repositories/
+│
+├── presentation/
+│   ├── <feature>/
+│   │   ├── cubit/
+│   │   ├── widget(s)/
+│   │   └── extension(s)/
+│   ├── component/
+│   ├── widgets/
+│   └── router/
+│
+├── utils/
+│   ├── extensions/
+│   ├── images/
+│   ├── themes/
+│   ├── di.dart
+│   ├── either.dart
+│   └── app_config.dart
+│
+├── application.dart
+└── main.dart
 ```
 
-### Interface segregation is the dominant pattern
+Follow the existing structure of the feature being modified. Do not reorganize folders unless explicitly requested.
 
-The single most important thing to understand: **data sources and repositories are split into narrow reader/writer interfaces**, and one concrete class implements several of them at once.
+---
 
-- A concrete class (e.g. `SessionDataSource`, `AuthenticationDataSource`, `SessionRepositoryImpl`) `implements`/extends multiple small interfaces (`ISessionReader`, `ISessionWriter`, `ISocialAuthentication`, `ISessionGateway`, …).
-- Domain interfaces live in `lib/domain/repositories/*.dart`. Data-source interfaces live in `lib/data/data_source/interface/*.dart`.
-- Consumers (cubits, repositories) depend on the **narrow interface**, never the concrete class. The UI layer must never call APIs directly — always go through a repository.
+## 3. Entry Point & Configuration
 
-In `lib/utils/di.dart` this shows up as: register the concrete class once as a lazy singleton, then register each interface it implements as an alias resolving back to the same instance:
+The application uses a **single `main.dart` entry point**.
 
-```dart
-di
-  ..registerLazySingleton<AuthenticationDataSource>(() => AuthenticationDataSource(dioClient: di(), resolver: di()))
-  ..registerLazySingleton<ISocialAuthentication>(() => di<AuthenticationDataSource>())
-  ..registerLazySingleton<ISessionGateway>(() => di<AuthenticationDataSource>());
+```text
+lib/main.dart
 ```
 
-### Data flow: DTO → entity, exceptions → failures
+There are **no Flutter flavors**.
 
-1. **Data source** (`lib/data/data_source/`) calls `DioClient`, deserializes JSON into response DTOs (`lib/data/models/`). `DioClient._handleDioException` translates `DioException`s into typed exceptions: `ServerException` (4xx with a JSON body), `CancellationException` (timeouts/cancel/bad cert), or `InternalException` (everything else, including no-connection).
-2. **Repository** (`lib/data/repositories/*_impl.dart`) extends the base `Repository` (`lib/domain/repositories/repository.dart`) and wraps every call in `on(() async {...})`, which catches `ServerException`, `InternalException`, `CancellationException`, `SignInWithAppleAuthorizationException`, `LocationServiceDisabledException`, and `LocationPermissionException`, returning `Either<Failure, T>` (`Left` = failure, `Right` = success). It maps DTOs to domain entities (`lib/domain/entity/`) using extension methods in `lib/data/models/extensions/` (e.g. `session_extension.dart`).
-3. **Cubit** consumes the `Either` via `fold` inside a private per-cubit "emitter" mixin (`cubit/<name>/mixin/<name>_emitter.dart`, `part`-included into the cubit file), which emits a loading state, awaits the repository call, then emits an error or success state. There is **no shared/generic loading-helper mixin** — this loading→fold→emit shape is duplicated by convention across ~34 mixin files. When adding a new cubit, copy the pattern from a similar existing feature (e.g. `gear/cubit/gear_list_cubit/mixin/gear_list_emitter.dart`) rather than looking for a common base to extend.
+Environment-specific configuration is provided through Dart compile-time variables using `--dart-define-from-file`.
 
-`Either` is a hand-rolled type in `lib/utils/either.dart` (`fold`, `mapLeft`, `mapRight`, `thenLeft`, `thenRight`) — not the `dartz` package. Failures live in `lib/core/networking/failures/` (`Failure`, `ServerFailure`, `InternalFailure`, `CancellationFailure`) and `lib/core/location/failures/` (`LocationPermissionFailure`).
+Configuration should be stored in environment-specific JSON files when applicable:
 
-### Networking
-
-`DioClient` (`lib/core/networking/http/dio_client.dart`) wraps `Dio` and is the single source of HTTP requests; it's registered with `registerFactory` (fresh instance per resolve). Interceptors are **not** attached globally — each data source composes only the interceptors it needs via `dioClient.copyWith(interceptors: [...])`, resolved through an `InterceptorResolver` (a `Map<Type, Interceptor>` lookup) passed into its constructor:
-
-```dart
-SessionDataSource({required DioClient dioClient, required InterceptorResolver resolver})
-  : _dioClient = dioClient.copyWith(
-      interceptors: [resolver.resolve<AuthenticationInterceptor>(), resolver.resolve<LanguageInterceptor>()],
-    );
+```text
+config/
+├── development.json
+├── staging.json
+└── production.json
 ```
 
-`AuthenticationInterceptor` (a `QueuedInterceptorsWrapper`, so requests are serialized rather than needing a manual refresh lock) attaches the bearer token in `onRequest` — or closes the session immediately if no token is stored — and on a `401` in `onError` calls `POST /auth/tokens/refresh`, then retries the original request via `_dioClient.fetch(options)`. Note: `AuthenticationInterceptor` itself pulls `CookiesInterceptor` via a direct `di.get<CookiesInterceptor>()` service-locator call inside its own constructor, rather than receiving it as a constructor parameter like every other interceptor dependency — an inconsistency worth knowing about if you touch this file.
+Example configuration:
 
-### Navigation (AutoRoute)
-
-`lib/presentation/router/app_router.dart` defines the route tree (`@AutoRouterConfig()`, regenerate `app_router.gr.dart` via `build_runner` after edits). Two top-level branches: `AuthenticationWrapperRoute` (login, unguarded) and `MainWrapperRoute` (guarded by `AuthenticationGuard`, folder `router/guardes/` — note the misspelling), which nests the tab-based `MainRoute` (Sessions/Profile/Notification tabs) plus modal/detail routes (`ProfileEditRoute`, `GearSetupRoute`, `SessionDetailsRoute`, etc.). `AuthenticationGuard` first checks `SessionService.isGuest` (bypasses auth entirely for guest mode), then checks `TokenStorage` for a token, redirecting to `AuthenticationWrapperRoute` if neither holds.
-
-Pages implement `AutoRouteWrapper` and provide their cubit in `wrappedRoute`:
-
-```dart
-@override
-Widget wrappedRoute(BuildContext context) {
-  return BlocProvider(create: (_) => di.get<GearSetupListCubit>()..loadGearSetups(), child: this);
+```json
+{
+  "API_END_POINT": "https://api.example.com",
+  "MAPBOX_PUBLIC_KEY": "your-key",
+  "ENVIRONMENT": "development"
 }
 ```
 
-### Dependency Injection
+Run the application with:
 
-Single `get_it` container `di` in `lib/utils/di.dart`, populated by `initDi()` and organized into `// #region` blocks (Core, External, Interceptors, Data Source, Mappers, Repositories, Blocs).
+```bash
+flutter run --dart-define-from-file=config/development.json
+```
 
-- **`registerLazySingleton`** for storage, services, interceptors, data sources, and repositories (interfaces alias back to the concrete singleton — see interface-segregation note above).
-- **`registerFactory`** for cubits (a fresh instance per screen), or **`registerFactoryParam`** when a cubit needs a runtime value and/or an injected sibling cubit (e.g. `SessionFormCubit` takes `(GeolocatorCubit, SessionTile?)`; `ManageSessionCubit` takes a `SessionFormCubit` plus a nullable session id).
-- `AuthenticationRepositoryImpl` is bootstrapped with `registerFactoryAsync` + `await di.getAsync<...>()` because it needs to hydrate stored tokens before anything else resolves it — preserve this ordering if you touch it.
-- **Avoid duplicate cubit creation**: provide a cubit in exactly one place — don't create the same cubit in both a page's `wrappedRoute` and a modal sheet shown from that page.
+Build with:
 
-### Theming & UI
+```bash
+flutter build apk --dart-define-from-file=config/production.json
+```
 
-Three systems, don't mix them up:
+Typical configuration values include:
 
-- **Dimensions** (`Spacing`, `AppSize`, `AppRadius`) are `ThemeExtension`s registered on `ThemeData.extensions` in `lib/application.dart`, accessed through context extensions in `lib/utils/extensions/theme_spacing.dart`: `context.spacing`, `context.appSize`, `context.appRadius`. Extend these classes for new dimension constants rather than hardcoding numbers.
-- **Colors and typography** are `ThemeExtension`s too, because they switch between light and dark palettes: `AppColor` (`lib/presentation/component/color.dart`, light via `AppColor.light()`, dark via `AppColor.dark()`) and `AppTextStyles` (`lib/presentation/component/font.dart`, built from an `AppColor` via `AppTextStyles.fromColors()`). `lib/application.dart`'s `_buildTheme()` registers one of each per brightness on `ThemeData.extensions`/`ThemeData.darkTheme`, gated by `themeMode: ThemeMode.system`. Read them via `context.colors` (`lib/utils/extensions/theme_colors.dart`) and `context.textStyles` (`lib/utils/extensions/theme_text_styles.dart`) — never `AppColor.xxx`/`AppTextStyles.xxx` as static members, and never hardcode a `Color`/`TextStyle` in a widget. Because these are resolved from `context`, widgets that use them can't stay `const`. Adding a new color or text style means adding a field to both `AppColor` (with light *and* dark values, plus its `copyWith`/`lerp`) and, for a text style, `AppTextStyles.fromColors()`.
-- **Image paths** are a plain static-const class, not a theme extension: `AppImage` (`lib/presentation/component/image.dart`). Font family is `AvertaStd` (Bold/Semibold/Regular, declared in `pubspec.yaml`).
+```text
+API_END_POINT
+MAPBOX_PUBLIC_KEY
+APPLE_*
+GOOGLE_*
+ENVIRONMENT
+```
 
-Every `context.xxx` getter above (`spacing`, `colors`, `textStyles`, and any future one) is a one-line wrapper around the generic `context.themeExtension<T>(fallback)` helper in `lib/utils/extensions/theme_extension_x.dart` — it does the `Theme.of(context).extension<T>() ?? fallback` lookup once, generically. **Adding a brand-new themed value** (e.g. `AppElevation`) means: write it as a `final class` extending `ThemeExtension<T>`, register a light/dark instance in `_buildTheme`, and add a one-line context extension calling `themeExtension`; don't hand-roll another `Theme.of(context).extension<T>() ?? ...` lookup.
+`AppConfig` must read configuration from Dart compile-time environment variables using:
 
-Many `AppImage` SVG/PNG assets are eagerly preloaded at startup in `lib/utils/images/preload_resources.dart` — add new frequently-used images there.
+```dart
+String.fromEnvironment(...)
+bool.fromEnvironment(...)
+int.fromEnvironment(...)
+```
 
-### Localization
+Use the appropriate type for each configuration value.
 
-`easy_localization`, but only one locale is actually wired up today: `assets/langs/en-US.json`, registered as the sole `supportedLocales` entry in `lib/main_prod.dart` (the plural `langs` folder name is a leftover from scaffolding, not a sign of multi-language support). Use `'some.dotted.key'.tr()`. After adding/editing keys, run `flutter pub run easy_localization:generate`. Pick the contextually correct nested key for the screen you're on (e.g. `main.profileEdit.validations.emailRequired`) rather than a similarly named sibling key.
+Do not hardcode environment-specific configuration in the source code.
 
-Every user-facing string resolves through a `.tr()` key — this includes error and validation text, not just static labels. A form validator, a snackbar, or a `ServerFailure.code`/field-code → copy mapping (see `presentation/authentication/extension/server_failure_message_extension.dart` for the pattern: a `Map<String, String>` of API code → localization key, resolved via `.tr()`) must all read from `assets/langs/en-US.json`, never return a literal English string.
+Do not introduce Flutter flavors or additional environment configuration mechanisms unless explicitly requested.
 
-## State Management (BLoC/Cubit)
+### Application Startup
 
-- **Cubit only** — folders are literally named `cubit/`, there is no `Bloc` usage despite the `flutter_bloc` dependency name.
-- State is a `sealed class` with `final class` subtypes (e.g. `GearSetupListInitial/Loading/Loaded/Error`). Each variant gets its own file under `cubit/<name>/state/` (one class per file — see Conventions), declared `part of '../<name>_cubit.dart'`; the cubit file lists a `part` directive per state file, alongside `part 'mixin/<name>_emitter.dart'` for the private emitter mixin (see Data flow above).
-- Use pattern matching / `is` checks on the sealed state — avoid manual enum-based casting.
-- Emit **immutable states** only; use `copyWith` for updates.
-- **Always dispose resources** — `ValueNotifier`, `StreamController`, `TextEditingController`:
+The startup flow is:
+
+```text
+main.dart
+   ↓
+EasyLocalization
+   ↓
+AppConfig
+   ↓
+Dependency Injection
+   ↓
+Asset Preloading
+   ↓
+Mapbox Configuration
+   ↓
+application.dart
+   ↓
+runApp()
+```
+
+---
+
+# 4. Essential Commands
+
+## Install dependencies
+
+```bash
+flutter pub get
+```
+
+## Run
+
+Use the single `main.dart` entry point together with `--dart-define-from-file`.
+
+Development:
+
+```bash
+flutter run --dart-define-from-file=config/development.json
+```
+
+Staging:
+
+```bash
+flutter run --dart-define-from-file=config/staging.json
+```
+
+Production:
+
+```bash
+flutter run --dart-define-from-file=config/production.json
+```
+
+Use the project's existing configuration files when available.
+
+Do not duplicate environment values directly in command-line arguments when a configuration file already exists.
+
+## Format
+
+```bash
+dart format .
+```
+
+## Analyze
+
+```bash
+flutter analyze
+```
+
+`flutter analyze` must pass without errors before considering a task complete.
+
+## Code generation
+
+Run after changing:
+
+* AutoRoute routes
+* `@JsonSerializable` models
+* JSON enums
+* generated DI-related code
+* other code-generation annotations
+
+```bash
+flutter pub run build_runner build --delete-conflicting-outputs
+```
+
+For continuous generation:
+
+```bash
+flutter pub run build_runner watch --delete-conflicting-outputs
+```
+
+## Localization generation
+
+After changing:
+
+```text
+assets/langs/en-US.json
+```
+
+run:
+
+```bash
+flutter pub run easy_localization:generate
+```
+
+## Build
+
+Use the same `main.dart` entry point and the appropriate configuration file.
+
+Android:
+
+```bash
+flutter build apk --dart-define-from-file=config/production.json
+```
+
+iOS:
+
+```bash
+flutter build ios --dart-define-from-file=config/production.json
+```
+
+Use the appropriate configuration file for the target environment.
+
+---
+
+# 5. Generated Files
+
+Never manually edit generated files.
+
+Examples:
+
+```text
+*.g.dart
+*.gr.dart
+```
+
+Regenerate them using `build_runner`.
+
+Generated files are disposable artifacts and should never contain manually maintained business logic.
+
+---
+
+# 6. Data Flow
+
+API-backed features follow this flow:
+
+```text
+API
+ ↓
+Data Source
+ ↓
+DTO
+ ↓
+Mapper
+ ↓
+Repository
+ ↓
+Either<Failure, Entity>
+ ↓
+Cubit
+ ↓
+UI
+```
+
+The presentation layer must never communicate directly with an API.
+
+---
+
+# 7. Data Sources
+
+Data sources are responsible for:
+
+* HTTP communication
+* request/response handling
+* DTO deserialization
+* communicating through `DioClient`
+
+Data sources belong under:
+
+```text
+lib/data/data_source/
+```
+
+Use narrow interfaces where applicable:
+
+```text
+lib/data/data_source/interface/
+```
+
+Consumers should depend on the smallest required interface.
+
+Do not expose raw API responses to the domain or presentation layers.
+
+---
+
+# 8. DTOs & Mapping
+
+DTOs belong under:
+
+```text
+lib/data/models/
+```
+
+Use `json_serializable` for JSON serialization.
+
+DTO → entity conversion belongs under:
+
+```text
+lib/data/models/extensions/
+```
+
+Keep domain entities independent from API DTOs.
+
+Do not use API DTOs directly in presentation code.
+
+---
+
+# 9. Repositories
+
+Repository contracts belong under:
+
+```text
+lib/domain/repositories/
+```
+
+Implementations belong under:
+
+```text
+lib/data/repositories/
+```
+
+Repositories are responsible for:
+
+* calling data sources
+* converting DTOs into entities
+* converting exceptions into failures
+* returning `Either<Failure, T>`
+
+Use the existing base repository mechanism:
+
+```text
+lib/domain/repositories/repository.dart
+```
+
+Repository operations should follow the existing `on(() async {...})` error-handling pattern.
+
+Do not introduce a second repository error-handling abstraction without a strong reason.
+
+---
+
+# 10. Interface Segregation
+
+The project intentionally uses narrow reader/writer interfaces.
+
+A concrete implementation may implement multiple interfaces:
+
+```text
+AuthenticationDataSource
+├── ISocialAuthentication
+├── ISessionGateway
+└── ...
+```
+
+Consumers should depend on the narrowest interface required.
+
+Do not depend on a concrete data source or repository when an appropriate interface already exists.
+
+### Dependency Injection Pattern
+
+Register the concrete implementation once:
+
+```dart
+di.registerLazySingleton<AuthenticationDataSource>(
+  () => AuthenticationDataSource(
+    dioClient: di(),
+    resolver: di(),
+  ),
+);
+```
+
+Register implemented interfaces as aliases:
+
+```dart
+di.registerLazySingleton<ISocialAuthentication>(
+  () => di<AuthenticationDataSource>(),
+);
+
+di.registerLazySingleton<ISessionGateway>(
+  () => di<AuthenticationDataSource>(),
+);
+```
+
+Follow this pattern for new reader/writer interfaces.
+
+---
+
+# 11. Error Handling
+
+Networking errors follow this flow:
+
+```text
+DioException
+ ↓
+DioClient
+ ↓
+Exception
+ ↓
+Repository
+ ↓
+Failure
+ ↓
+Cubit
+ ↓
+UI
+```
+
+Known exception types include:
+
+```text
+ServerException
+InternalException
+CancellationException
+```
+
+Failures are located under:
+
+```text
+lib/core/networking/failures/
+lib/core/location/failures/
+```
+
+Do not expose networking exceptions directly to the presentation layer.
+
+The UI should operate on domain/application-level failures.
+
+---
+
+# 12. Networking
+
+`DioClient` is the single HTTP entry point.
+
+```text
+lib/core/networking/http/dio_client.dart
+```
+
+Do not instantiate or use raw `Dio` directly from data sources.
+
+Interceptors are composed per data source using `DioClient.copyWith(...)`.
+
+Example:
+
+```dart
+dioClient.copyWith(
+  interceptors: [
+    resolver.resolve<AuthenticationInterceptor>(),
+    resolver.resolve<LanguageInterceptor>(),
+  ],
+);
+```
+
+Only attach interceptors required by the specific data source.
+
+### Authentication
+
+`AuthenticationInterceptor` is responsible for:
+
+* attaching bearer tokens
+* handling unauthorized responses
+* refreshing tokens
+* retrying failed requests
+
+It uses `QueuedInterceptorsWrapper`.
+
+Preserve the existing token refresh and retry behavior when modifying authentication networking.
+
+---
+
+# 13. State Management
+
+Use **Cubit only**.
+
+Do not introduce `Bloc` unless explicitly requested.
+
+Typical structure:
+
+```text
+feature/
+└── cubit/
+    └── feature_cubit/
+        ├── feature_cubit.dart
+        ├── state/
+        │   ├── feature_initial.dart
+        │   ├── feature_loading.dart
+        │   ├── feature_loaded.dart
+        │   └── feature_error.dart
+        └── mixin/
+            └── feature_emitter.dart
+```
+
+States use sealed classes:
+
+```dart
+sealed class FeatureState {}
+```
+
+Variants:
+
+```dart
+final class FeatureInitial extends FeatureState {}
+
+final class FeatureLoading extends FeatureState {}
+
+final class FeatureLoaded extends FeatureState {}
+
+final class FeatureError extends FeatureState {}
+```
+
+Use pattern matching or type checks on sealed states.
+
+Avoid manual enum-based state management.
+
+States must be immutable.
+
+Use `copyWith` for state updates.
+
+---
+
+# 14. Cubit Emitter Pattern
+
+Existing Cubits use private emitter mixins.
+
+There is intentionally no generic loading/fold/emit helper.
+
+When creating a new Cubit:
+
+1. Find an existing Cubit with similar behavior.
+2. Follow its structure.
+3. Reuse the existing emitter pattern.
+4. Do not introduce a new generic abstraction unless required.
+
+Consistency with existing Cubits is preferred over theoretical architectural improvements.
+
+---
+
+# 15. Cubit Lifecycle
+
+Dispose every resource owned by a Cubit.
+
+Examples:
 
 ```dart
 @override
 void dispose() {
-  _myValueNotifier.dispose();
-  _myStreamController.close();
+  _valueNotifier.dispose();
+  _streamController.close();
+  _textController.dispose();
   super.dispose();
 }
 ```
 
-### Async operations & widget lifecycle
+Dispose:
 
-- **Check `mounted`** after an `await` before touching `context` or calling `setState`.
-- Context-dependent getters (e.g. `context.read<T>()`) resolve context at call time — cache them **before** the `await`, not after.
+* `ValueNotifier`
+* `StreamController`
+* `TextEditingController`
+* stream subscriptions
+* other disposable resources
+
+Never leave owned resources undisposed.
+
+---
+
+# 16. Dependency Injection
+
+DI is centralized in:
+
+```text
+lib/utils/di.dart
+```
+
+The project uses `get_it`.
+
+### Registration Rules
+
+Use `registerLazySingleton` for long-lived dependencies such as:
+
+* storage
+* services
+* interceptors
+* data sources
+* repositories
+
+Use `registerFactory` for short-lived objects such as:
+
+* Cubits
+* screen-specific dependencies
+
+Use `registerFactoryParam` when runtime parameters are required.
+
+Avoid duplicate Cubit creation.
+
+A Cubit should be provided in one clearly defined location.
+
+### Authentication Repository
+
+`AuthenticationRepositoryImpl` is initialized asynchronously because stored tokens must be hydrated before the repository is used.
+
+Preserve the existing initialization order when modifying DI.
+
+---
+
+# 17. Navigation
+
+Navigation uses AutoRoute.
+
+Main configuration:
+
+```text
+lib/presentation/router/app_router.dart
+```
+
+After modifying routes, regenerate:
+
+```bash
+flutter pub run build_runner build --delete-conflicting-outputs
+```
+
+Protected routes use:
+
+```text
+AuthenticationGuard
+```
+
+Pages that own Cubits should normally provide them through `AutoRouteWrapper`.
+
+Example:
 
 ```dart
-// ❌ Unsafe: context accessed after await via getter
-ProfileCubit get _cubit => context.read<ProfileCubit>();
-
-void _onTap() async {
-  final result = await someAsyncOperation();
-  if (result != null) {
-    _cubit.update(result); // accesses context after await
-  }
-}
-
-// ✅ Safe: cache before await AND check mounted
-void _onTap() async {
-  final cubit = _cubit;
-  final result = await someAsyncOperation();
-  if (result != null && mounted) {
-    cubit.update(result);
-  }
+@override
+Widget wrappedRoute(BuildContext context) {
+  return BlocProvider(
+    create: (_) => di<FeatureCubit>(),
+    child: this,
+  );
 }
 ```
 
-## Conventions
+Do not create the same Cubit in multiple places.
 
-- `snake_case` file names, `PascalCase` class names; target ≤200 lines per file.
-- **One class per file.** A file may declare exactly one class.
-  - Two unrelated classes (no sealed hierarchy between them, e.g. two DTOs, two exception types) split into separate files with ordinary imports — e.g. `core/networking/models/api_error_response.dart` importing `api_error.dart`, or `core/networking/exceptions/server_exception.dart` / `internal_exception.dart` / `cancellation_exception.dart`.
-  - A `sealed class` and its `final class` variants (cubit state, `Either`/`Left`/`Right` in `lib/utils/`, `Failure`'s subtypes in `core/networking/failures/`, `ErrorText`'s subtypes in `core/error/`) must stay in one `part`/`part of` library — Dart requires every direct subtype of a sealed class to be declared in the same library as the base, or exhaustiveness checking breaks.
-  - A private helper class only its own file's class uses (e.g. a page's private `_EmailField`/`_PasswordField`/`_SubmitButton`) also needs `part`/`part of`, since a leading-underscore identifier isn't visible outside its library — see `presentation/authentication/login_page.dart` + `login_page/*.dart`.
-  - Exception: a `StatefulWidget` and its own `State<T>` subclass stay together in one file — Flutter treats that pairing as a single unit, not two classes.
-- **Don't let `build()` sprawl** — a widget tree nested many levels deep in one `build()` method is hard to read and hard to change. Split it into smaller private widget classes (preferred — each gets its own `const` constructor and rebuild scope) or, for a trivial piece, a `_buildX()` helper method. Extract a section as soon as it reads as its own concern, not once the method has already become spaghetti.
-- `always_use_package_imports` is enforced (`analysis_options.yaml`) — use `package:ft_mobile/...`, never relative imports. `implicit-casts`/`implicit-dynamic` are disabled (`strong-mode`).
-- `prefer_single_quotes`, `require_trailing_commas`, `prefer_const_constructors` are lints; `unused_import`, `dead_code`, `invalid_assignment` are promoted to **errors** — `flutter analyze` gates every PR.
-- **Mark every class `final` unless it is designed to be inherited.** This applies uniformly — cubits, repositories, data sources, services, widgets, DTOs, all of it. Only drop `final` (using `base`, `interface`, `abstract`, or no modifier) when the class is deliberately built as a base class or interface for others to extend/implement, **or** when a `test/` file mocks it via mocktail's `class MockX extends Mock implements X {}` — `final` blocks `implements` from outside the library, so any class with such a mock must stay unmarked.
-- **Two folder-naming inconsistencies exist** — follow whatever the feature you're editing already uses, don't "fix" it as a drive-by: singular vs. plural widget folders (`presentation/session/widget` is singular; `presentation/user_invites/widgets` and top-level `presentation/widgets` are plural), and singular vs. plural extension folders (`presentation/profile/extension`, `presentation/authentication/extension` are singular; `presentation/gear/extensions`, `presentation/session/extensions` are plural).
-- Generic, business-logic-free helpers and constants go in `lib/utils/` (e.g. `Either`, `AppConfig`, `di`, theme extensions) — no business logic there.
-- **Enums that cross the wire must be code-generated, the same way model data is.** An enum used as a field on an `@JsonSerializable` DTO (`lib/data/models/`) is serialized entirely by `build_runner`, which emits its `EnumMap` into the DTO's own `.g.dart` — never a hand-written `Map<Enum, String>`, a manual `fromJson`/`toJson` converter, or a getter that pre-transforms the value into a plain `String` field to sidestep codegen. Dart member names stay idiomatic lowerCamelCase. When the backend's wire format doesn't match those names verbatim (the common case is the backend's SCREAMING_SNAKE_CASE), annotate the enum itself with `@JsonEnum(fieldRename: FieldRename.screamingSnake)` (from `package:json_annotation`) so codegen derives every member's wire value — never a per-member `@JsonValue` (e.g. `InspectionType` in `lib/domain/enum/inspection_type.dart` is annotated `@JsonEnum(fieldRename: FieldRename.screamingSnake)` and serializes `routine`/`queen`/… as `ROUTINE`/`QUEEN`/…); reach for a per-member `@JsonValue('WIRE_VALUE')` only for the rare member whose wire value doesn't fit the enum's overall rename pattern. When the wire format already matches the member names one-to-one (e.g. `MediaOwnerType`), no annotation is needed at all — the generated default mapping is sufficient. Rerun the codegen command above after adding or changing a member. A purely client-derived enum with no wire representation (e.g. `InspectionSyncStatus`, computed locally from the offline operation queue) is out of scope — there's nothing to generate for a value that's never serialized.
+---
+
+# 18. Theming & Design System
+
+Do not hardcode reusable design values in widgets.
+
+The project uses `ThemeExtension` for design tokens.
+
+## Dimensions
+
+Use:
+
+```dart
+context.spacing
+context.appSize
+context.appRadius
+```
+
+Add new reusable dimensions to the existing theme extensions instead of hardcoding values.
+
+## Colors
+
+Use:
+
+```dart
+context.colors
+```
+
+Do not use static color constants directly in widgets.
+
+New colors must support both light and dark themes and implement the required `copyWith` / `lerp` behavior.
+
+## Typography
+
+Use:
+
+```dart
+context.textStyles
+```
+
+Do not create arbitrary reusable `TextStyle`s inside widgets.
+
+New text styles belong in `AppTextStyles`.
+
+## New Theme Extensions
+
+When introducing a new themed design token:
+
+1. Create a `ThemeExtension`.
+2. Provide light and dark values.
+3. Register it in the theme.
+4. Add a context extension.
+5. Use the context extension from UI code.
+
+Use the existing generic theme-extension helper.
+
+Do not duplicate:
+
+```dart
+Theme.of(context).extension<T>() ?? fallback
+```
+
+throughout the project.
+
+---
+
+# 19. Images & Assets
+
+Image constants are defined in:
+
+```text
+lib/presentation/component/image.dart
+```
+
+Use `AppImage`.
+
+Frequently used assets may be preloaded through:
+
+```text
+lib/utils/images/preload_resources.dart
+```
+
+Add newly introduced frequently-used assets to the preload list when appropriate.
+
+Do not introduce duplicate asset path constants.
+
+---
+
+# 20. Localization
+
+Localization uses `easy_localization`.
+
+Currently the application uses:
+
+```text
+assets/langs/en-US.json
+```
+
+Use:
+
+```dart
+'some.dotted.key'.tr()
+```
+
+Every user-facing string must be localized.
+
+This includes:
+
+* labels
+* buttons
+* validation messages
+* error messages
+* snackbars
+* empty states
+* server error mappings
+* permission messages
+
+Never add hardcoded user-facing English strings.
+
+Use the most context-specific localization key available.
+
+Example:
+
+```text
+main.profileEdit.validations.emailRequired
+```
+
+After changing localization files:
+
+```bash
+flutter pub run easy_localization:generate
+```
+
+---
+
+# 21. JSON Enums
+
+Enums crossing the API boundary must use `json_serializable` code generation.
+
+For backend values using `SCREAMING_SNAKE_CASE`:
+
+```dart
+@JsonEnum(fieldRename: FieldRename.screamingSnake)
+enum InspectionType {
+  routine,
+  queen,
+}
+```
+
+Do not manually create enum serialization maps:
+
+```dart
+Map<Enum, String>
+```
+
+Do not manually implement `fromJson` / `toJson` when standard code generation can handle the mapping.
+
+Use `@JsonValue` only when an individual wire value does not follow the enum's general naming convention.
+
+Client-only enums that never cross the API boundary do not require JSON annotations.
+
+Regenerate code after changing serialized enums:
+
+```bash
+flutter pub run build_runner build --delete-conflicting-outputs
+```
+
+---
+
+# 22. Code Style
+
+Follow the existing Dart lint configuration.
+
+General rules:
+
+* `snake_case` filenames
+* `PascalCase` classes
+* `camelCase` members
+* prefer `const`
+* prefer single quotes
+* use trailing commas
+* use package imports
+* avoid unnecessary nesting
+* keep files reasonably small
+* keep widgets focused
+* keep business logic outside widgets
+
+Use:
+
+```dart
+import 'package:ft_mobile/...';
+```
+
+Do not use relative imports.
+
+---
+
+# 23. One Class Per File
+
+Prefer one class per file.
+
+Keep sealed class hierarchies together using `part` / `part of` when required by Dart library rules.
+
+A `StatefulWidget` and its corresponding `State<T>` may remain in the same file.
+
+Do not split classes mechanically when doing so reduces readability.
+
+---
+
+# 24. Class Modifiers
+
+Mark classes `final` by default.
+
+Use another modifier only when the class is intentionally designed for inheritance or implementation:
+
+```text
+abstract
+base
+interface
+sealed
+```
+
+### Testing Exception
+
+Classes mocked externally with Mocktail cannot be `final` if they are used like:
+
+```dart
+class MockFeature extends Mock implements Feature {}
+```
+
+Keep such types implementable when required by the test architecture.
+
+---
+
+# 25. UI Composition
+
+Avoid large or deeply nested `build()` methods.
+
+Prefer extracting meaningful sections into private widgets:
+
+```dart
+class _Header extends StatelessWidget {
+  const _Header();
+}
+```
+
+Prefer private widgets when a section:
+
+* has its own responsibility
+* contains multiple widgets
+* can rebuild independently
+* improves readability
+
+Use `_buildX()` methods only for small/trivial fragments.
+
+Do not allow a single `build()` method to become difficult to understand.
+
+---
+
+# 26. Existing Naming Inconsistencies
+
+Some legacy folder naming inconsistencies exist:
+
+```text
+widget/
+widgets/
+
+extension/
+extensions/
+```
+
+Do not fix these as part of an unrelated task.
+
+When modifying an existing feature, follow that feature's current naming convention.
+
+Only perform broad renaming/refactoring when explicitly requested.
+
+---
+
+# 27. Testing
+
+When changing behavior:
+
+* update existing tests where necessary
+* add tests for new business logic
+* preserve existing test patterns
+* avoid testing implementation details unnecessarily
+
+Prefer testing:
+
+* Cubit state transitions
+* repository behavior
+* mappers
+* validation
+* business rules
+* error handling
+
+Do not add tests merely to increase coverage without meaningful behavioral value.
+
+---
+
+# 28. Git & PR Checklist
+
+Before considering a task complete:
+
+1. Implement only the requested change.
+2. Follow the existing architecture.
+3. Reuse existing components and abstractions.
+4. Avoid unnecessary refactoring.
+5. Remove unused code introduced by the change.
+6. Regenerate generated files when required.
+7. Format the code.
+8. Run static analysis.
+9. Run relevant tests when applicable.
+10. Do not manually modify generated files.
+11. Do not modify unrelated functionality.
+
+Required checks:
+
+```bash
+dart format .
+flutter analyze
+```
+
+Run tests relevant to the modified functionality.
+
+---
+
+# 29. General Rules for Claude
+
+When working on this repository:
+
+### Before coding
+
+* Inspect the existing implementation.
+* Find a similar feature if one exists.
+* Understand how the current architecture solves the problem.
+* Reuse existing components, services, extensions and abstractions.
+
+### While coding
+
+* Make the smallest clean change that solves the task.
+* Preserve existing behavior unless explicitly asked to change it.
+* Follow the surrounding feature's conventions.
+* Prefer existing abstractions over creating new ones.
+* Keep business logic in the appropriate architectural layer.
+* Do not introduce unnecessary dependencies.
+* Do not introduce new architectural patterns without justification.
+* Do not duplicate existing functionality.
+
+### Avoid
+
+* drive-by refactoring
+* unrelated formatting changes
+* unnecessary file renaming
+* duplicate services or repositories
+* duplicate Cubits
+* hardcoded user-facing strings
+* hardcoded theme values
+* direct API calls from UI
+* manually edited generated files
+* unnecessary abstractions
+* new dependencies when an existing solution is sufficient
+
+### When architecture is unclear
+
+Search the repository for an existing implementation of the same or similar problem and follow that pattern.
+
+Consistency with the existing codebase is preferred over introducing a theoretically cleaner but inconsistent solution.
+
+### Final principle
+
+> Make the smallest clean change that solves the requested task while preserving the existing architecture, conventions and behavior.

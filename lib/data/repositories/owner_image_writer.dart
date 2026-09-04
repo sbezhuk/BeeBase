@@ -1,6 +1,5 @@
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
-import 'package:beebase/domain/enum/local/media_sync_status.dart';
 import 'package:beebase/domain/repositories/apiary_writer.dart';
 import 'package:beebase/domain/repositories/hive_writer.dart';
 import 'package:beebase/domain/repositories/owner_image_writer.dart';
@@ -13,7 +12,7 @@ final class OwnerImageWriter implements IOwnerImageWriter {
   final IHiveWriter hiveWriter;
 
   @override
-  Future<Either<Failure, MediaSyncStatus>> addImage({
+  Future<Either<Failure, void>> addImage({
     required MediaOwnerType ownerType,
     required String ownerId,
     required String mediaId,

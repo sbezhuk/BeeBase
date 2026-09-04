@@ -13,7 +13,7 @@ mixin HiveFormEmitter on Cubit<HiveFormState> {
     emit(const HiveFormLoading());
     final result = initial == null
         ? await writer.createHive(apiaryId: apiaryId, name: name, notes: notes)
-        : await writer.updateHive(apiaryId: apiaryId, id: initial.id, name: name, notes: notes);
+        : await writer.updateHive(id: initial.id, name: name, notes: notes);
     await result.fold((failure) async => emit(HiveFormError(failure)), (hive) async {
       if (mediaGalleryCubit != null && mediaGalleryCubit.hasPendingChanges) {
         await mediaGalleryCubit.commitChanges(MediaOwnerType.hive, hive.id);

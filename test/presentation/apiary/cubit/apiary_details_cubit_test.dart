@@ -66,9 +66,9 @@ void main() {
   });
 
   blocTest<ApiaryDetailsCubit, ApiaryDetailsState>(
-    'picks up a re-resolved address once the refresh notifier fires after a background sync',
+    'picks up refreshed apiary once the refresh notifier fires',
     build: () {
-      when(() => reader.getCachedApiary('apiary-1')).thenAnswer((_) async => resolved);
+      when(() => reader.getApiary('apiary-1')).thenAnswer((_) async => Right(resolved));
       return buildCubit();
     },
     act: (_) => refreshNotifier.notify(),
@@ -76,9 +76,11 @@ void main() {
   );
 
   blocTest<ApiaryDetailsCubit, ApiaryDetailsState>(
-    'keeps the current state when the cache no longer has this id (nothing to refresh from)',
+    'keeps the current state when getApiary fails',
     build: () {
-      when(() => reader.getCachedApiary('apiary-1')).thenAnswer((_) async => null);
+      when(
+        () => reader.getApiary('apiary-1'),
+      ).thenAnswer((_) async => Left(ServerFailure(code: 'server_error', message: 'failed')));
       return buildCubit();
     },
     act: (_) => refreshNotifier.notify(),
@@ -90,11 +92,11 @@ void main() {
     build: buildCubit,
     act: (cubit) => cubit.setApiary(resolved),
     expect: () => [ApiaryDetailsLoaded(resolved)],
-    verify: (_) => verifyNever(() => reader.getCachedApiary(any())),
+    verify: (_) => verifyNever(() => reader.getApiary(any())),
   );
 
   test('stops listening to the refresh notifier once closed', () async {
-    when(() => reader.getCachedApiary('apiary-1')).thenAnswer((_) async => resolved);
+    when(() => reader.getApiary('apiary-1')).thenAnswer((_) async => Right(resolved));
     final cubit = buildCubit();
 
     await cubit.close();

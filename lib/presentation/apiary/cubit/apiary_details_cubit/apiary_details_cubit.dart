@@ -11,13 +11,9 @@ part 'state/apiary_details_state.dart';
 part 'state/apiary_details_loaded.dart';
 part 'mixin/apiary_details_emitter.dart';
 
-/// Keeps one Apiary's details current after a background sync. Seeded
-/// synchronously with the [Apiary] passed in from the list/route (opening
-/// this page never needs a network round trip), then re-read from the local
-/// cache whenever [ApiaryListRefreshNotifier] fires — the same signal
-/// [ApiaryListCubit] already reacts to for the list screen. This is what
-/// picks up, e.g., an address [ApiaryOperationHandler] re-resolved from an
-/// offline placeholder once a queued create/update operation synced.
+/// Keeps one Apiary's details current. Seeded synchronously with the [Apiary]
+/// passed in from the list/route, then re-fetched whenever
+/// [ApiaryListRefreshNotifier] fires.
 ///
 /// The hive count is fetched separately (see [loadHiveCount]) and kept fresh
 /// via [HiveListRefreshNotifier] — the same signal a hive create/edit/delete
@@ -31,7 +27,7 @@ class ApiaryDetailsCubit extends Cubit<ApiaryDetailsState> with ApiaryDetailsEmi
     required this.refreshNotifier,
     required this.hiveRefreshNotifier,
   }) : super(ApiaryDetailsLoaded(apiary)) {
-    _subscription = refreshNotifier.onChanged.listen((_) => refreshFromCache());
+    _subscription = refreshNotifier.onChanged.listen((_) => refresh());
     _hiveSubscription = hiveRefreshNotifier.onChanged.listen((_) => loadHiveCount());
   }
 
@@ -46,10 +42,12 @@ class ApiaryDetailsCubit extends Cubit<ApiaryDetailsState> with ApiaryDetailsEmi
   /// no need to wait for the next refresh signal to reflect that edit.
   void setApiary(Apiary apiary) => emitLoaded(apiary);
 
-  Future<void> refreshFromCache() async {
-    final fresh = await reader.getCachedApiary(state.apiary.id);
-    if (fresh != null) emitLoaded(fresh);
+  Future<void> refresh() async {
+    final result = await reader.getApiary(state.apiary.id);
+    result.fold((_) {}, emitLoaded);
   }
+
+  Future<void> refreshFromCache() => refresh();
 
   /// Fetches this apiary's real hive count — called once when the details
   /// page opens (see `ApiaryDetailsPage.wrappedRoute`) and again whenever

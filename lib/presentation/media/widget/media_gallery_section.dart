@@ -1,5 +1,3 @@
-import 'package:beebase/presentation/component/color.dart';
-import 'package:beebase/presentation/connectivity/cubit/connectivity_cubit/connectivity_cubit.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_item.dart';
 import 'package:beebase/presentation/media/widget/media_thumbnail.dart';
@@ -13,7 +11,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 part 'media_gallery_section/media_gallery_add_tile.dart';
 part 'media_gallery_section/media_gallery_item_tile.dart';
-part 'media_gallery_section/media_gallery_status_badge.dart';
 part 'media_gallery_section/media_gallery_picker_sheet.dart';
 
 /// Shared photo strip reused, unmodified, across the Apiary and Hive

@@ -5,7 +5,6 @@ import 'package:beebase/core/networking/interceptors/interceptor_resolver.dart';
 import 'package:beebase/data/data_source/interface/apiary_data_source.dart';
 import 'package:beebase/data/models/apiary_request.dart';
 import 'package:beebase/data/models/apiary_response.dart';
-import 'package:beebase/data/models/idempotency_key_header.dart';
 import 'package:beebase/data/models/page_request.dart';
 import 'package:beebase/data/models/paginated_response.dart';
 import 'package:dio/dio.dart' as dio;
@@ -31,12 +30,8 @@ final class ApiaryDataSource implements IApiaryDataSource {
   }
 
   @override
-  Future<ApiaryResponse> createApiary(ApiaryRequest request, {String? idempotencyKey}) async {
-    final response = await _dioClient.post<Map<String, dynamic>>(
-      ApiEndpoints.apiaries.list,
-      data: request.toJson(),
-      headers: idempotencyKey == null ? null : IdempotencyKeyHeader(idempotencyKey: idempotencyKey).toJson(),
-    );
+  Future<ApiaryResponse> createApiary(ApiaryRequest request) async {
+    final response = await _dioClient.post<Map<String, dynamic>>(ApiEndpoints.apiaries.list, data: request.toJson());
     return ApiaryResponse.fromJson(response.data!);
   }
 

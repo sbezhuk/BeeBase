@@ -1,6 +1,5 @@
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/entity/hive.dart';
-import 'package:beebase/domain/enum/local/media_sync_status.dart';
 import 'package:beebase/utils/either.dart';
 
 abstract interface class IHiveWriter {
@@ -10,12 +9,7 @@ abstract interface class IHiveWriter {
     String? notes,
   });
 
-  /// [apiaryId] is never sent to the server (a hive can't change apiary via
-  /// `PUT /api/v1/hives/{id}` — there's no `apiary_id` field on that
-  /// endpoint's request body) — it's threaded through purely so the local
-  /// offline path can reconstruct a full [Hive] without a round trip.
   Future<Either<Failure, Hive>> updateHive({
-    required String apiaryId,
     required String id,
     required String name,
     String? notes,
@@ -27,7 +21,7 @@ abstract interface class IHiveWriter {
   /// to [hiveId] - the only way to attach media now that media-service's
   /// own attach endpoint is internal-only. Used by `MediaRepositoryImpl`
   /// via `IOwnerImageWriter`, never called directly by UI code.
-  Future<Either<Failure, MediaSyncStatus>> addHiveImage({
+  Future<Either<Failure, void>> addHiveImage({
     required String hiveId,
     required String mediaId,
   });

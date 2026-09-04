@@ -1,11 +1,8 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/domain/entity/inspection.dart';
-import 'package:beebase/domain/enum/local/inspection_sync_status.dart';
-import 'package:beebase/presentation/connectivity/cubit/connectivity_cubit/connectivity_cubit.dart';
 import 'package:beebase/presentation/inspection/cubit/inspection_delete_cubit/inspection_delete_cubit.dart';
 import 'package:beebase/presentation/inspection/extension/inspection_date_x.dart';
 import 'package:beebase/presentation/inspection/extension/inspection_type_x.dart';
-import 'package:beebase/presentation/inspection/widget/inspection_sync_badge.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold_action.dart';

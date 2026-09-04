@@ -37,11 +37,11 @@ final class HiveFormCubit extends Cubit<HiveFormState> with HiveFormEmitter {
   bool get isEditing => initial != null;
 
   /// Called by [MediaGalleryCubit] (via `configureDraftCreation`) the first
-  /// time a photo is picked in a create flow, so the photo has a real (or
-  /// local-offline) owner id to upload against immediately instead of
-  /// waiting for [submit]. Idempotent — a second photo reuses the same
-  /// draft rather than creating another hive. Returns `null` on failure,
-  /// leaving the photo staged so it's still picked up by [submit].
+  /// time a photo is picked in a create flow, so the photo has a real owner
+  /// id to upload against immediately instead of waiting for [submit].
+  /// Idempotent — a second photo reuses the same draft rather than creating
+  /// another hive. Returns `null` on failure, leaving the photo staged so
+  /// it's still picked up by [submit].
   Future<String?> ensureDraft({required String name, String? notes}) async {
     final existing = _draft;
     if (existing != null) return existing.id;

@@ -4,7 +4,6 @@ import 'package:beebase/core/networking/exceptions/server_exception.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/core/storage/token_storage.dart';
 import 'package:beebase/data/data_source/interface/authentication_data_source.dart';
-import 'package:beebase/data/data_source/interface/local_data_source.dart';
 import 'package:beebase/data/data_source/interface/password_change_data_source.dart';
 import 'package:beebase/data/data_source/interface/password_reset_data_source.dart';
 import 'package:beebase/data/models/password_reset_otp_verified_response.dart';
@@ -25,14 +24,11 @@ class MockPasswordResetDataSource extends Mock implements IPasswordResetDataSour
 
 class MockTokenStorage extends Mock implements TokenStorage {}
 
-class MockUserLocalDataSource extends Mock implements LocalDataSource<UserResponse> {}
-
 void main() {
   late MockAuthenticationDataSource dataSource;
   late MockPasswordChangeDataSource passwordChangeDataSource;
   late MockPasswordResetDataSource passwordResetDataSource;
   late MockTokenStorage tokenStorage;
-  late MockUserLocalDataSource userLocalDataSource;
   late AuthenticationRepositoryImpl repository;
 
   final userResponse = UserResponse(id: 'user-1', email: 'bee@example.com', createdAt: DateTime(2026));
@@ -59,19 +55,14 @@ void main() {
     passwordChangeDataSource = MockPasswordChangeDataSource();
     passwordResetDataSource = MockPasswordResetDataSource();
     tokenStorage = MockTokenStorage();
-    userLocalDataSource = MockUserLocalDataSource();
     repository = AuthenticationRepositoryImpl(
       dataSource: dataSource,
       passwordChangeDataSource: passwordChangeDataSource,
       passwordResetDataSource: passwordResetDataSource,
       tokenStorage: tokenStorage,
-      userLocalDataSource: userLocalDataSource,
     );
     when(() => tokenStorage.saveAccessToken(any())).thenAnswer((_) async {});
     when(() => tokenStorage.clear()).thenAnswer((_) async {});
-    when(() => userLocalDataSource.read()).thenAnswer((_) async => null);
-    when(() => userLocalDataSource.write(any())).thenAnswer((_) async {});
-    when(() => userLocalDataSource.clear()).thenAnswer((_) async {});
   });
 
   group('register', () {
@@ -341,36 +332,13 @@ void main() {
       expect(result, isA<Left<Failure, dynamic>>());
     });
 
-    test('falls back to the cached user when getCurrentUser fails due to connectivity', () async {
-      when(() => tokenStorage.hasAccessToken()).thenAnswer((_) async => true);
-      when(() => dataSource.getCurrentUser()).thenThrow(const InternalException(ErrorTextRaw('no connection')));
-      when(() => userLocalDataSource.read()).thenAnswer((_) async => userResponse);
-
-      final result = await repository.restoreSession();
-
-      result.fold((_) => fail('expected Right'), (user) => expect(user.id, 'user-1'));
-    });
-
-    test('propagates the connectivity failure when offline with no cached user', () async {
+    test('propagates the failure when getCurrentUser fails', () async {
       when(() => tokenStorage.hasAccessToken()).thenAnswer((_) async => true);
       when(() => dataSource.getCurrentUser()).thenThrow(const InternalException(ErrorTextRaw('no connection')));
 
       final result = await repository.restoreSession();
 
       expect(result, isA<Left<Failure, dynamic>>());
-    });
-
-    test('does not fall back to a cached user when the server rejects the token', () async {
-      when(() => tokenStorage.hasAccessToken()).thenAnswer((_) async => true);
-      when(
-        () => dataSource.getCurrentUser(),
-      ).thenThrow(const ServerException(statusCode: 401, code: 'invalid_access_token', message: 'expired'));
-      when(() => userLocalDataSource.read()).thenAnswer((_) async => userResponse);
-
-      final result = await repository.restoreSession();
-
-      expect(result, isA<Left<Failure, dynamic>>());
-      verifyNever(() => userLocalDataSource.read());
     });
   });
 

@@ -10,9 +10,9 @@ import 'package:flutter/widgets.dart';
 /// pushing another entry with the same [tag] replaces this one in place
 /// (same [id], no re-entrance animation) instead of stacking a duplicate —
 /// see [AppSnackBarController.enqueue]. This is what lets a long-lived,
-/// state-driven notification (e.g. an offline-sync banner) reuse the same
-/// queue as ephemeral toasts: it re-shows under its own tag every time its
-/// backing state changes, and calls [AppSnackBar.hide] to remove itself.
+/// state-driven notification reuse the same queue as ephemeral toasts:
+/// it re-shows under its own tag every time its backing state changes, and
+/// calls [AppSnackBar.hide] to remove itself.
 ///
 /// [duration] is nullable — `null` means the entry stays until dismissed
 /// (manually or via [AppSnackBar.hide]), which persistent/tagged entries

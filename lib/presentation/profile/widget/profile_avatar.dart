@@ -1,24 +1,28 @@
-import 'dart:io';
-
 import 'package:beebase/presentation/component/color.dart';
-import 'package:beebase/presentation/profile/avatar_path_resolver.dart';
+import 'package:beebase/presentation/media/widget/cached_media_image.dart';
+import 'package:beebase/presentation/profile/avatar_image_resolver.dart';
 import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:flutter/material.dart';
 
-/// Renders the authenticated user's avatar — a local file (a pending pick,
-/// or a downloaded render cache — see [AvatarPathResolver]) when one's
-/// available, a placeholder person icon otherwise. Never `Image.network`:
-/// like every other photo in this app, avatars aren't publicly reachable.
+/// Renders the authenticated user's avatar through the same
+/// [CachedMediaImage] every other photo in the app goes through — the
+/// just-picked local file while an edit is still unsaved, the cached remote
+/// image otherwise, a placeholder person icon when there's neither.
+///
+/// The [AvatarImageResolver] round trip exists because a profile carries
+/// only the avatar's media id, never its URL; it's skipped entirely while
+/// [localFilePath] is set, since a not-yet-uploaded pick has no URL to
+/// resolve.
 final class ProfileAvatar extends StatefulWidget {
   const ProfileAvatar({
     required this.resolver,
     required this.avatarId,
-    required this.localFilePath,
+    this.localFilePath,
     this.size = 96,
     super.key,
   });
 
-  final AvatarPathResolver resolver;
+  final AvatarImageResolver resolver;
   final String? avatarId;
   final String? localFilePath;
   final double size;
@@ -28,7 +32,7 @@ final class ProfileAvatar extends StatefulWidget {
 }
 
 final class _ProfileAvatarState extends State<ProfileAvatar> {
-  late Future<String?> _pathFuture = _resolve();
+  late Future<String?> _imageUrlFuture = _resolve();
 
   @override
   void didUpdateWidget(covariant ProfileAvatar oldWidget) {
@@ -36,38 +40,34 @@ final class _ProfileAvatarState extends State<ProfileAvatar> {
     if (oldWidget.avatarId != widget.avatarId ||
         oldWidget.localFilePath != widget.localFilePath) {
       setState(() {
-        _pathFuture = _resolve();
+        _imageUrlFuture = _resolve();
       });
     }
   }
 
-  Future<String?> _resolve() => widget.resolver.resolve(
-    avatarId: widget.avatarId,
-    localFilePath: widget.localFilePath,
-  );
+  Future<String?> _resolve() {
+    if (widget.localFilePath != null) {
+      return Future.value();
+    }
+    return widget.resolver.resolve(widget.avatarId);
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(widget.size / 2),
-      child: FutureBuilder<String?>(
-        future: _pathFuture,
-        builder: (context, snapshot) {
-          final path = snapshot.data;
-          if (snapshot.connectionState != ConnectionState.done ||
-              path == null) {
-            return _placeholder(colors);
-          }
-          return Image.file(
-            File(path),
-            width: widget.size,
-            height: widget.size,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => _placeholder(colors),
-          );
-        },
-      ),
+    return FutureBuilder<String?>(
+      future: _imageUrlFuture,
+      builder: (context, snapshot) {
+        return CachedMediaImage(
+          imageUrl: snapshot.data,
+          localFilePath: widget.localFilePath,
+          width: widget.size,
+          height: widget.size,
+          borderRadius: BorderRadius.circular(widget.size / 2),
+          placeholder: _placeholder(colors),
+          errorWidget: _placeholder(colors),
+        );
+      },
     );
   }
 

@@ -32,7 +32,6 @@ part 'home_page/dashboard_apiary_stats_section.dart';
 part 'home_page/dashboard_body.dart';
 part 'home_page/dashboard_empty_view.dart';
 part 'home_page/dashboard_inspection_stats_section.dart';
-part 'home_page/dashboard_offline_view.dart';
 part 'home_page/dashboard_overview_section.dart';
 part 'home_page/dashboard_recent_activity_section.dart';
 part 'home_page/dashboard_section_error.dart';
@@ -40,11 +39,11 @@ part 'home_page/dashboard_section_loading.dart';
 part 'home_page/dashboard_section_switcher.dart';
 part 'home_page/dashboard_tappable_tile.dart';
 
-/// The app's Home tab — the online-only Dashboard (BEEB-24). Provides
-/// [DashboardCubit] and reflects its state; a network fetch happens on
-/// every open (never from a local cache), again on pull-to-refresh, and
-/// automatically whenever an apiary/hive/inspection mutation elsewhere in
-/// the app succeeds (BEEB-31) — see [DashboardCubit]'s own doc comment.
+/// The app's Home tab — the Dashboard (BEEB-24). Provides [DashboardCubit]
+/// and reflects its state; a network fetch happens on every open, again on
+/// pull-to-refresh, and automatically whenever an apiary/hive/inspection
+/// mutation elsewhere in the app succeeds (BEEB-31) — see
+/// [DashboardCubit]'s own doc comment.
 @RoutePage()
 final class HomePage extends StatelessWidget implements AutoRouteWrapper {
   const HomePage({super.key});
@@ -69,9 +68,6 @@ final class HomePage extends StatelessWidget implements AutoRouteWrapper {
               showBackButton: false,
               slivers: const [],
             ),
-          ),
-          DashboardOffline() => _DashboardOfflineView(
-            onRetry: context.read<DashboardCubit>().retry,
           ),
           final DashboardLoaded loaded => LoadingOverlay(
             isLoading: loaded.isRefreshing,

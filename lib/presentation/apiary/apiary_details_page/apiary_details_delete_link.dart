@@ -3,12 +3,6 @@ part of '../apiary_details_page.dart';
 /// A plain destructive text link, not a boxed button — deletion is a rare,
 /// deliberate action here, so it stays visually quiet until confirmed,
 /// while edit (the common action) lives up in the nav bar instead.
-///
-/// A never-synced ([Apiary.isLocalOnly]) apiary is always deletable, online
-/// or off. A synced apiary requires live connectivity — [ApiaryRepositoryImpl]
-/// enforces this too, but hiding the link here (via [ConnectivityCubit])
-/// avoids the user hitting the confirm sheet just to see it fail, and
-/// explains why via [apiary.details.delete_requires_connection].
 final class _ApiaryDeleteLink extends StatelessWidget {
   const _ApiaryDeleteLink({required this.apiary, required this.isDeleting});
 
@@ -16,25 +10,7 @@ final class _ApiaryDeleteLink extends StatelessWidget {
   final bool isDeleting;
 
   @override
-  Widget build(BuildContext context) {
-    if (apiary.isLocalOnly) {
-      return _buildLink(context);
-    }
-    return BlocBuilder<ConnectivityCubit, ConnectivityState>(
-      builder: (context, state) {
-        if (state is ConnectivityOffline) {
-          return Center(
-            child: Text(
-              'apiary.details.delete_requires_connection'.tr(),
-              textAlign: TextAlign.center,
-              style: context.textStyles.label.copyWith(color: context.colors.text.secondary),
-            ),
-          );
-        }
-        return _buildLink(context);
-      },
-    );
-  }
+  Widget build(BuildContext context) => _buildLink(context);
 
   Widget _buildLink(BuildContext context) {
     final colors = context.colors;

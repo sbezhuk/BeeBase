@@ -4,6 +4,9 @@ import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/utils/either.dart';
 
 abstract interface class IMediaWriter {
+  /// Uploads the file at [localFilePath] and links the resulting media id to
+  /// [ownerType]/[ownerId] — both halves happen right away, against the
+  /// backend; nothing is ever queued for later.
   Future<Either<Failure, MediaAttachment>> attachMedia({
     required MediaOwnerType ownerType,
     required String ownerId,

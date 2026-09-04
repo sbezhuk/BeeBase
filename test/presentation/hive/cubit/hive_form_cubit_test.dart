@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 
 import 'package:beebase/core/networking/failures/failure.dart';
-import 'package:beebase/core/storage/local_media_store.dart';
 import 'package:beebase/domain/entity/hive.dart';
 import 'package:beebase/domain/entity/media_attachment.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
@@ -22,8 +21,6 @@ class MockHiveWriter extends Mock implements IHiveWriter {}
 class MockMediaReader extends Mock implements IMediaReader {}
 
 class MockMediaWriter extends Mock implements IMediaWriter {}
-
-class MockLocalMediaStore extends Mock implements LocalMediaStore {}
 
 class MockImagePicker extends Mock implements ImagePicker {}
 
@@ -84,7 +81,6 @@ void main() {
         ).called(1);
         verifyNever(
           () => writer.updateHive(
-            apiaryId: any(named: 'apiaryId'),
             id: any(named: 'id'),
             name: any(named: 'name'),
           ),
@@ -130,7 +126,6 @@ void main() {
       build: () {
         when(
           () => writer.updateHive(
-            apiaryId: apiaryId,
             id: any(named: 'id'),
             name: any(named: 'name'),
             notes: any(named: 'notes'),
@@ -148,7 +143,6 @@ void main() {
       verify: (_) {
         verify(
           () => writer.updateHive(
-            apiaryId: apiaryId,
             id: 'hive-1',
             name: 'Updated Name',
             notes: null,
@@ -162,21 +156,12 @@ void main() {
   group('attaching staged photos after create', () {
     late MockMediaReader mediaReader;
     late MockMediaWriter mediaWriter;
-    late MockLocalMediaStore localMediaStore;
     late MockImagePicker imagePicker;
 
     setUp(() {
       mediaReader = MockMediaReader();
       mediaWriter = MockMediaWriter();
-      localMediaStore = MockLocalMediaStore();
       imagePicker = MockImagePicker();
-      when(
-        () => localMediaStore.save(
-          any(),
-          id: any(named: 'id'),
-          extension: any(named: 'extension'),
-        ),
-      ).thenAnswer((_) async => '/tmp/staged.jpg');
     });
 
     test(
@@ -213,7 +198,6 @@ void main() {
         final mediaGalleryCubit = MediaGalleryCubit(
           reader: mediaReader,
           writer: mediaWriter,
-          localMediaStore: localMediaStore,
           ownerType: MediaOwnerType.hive,
           imagePicker: imagePicker,
         );
@@ -259,7 +243,6 @@ void main() {
         final mediaGalleryCubit = MediaGalleryCubit(
           reader: mediaReader,
           writer: mediaWriter,
-          localMediaStore: localMediaStore,
           ownerType: MediaOwnerType.hive,
           imagePicker: imagePicker,
         );

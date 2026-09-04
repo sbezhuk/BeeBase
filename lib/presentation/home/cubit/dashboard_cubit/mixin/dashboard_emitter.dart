@@ -1,33 +1,18 @@
 part of '../dashboard_cubit.dart';
 
 mixin DashboardEmitter on Cubit<DashboardState> {
-  /// Bumped by every authoritative reset — [emitLoad], [emitRefresh], and a
-  /// connectivity-loss reaction — and read (never bumped) once a fetch
-  /// resolves, so a response that lands after a newer one already reset the
-  /// dashboard (or after connectivity dropped) is discarded instead of
-  /// overwriting fresher/offline state with stale data.
+  /// Bumped by every authoritative reset — [emitLoad] and [emitRefresh] —
+  /// and read (never bumped) once a fetch resolves, so a response that lands
+  /// after a newer one already reset the dashboard is discarded instead of
+  /// overwriting fresher state with stale data.
   int _generation = 0;
 
-  Future<void> emitLoad(
-    IStatisticsReader statisticsReader,
-    IConnectivityService connectivity,
-  ) async {
-    if (!await connectivity.isOnline) {
-      emit(const DashboardOffline());
-      return;
-    }
+  Future<void> emitLoad(IStatisticsReader statisticsReader) async {
     emit(const DashboardLoading());
     await _fetchAll(statisticsReader, ++_generation);
   }
 
-  Future<void> emitRefresh(
-    IStatisticsReader statisticsReader,
-    IConnectivityService connectivity,
-  ) async {
-    if (!await connectivity.isOnline) {
-      emit(const DashboardOffline());
-      return;
-    }
+  Future<void> emitRefresh(IStatisticsReader statisticsReader) async {
     final current = state;
     if (current is DashboardLoaded) emit(current.copyWith(isRefreshing: true));
     await _fetchAll(statisticsReader, ++_generation);
@@ -144,18 +129,5 @@ mixin DashboardEmitter on Cubit<DashboardState> {
         ),
       ),
     );
-  }
-
-  /// Reacts to a connectivity drop while the dashboard is loading or
-  /// already loaded — invalidates any in-flight fetch and swaps to the
-  /// full-page offline state. A regained connection does *not* auto-reload;
-  /// [emitLoad]/[emitRefresh] (Retry, pull-to-refresh) are the only explicit
-  /// fetch triggers, so nothing refetches unexpectedly mid-navigation.
-  void emitOfflineIfConnectionLost({required bool isOnline}) {
-    if (isOnline) return;
-    if (state is DashboardLoading || state is DashboardLoaded) {
-      ++_generation;
-      emit(const DashboardOffline());
-    }
   }
 }

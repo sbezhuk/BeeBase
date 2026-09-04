@@ -55,12 +55,6 @@ class DioClient {
     return _run(() => _dio.fetch<T>(requestOptions));
   }
 
-  /// Downloads raw, non-JSON response content (e.g. a media file's bytes) —
-  /// [get] has no way to request [ResponseType.bytes].
-  Future<Response<List<int>>> getBytes(String path) {
-    return _run(() => _dio.get<List<int>>(path, options: Options(responseType: ResponseType.bytes)));
-  }
-
   Future<Response<T>> _run<T>(Future<Response<T>> Function() request) async {
     try {
       return await request();

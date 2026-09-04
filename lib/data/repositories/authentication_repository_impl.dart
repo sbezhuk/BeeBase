@@ -4,13 +4,11 @@ import 'package:beebase/core/error/error_text.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/core/storage/token_storage.dart';
 import 'package:beebase/data/data_source/interface/authentication_data_source.dart';
-import 'package:beebase/data/data_source/interface/local_data_source.dart';
 import 'package:beebase/data/data_source/interface/password_change_data_source.dart';
 import 'package:beebase/data/data_source/interface/password_reset_data_source.dart';
 import 'package:beebase/data/models/extensions/password_reset_otp_verified_response_extension.dart';
 import 'package:beebase/data/models/extensions/password_reset_requested_response_extension.dart';
 import 'package:beebase/data/models/extensions/user_extension.dart';
-import 'package:beebase/data/models/user_response.dart';
 import 'package:beebase/domain/entity/auth_challenge.dart';
 import 'package:beebase/domain/entity/password_reset_flow.dart';
 import 'package:beebase/domain/entity/password_reset_verification.dart';
@@ -28,14 +26,12 @@ final class AuthenticationRepositoryImpl extends Repository
     required this.passwordChangeDataSource,
     required this.passwordResetDataSource,
     required this.tokenStorage,
-    required this.userLocalDataSource,
   });
 
   final IAuthenticationDataSource dataSource;
   final IPasswordChangeDataSource passwordChangeDataSource;
   final IPasswordResetDataSource passwordResetDataSource;
   final TokenStorage tokenStorage;
-  final LocalDataSource<UserResponse> userLocalDataSource;
 
   // No token-storage side effect here — neither call issues a session
   // anymore, only a challenge that verifyTotpSetup/verifyLoginOtp resolves.
@@ -54,9 +50,6 @@ final class AuthenticationRepositoryImpl extends Repository
     return on(() async {
       final session = await dataSource.verifyTotpSetup(setupToken: setupToken, otp: otp);
       await tokenStorage.saveAccessToken(session.accessToken);
-      // See the comment on the old register()/login() bodies this replaced —
-      // only the offline restoreSession fallback ever reads this cache.
-      unawaited(userLocalDataSource.write(session.user).catchError((_) {}));
       return session.user.toEntity();
     });
   }
@@ -66,7 +59,6 @@ final class AuthenticationRepositoryImpl extends Repository
     return on(() async {
       final session = await dataSource.verifyLoginOtp(challengeToken: challengeToken, otp: otp);
       await tokenStorage.saveAccessToken(session.accessToken);
-      unawaited(userLocalDataSource.write(session.user).catchError((_) {}));
       return session.user.toEntity();
     });
   }
@@ -120,16 +112,12 @@ final class AuthenticationRepositoryImpl extends Repository
   Future<Either<Failure, User>> getCurrentUser() {
     return on(() async {
       final user = await dataSource.getCurrentUser();
-      await userLocalDataSource.write(user);
       return user.toEntity();
     });
   }
 
-  /// Restores a previously established session. A network failure here
-  /// (no connectivity, timeout) does not mean the session is invalid — it
-  /// falls back to the last known user so the app stays usable offline.
-  /// Only a failure from the server itself (it explicitly rejected the
-  /// token) is treated as a real logout.
+  /// Restores a previously established session. On any failure (network or
+  /// server) the error is returned directly — the app is strictly online-only.
   @override
   Future<Either<Failure, User>> restoreSession() async {
     final hasSession = await tokenStorage.hasAccessToken();
@@ -137,14 +125,7 @@ final class AuthenticationRepositoryImpl extends Repository
       return const Left(InternalFailure(ErrorTextKey('core.errors.no_active_session')));
     }
 
-    final result = await getCurrentUser();
-    return result.fold((failure) async {
-      if (failure is ServerFailure) {
-        return Left(failure);
-      }
-      final cachedUser = await userLocalDataSource.read();
-      return cachedUser == null ? Left(failure) : Right(cachedUser.toEntity());
-    }, (user) => Future.value(Right(user)));
+    return getCurrentUser();
   }
 
   @override
@@ -156,6 +137,5 @@ final class AuthenticationRepositoryImpl extends Repository
       // whether the server could be reached to revoke the refresh token.
     }
     await tokenStorage.clear();
-    await userLocalDataSource.clear();
   }
 }

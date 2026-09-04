@@ -1,11 +1,8 @@
-import 'dart:typed_data';
-
 import 'package:auto_route/auto_route.dart';
-import 'package:beebase/core/storage/local_media_store.dart';
 import 'package:beebase/domain/entity/user.dart';
 import 'package:beebase/presentation/component/buttons/primary_button.dart';
 import 'package:beebase/presentation/component/text_field/app_text_field.dart';
-import 'package:beebase/presentation/profile/avatar_path_resolver.dart';
+import 'package:beebase/presentation/profile/avatar_image_resolver.dart';
 import 'package:beebase/presentation/profile/cubit/profile_edit_cubit/profile_edit_cubit.dart';
 import 'package:beebase/presentation/profile/widget/profile_avatar.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold.dart';
@@ -15,7 +12,6 @@ import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
 import 'package:beebase/utils/extensions/theme_text_styles.dart';
-import 'package:beebase/utils/media_file_extension.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -50,7 +46,7 @@ final class _ProfileEditPageState extends State<ProfileEditPage> {
     text: widget.user.lastName,
   );
   final _picker = ImagePicker();
-  late final _resolver = di<AvatarPathResolver>();
+  late final _resolver = di<AvatarImageResolver>();
 
   String? _pendingAvatarLocalFilePath;
   bool _avatarRemoved = false;
@@ -58,9 +54,8 @@ final class _ProfileEditPageState extends State<ProfileEditPage> {
   String? get _displayedAvatarId =>
       _avatarRemoved ? null : widget.user.avatarId;
 
-  String? get _displayedAvatarLocalPath => _avatarRemoved
-      ? null
-      : (_pendingAvatarLocalFilePath ?? widget.user.avatarLocalFilePath);
+  String? get _displayedAvatarLocalPath =>
+      _avatarRemoved ? null : _pendingAvatarLocalFilePath;
 
   bool get _canRemoveAvatar =>
       _displayedAvatarId != null || _pendingAvatarLocalFilePath != null;
@@ -78,17 +73,9 @@ final class _ProfileEditPageState extends State<ProfileEditPage> {
       maxWidth: 1600,
       imageQuality: 85,
     );
-    if (picked == null) return;
-    final bytes = await picked.readAsBytes();
-    final extension = extensionFromFilename(picked.name);
-    final localFilePath = await di<LocalMediaStore>().save(
-      Uint8List.fromList(bytes),
-      id: 'pending-avatar-${widget.user.id}',
-      extension: extension,
-    );
-    if (!mounted) return;
+    if (picked == null || !mounted) return;
     setState(() {
-      _pendingAvatarLocalFilePath = localFilePath;
+      _pendingAvatarLocalFilePath = picked.path;
       _avatarRemoved = false;
     });
   }

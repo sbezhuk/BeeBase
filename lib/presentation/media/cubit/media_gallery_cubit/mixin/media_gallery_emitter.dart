@@ -1,12 +1,6 @@
 part of '../media_gallery_cubit.dart';
 
 mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
-  /// Keyed by attachment id, so two `MediaThumbnail`s asking for the same
-  /// photo at once (e.g. the Apiary/Hive details page's hero preview and its
-  /// gallery strip, both bound to this same cubit) share one network call
-  /// and one disk write instead of racing two independent ones.
-  final Map<String, Future<String?>> _inFlightDownloads = {};
-
   /// Ids of already-attached photos the user removed while `deferChanges`
   /// was on (the edit form) — hidden from [state] immediately for a
   /// responsive UI, but not actually deleted server-side until
@@ -15,82 +9,12 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
   /// — is torn down along with the page.
   final Set<String> _pendingRemovalIds = {};
 
+  /// Distinguishes two picks made within the same microsecond, so every
+  /// staged item's [MediaGalleryItem.localId] is unique for the lifetime of
+  /// this cubit.
+  int _stagedSequence = 0;
+
   bool get hasPendingRemovals => _pendingRemovalIds.isNotEmpty;
-
-  Future<String?> resolveItemDisplayPath(
-    IMediaReader reader,
-    LocalMediaStore localMediaStore,
-    MediaGalleryItem item,
-  ) async {
-    final localPath = item.localFilePath;
-    if (localPath != null && await File(localPath).exists()) {
-      return localPath;
-    }
-    final attachment = item.attachment;
-    if (attachment == null) {
-      return null;
-    }
-    final extension = extensionFromFilename(attachment.originalFilename);
-
-    // The deterministic render-cache path for this attachment may already
-    // hold a valid copy from a previous download — `item.localFilePath`
-    // above only reflects what this particular `MediaAttachment` instance
-    // was built with, which is `null` for anything freshly re-fetched from
-    // the server (see `MediaCacheMerger`). Checking here (instead of only
-    // trusting `item.localFilePath`) is what makes offline viewing of a
-    // previously-seen photo actually work, and what avoids a redundant
-    // re-download for one that's already cached.
-    final cachedPath = await localMediaStore.validExistingPath(
-      attachment.id,
-      extension: extension,
-    );
-    if (cachedPath != null) {
-      await reader.cacheDownloadedMedia(attachment.id, cachedPath);
-      return cachedPath;
-    }
-
-    return _inFlightDownloads[attachment.id] ??=
-        _downloadAndCache(
-          reader,
-          localMediaStore,
-          attachment.id,
-          extension,
-        ).whenComplete(() {
-          // A block body, not `whenComplete(() => _inFlightDownloads.remove(...))`
-          // — `Map.remove` returns the value it removed, which *is* the very
-          // `Future` this `whenComplete` call is attached to (see the map
-          // assignment above). An arrow body would hand that Future straight
-          // back to `whenComplete`, which then waits for whatever Future its
-          // action returns before completing — i.e. this future waiting on
-          // itself, deadlocking forever. The block body returns `void` instead.
-          _inFlightDownloads.remove(attachment.id);
-        });
-  }
-
-  /// One retry on failure — enough to ride out a transient blip (the kind
-  /// that made this "sometimes" fail rather than reliably either way)
-  /// without turning a genuinely offline/unreachable case into a long
-  /// blocking wait for the `FutureBuilder` this feeds.
-  Future<String?> _downloadAndCache(
-    IMediaReader reader,
-    LocalMediaStore localMediaStore,
-    String attachmentId,
-    String extension,
-  ) async {
-    var result = await reader.downloadMedia(attachmentId);
-    if (result.isLeft) {
-      result = await reader.downloadMedia(attachmentId);
-    }
-    return result.fold((_) => null, (bytes) async {
-      final path = await localMediaStore.save(
-        Uint8List.fromList(bytes),
-        id: attachmentId,
-        extension: extension,
-      );
-      await reader.cacheDownloadedMedia(attachmentId, path);
-      return path;
-    });
-  }
 
   Future<void> emitLoad(
     IMediaReader reader,
@@ -142,7 +66,6 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
   /// reaches the server for an edit the user abandons.
   Future<String?> emitPick(
     ImagePicker picker,
-    LocalMediaStore localMediaStore,
     IMediaWriter writer,
     MediaOwnerType ownerType,
     String? ownerId,
@@ -158,21 +81,14 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
     );
     if (picked == null) return null;
 
-    final bytes = await picked.readAsBytes();
-    final localId = LocalIdGenerator.generate();
     final extension = extensionFromFilename(picked.name);
-    final contentType = contentTypeFromExtension(extension);
-    final localFilePath = await localMediaStore.save(
-      Uint8List.fromList(bytes),
-      id: localId,
-      extension: extension,
-    );
-
     final staged = MediaGalleryItem(
-      localId: localId,
-      localFilePath: localFilePath,
+      localId: 'staged-${DateTime.now().microsecondsSinceEpoch}-${_stagedSequence++}',
+      // The picker's own temp file — uploaded straight from there, and only
+      // ever read to render the tile until that upload finishes.
+      localFilePath: picked.path,
       originalFilename: picked.name,
-      contentType: contentType,
+      contentType: contentTypeFromExtension(extension),
       status: MediaGalleryItemStatus.staged,
     );
     _addItem(staged);
@@ -257,7 +173,6 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
   /// always just drops locally — there's nothing server-side to defer.
   Future<void> emitRemove(
     IMediaWriter writer,
-    LocalMediaStore localMediaStore,
     MediaOwnerType ownerType,
     String? ownerId,
     String localId,
@@ -270,10 +185,6 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
     if (item == null) return;
 
     if (item.status == MediaGalleryItemStatus.staged) {
-      final path = item.localFilePath;
-      if (path != null) {
-        await localMediaStore.delete(path);
-      }
       _removeItem(localId);
       notifyOwnerListChanged?.call();
       return;
@@ -312,18 +223,18 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
     );
   }
 
-  /// Notifies (if given) only once [item] is confirmed synced — never right
-  /// after staging, before the server even has the file. Notifying earlier
-  /// caused the bug this comment replaces: every `MediaGalleryCubit` for this
-  /// owner type (this one included — see `MediaGalleryCubit`'s constructor)
-  /// listens for that same signal and reloads from the server, and an
-  /// early/premature reload here raced ahead of this very upload, replacing
-  /// [item] before it had a server id and silently dropping every later
-  /// `_updateItem(item.localId, ...)` call for it (no item left in the
-  /// reloaded state matches that local id) — the upload still succeeded
-  /// server-side, but the UI never reflected it, most visibly for a first
-  /// photo (the reload's fetch came back empty, wiping the preview back to
-  /// placeholder/map).
+  /// Notifies (if given) only once [item] is confirmed uploaded and
+  /// attached — never right after staging, before the server even has the
+  /// file. Notifying earlier caused the bug this comment replaces: every
+  /// `MediaGalleryCubit` for this owner type (this one included — see
+  /// `MediaGalleryCubit`'s constructor) listens for that same signal and
+  /// reloads from the server, and an early/premature reload here raced ahead
+  /// of this very upload, replacing [item] before it had a server id and
+  /// silently dropping every later `_updateItem(item.localId, ...)` call for
+  /// it (no item left in the reloaded state matches that local id) — the
+  /// upload still succeeded server-side, but the UI never reflected it, most
+  /// visibly for a first photo (the reload's fetch came back empty, wiping
+  /// the preview back to placeholder/map).
   Future<void> _upload(
     IMediaWriter writer,
     MediaOwnerType ownerType,
@@ -366,7 +277,7 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
         _updateItem(
           item.localId,
           (existing) => existing.copyWith(
-            status: _statusFor(attachment.syncStatus),
+            status: MediaGalleryItemStatus.synced,
             attachment: attachment,
             uploadProgress: null,
             clearError: true,
@@ -380,20 +291,12 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
   MediaGalleryItem _itemFromAttachment(MediaAttachment attachment) {
     return MediaGalleryItem(
       localId: attachment.id,
-      localFilePath: attachment.localFilePath,
       originalFilename: attachment.originalFilename,
       contentType: attachment.contentType,
-      status: _statusFor(attachment.syncStatus),
+      status: MediaGalleryItemStatus.synced,
       attachment: attachment,
     );
   }
-
-  MediaGalleryItemStatus _statusFor(MediaSyncStatus syncStatus) =>
-      switch (syncStatus) {
-        MediaSyncStatus.synced => MediaGalleryItemStatus.synced,
-        MediaSyncStatus.pending => MediaGalleryItemStatus.pending,
-        MediaSyncStatus.failed => MediaGalleryItemStatus.failed,
-      };
 
   MediaGalleryItem? _find(MediaGalleryLoaded state, String localId) {
     for (final item in state.items) {
@@ -409,8 +312,7 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
   // resumes. The underlying repository call (already awaited by the time we
   // get here) has completed its actual work regardless — only the now-moot
   // UI state update needs to become a no-op instead of throwing
-  // "Cannot emit new states after calling close" (same class of bug
-  // `ConnectivityEmitter.emitFromOnline` guards for the same reason).
+  // "Cannot emit new states after calling close".
 
   void _addItem(MediaGalleryItem item) {
     if (isClosed) return;

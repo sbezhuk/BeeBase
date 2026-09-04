@@ -1,12 +1,8 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:beebase/core/networking/failures/failure.dart';
-import 'package:beebase/core/offline/local_id_generator.dart';
-import 'package:beebase/core/storage/local_media_store.dart';
 import 'package:beebase/domain/entity/media_attachment.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
-import 'package:beebase/domain/enum/local/media_sync_status.dart';
 import 'package:beebase/domain/repositories/media_reader.dart';
 import 'package:beebase/domain/repositories/media_writer.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_item.dart';
@@ -54,7 +50,6 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
   MediaGalleryCubit({
     required this.reader,
     required this.writer,
-    required this.localMediaStore,
     required this.ownerType,
     String? ownerId,
     ImagePicker? imagePicker,
@@ -78,7 +73,6 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
 
   final IMediaReader reader;
   final IMediaWriter writer;
-  final LocalMediaStore localMediaStore;
   final MediaOwnerType ownerType;
   final ImagePicker _picker;
   final VoidCallback? _notifyOwnerListChanged;
@@ -86,14 +80,11 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
   /// Resolves the *current* set of media ids attached to whatever owner id
   /// [load] is about to fetch for — called fresh on every [load] (including
   /// the ones triggered by [ownerListChanges], not just the first) so a
-  /// gallery reload always reflects the owning Apiary/Hive's latest known
+  /// gallery reload always reflects the owning Apiary/Hive's latest
   /// `images`, the same way asking media-service "what's attached to owner
   /// X" always used to. DI wires this per [ownerType] to the matching
-  /// `IApiaryReader.getCachedApiary`/`IHiveReader.getCachedHive` — a cache
-  /// read, not a network call, since apiary/hive-service is now the source
-  /// of truth for "which media ids belong to me" and its own repository
-  /// already keeps that cache current ahead of every `ownerListChanges`
-  /// signal this cubit reacts to.
+  /// `IApiaryReader.getApiary`/`IHiveReader.getHive` — apiary/hive-service
+  /// is now the source of truth for "which media ids belong to me".
   final Future<List<String>> Function(String ownerId)? _resolveImages;
   StreamSubscription<void>? _ownerListChangesSubscription;
 
@@ -104,12 +95,11 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
   bool _deferChanges = false;
 
   /// Lets a create-mode form page supply a way to materialize the parent
-  /// Apiary/Hive — as a real or local-offline id — the first time a photo
-  /// is picked, so the upload can start immediately instead of waiting for
-  /// staged photos to be flushed via [commitChanges] on submit. Configured
-  /// after construction (see `configureDraftCreation`) because the page's
-  /// form field values it reads aren't available yet when this cubit is
-  /// built.
+  /// Apiary/Hive the first time a photo is picked, so the upload can start
+  /// immediately instead of waiting for staged photos to be flushed via
+  /// [commitChanges] on submit. Configured after construction (see
+  /// `configureDraftCreation`) because the page's form field values it reads
+  /// aren't available yet when this cubit is built.
   Future<String?> Function()? _ensureOwnerId;
 
   bool get isStaging => _ownerId == null;
@@ -147,7 +137,6 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
   Future<void> _pick(ImageSource source) async {
     final resolvedOwnerId = await emitPick(
       _picker,
-      localMediaStore,
       writer,
       ownerType,
       _ownerId,
@@ -160,9 +149,8 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
   }
 
   /// Flushes every staged pick and every deferred removal (see the class
-  /// doc's "deferred mode" paragraph) against the parent Apiary/Hive's real
-  /// (or local-offline) id — called by the form cubit right after a
-  /// successful create/update.
+  /// doc's "deferred mode" paragraph) against the parent Apiary/Hive's id —
+  /// called by the form cubit right after a successful create/update.
   Future<void> commitChanges(MediaOwnerType ownerType, String ownerId) {
     assert(
       ownerType == this.ownerType,
@@ -174,7 +162,6 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
 
   Future<void> remove(String localId) => emitRemove(
     writer,
-    localMediaStore,
     ownerType,
     _ownerId,
     localId,
@@ -184,13 +171,6 @@ final class MediaGalleryCubit extends Cubit<MediaGalleryState>
 
   Future<void> retry(String localId) =>
       emitRetry(writer, ownerType, _ownerId, localId, _notifyOwnerListChanged);
-
-  /// The local file path [MediaThumbnail] should render [item] from — its
-  /// own [MediaGalleryItem.localFilePath] if that file still exists, or a
-  /// freshly downloaded (and disk-cached) copy otherwise. `null` means the
-  /// download failed and the caller should show a broken-image state.
-  Future<String?> resolveDisplayPath(MediaGalleryItem item) =>
-      resolveItemDisplayPath(reader, localMediaStore, item);
 
   @override
   Future<void> close() {

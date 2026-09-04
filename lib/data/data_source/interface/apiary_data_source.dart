@@ -8,7 +8,7 @@ abstract interface class IApiaryDataSource {
 
   Future<ApiaryResponse> getApiary(String id);
 
-  Future<ApiaryResponse> createApiary(ApiaryRequest request, {String? idempotencyKey});
+  Future<ApiaryResponse> createApiary(ApiaryRequest request);
 
   Future<ApiaryResponse> updateApiary(String id, ApiaryRequest request);
 

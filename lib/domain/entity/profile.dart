@@ -12,7 +12,6 @@ final class Profile {
     required this.firstName,
     required this.lastName,
     this.avatarId,
-    this.avatarLocalFilePath,
   });
 
   final String id;
@@ -23,11 +22,6 @@ final class Profile {
   /// The avatar media id, or `null` if this user has no avatar set.
   final String? avatarId;
 
-  /// Local-only render cache for [avatarId]'s bytes — either a not-yet
-  /// uploaded pick or a downloaded copy of an already-synced avatar. Never
-  /// sent to the server.
-  final String? avatarLocalFilePath;
-
   /// Merges this profile's fields onto [user] — the counterpart of
   /// [User.copyWith] that `ProfileCubit`/`ProfileEditCubit` call after a
   /// successful fetch/edit, since this resource carries no `createdAt` of
@@ -37,8 +31,6 @@ final class Profile {
     lastName: lastName,
     avatarId: avatarId,
     clearAvatarId: avatarId == null,
-    avatarLocalFilePath: avatarLocalFilePath,
-    clearAvatarLocalFilePath: avatarLocalFilePath == null,
   );
 
   @override
@@ -49,9 +41,8 @@ final class Profile {
           other.email == email &&
           other.firstName == firstName &&
           other.lastName == lastName &&
-          other.avatarId == avatarId &&
-          other.avatarLocalFilePath == avatarLocalFilePath);
+          other.avatarId == avatarId);
 
   @override
-  int get hashCode => Object.hash(id, email, firstName, lastName, avatarId, avatarLocalFilePath);
+  int get hashCode => Object.hash(id, email, firstName, lastName, avatarId);
 }

@@ -1,11 +1,8 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/domain/entity/hive.dart';
-import 'package:beebase/domain/enum/local/hive_sync_status.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
-import 'package:beebase/presentation/connectivity/cubit/connectivity_cubit/connectivity_cubit.dart';
 import 'package:beebase/presentation/hive/cubit/hive_delete_cubit/hive_delete_cubit.dart';
 import 'package:beebase/presentation/hive/extension/hive_date_x.dart';
-import 'package:beebase/presentation/hive/widget/hive_sync_badge.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/presentation/media/widget/media_gallery_section.dart';
 import 'package:beebase/presentation/router/app_router.dart';

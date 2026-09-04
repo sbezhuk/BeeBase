@@ -2,24 +2,12 @@ import 'package:beebase/core/networking/http/dio_client.dart';
 import 'package:beebase/core/networking/http/token_refresher.dart';
 import 'package:beebase/core/networking/interceptors/authentication_interceptor.dart';
 import 'package:beebase/core/location/location_service.dart';
+import 'package:beebase/core/media/media_image_cache.dart';
+import 'package:beebase/core/media/media_image_cache_manager.dart';
 import 'package:beebase/core/networking/interceptors/interceptor_resolver.dart';
-import 'package:beebase/core/offline/offline_mutation_store.dart';
-import 'package:beebase/core/offline/offline_operations_change_notifier.dart';
-import 'package:beebase/core/offline/operation_queue.dart';
-import 'package:beebase/core/offline/operation_registry.dart';
-import 'package:beebase/core/offline/sqlite_offline_mutation_store.dart';
-import 'package:beebase/core/offline/sqlite_operation_queue.dart';
-import 'package:beebase/core/offline/sync_activity_tracker.dart';
-import 'package:beebase/core/offline/sync_engine.dart';
-import 'package:beebase/core/offline/sync_engine_impl.dart';
-import 'package:beebase/core/services/connectivity_service.dart';
-import 'package:beebase/core/services/connectivity_service_impl.dart';
 import 'package:beebase/core/services/session_service.dart';
-import 'package:beebase/core/storage/app_database.dart';
-import 'package:beebase/core/storage/local_media_store.dart';
 import 'package:beebase/core/storage/secure_storage.dart';
 import 'package:beebase/core/storage/token_storage.dart';
-import 'package:beebase/data/apiary/apiary_operation_handler.dart';
 import 'package:beebase/data/data_source/apiary_data_source.dart';
 import 'package:beebase/data/data_source/authentication_data_source.dart';
 import 'package:beebase/data/data_source/hive_data_source.dart';
@@ -28,7 +16,6 @@ import 'package:beebase/data/data_source/interface/apiary_data_source.dart';
 import 'package:beebase/data/data_source/interface/authentication_data_source.dart';
 import 'package:beebase/data/data_source/interface/hive_data_source.dart';
 import 'package:beebase/data/data_source/interface/inspection_data_source.dart';
-import 'package:beebase/data/data_source/interface/local_data_source.dart';
 import 'package:beebase/data/data_source/interface/media_data_source.dart';
 import 'package:beebase/data/data_source/interface/password_change_data_source.dart';
 import 'package:beebase/data/data_source/interface/password_reset_data_source.dart';
@@ -36,18 +23,7 @@ import 'package:beebase/data/data_source/interface/profile_data_source.dart';
 import 'package:beebase/data/data_source/interface/statistics_data_source.dart';
 import 'package:beebase/data/data_source/media_data_source.dart';
 import 'package:beebase/data/data_source/profile_data_source.dart';
-import 'package:beebase/data/data_source/sqlite_local_data_source.dart';
 import 'package:beebase/data/data_source/statistics_data_source.dart';
-import 'package:beebase/data/hive/hive_operation_handler.dart';
-import 'package:beebase/data/inspection/inspection_operation_handler.dart';
-import 'package:beebase/data/media/media_operation_handler.dart';
-import 'package:beebase/data/models/apiary_response.dart';
-import 'package:beebase/data/models/hive_response.dart';
-import 'package:beebase/data/models/inspection_response.dart';
-import 'package:beebase/data/models/media_response.dart';
-import 'package:beebase/data/models/profile_response.dart';
-import 'package:beebase/data/models/user_response.dart';
-import 'package:beebase/data/profile/profile_operation_handler.dart';
 import 'package:beebase/data/repositories/apiary_repository_impl.dart';
 import 'package:beebase/data/repositories/authentication_repository_impl.dart';
 import 'package:beebase/data/repositories/hive_repository_impl.dart';
@@ -88,7 +64,6 @@ import 'package:beebase/presentation/authentication/cubit/login_otp_cubit/login_
 import 'package:beebase/presentation/authentication/cubit/register_cubit/register_cubit.dart';
 import 'package:beebase/presentation/authentication/cubit/reset_password_cubit/reset_password_cubit.dart';
 import 'package:beebase/presentation/authentication/cubit/totp_setup_cubit/totp_setup_cubit.dart';
-import 'package:beebase/presentation/connectivity/cubit/connectivity_cubit/connectivity_cubit.dart';
 import 'package:beebase/presentation/home/cubit/dashboard_cubit/dashboard_cubit.dart';
 import 'package:beebase/presentation/hive/cubit/hive_delete_cubit/hive_delete_cubit.dart';
 import 'package:beebase/presentation/hive/cubit/hive_form_cubit/hive_form_cubit.dart';
@@ -99,16 +74,16 @@ import 'package:beebase/presentation/inspection/cubit/inspection_form_cubit/insp
 import 'package:beebase/presentation/inspection/cubit/inspection_list_cubit/inspection_list_cubit.dart';
 import 'package:beebase/presentation/inspection/inspection_list_refresh_notifier.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
-import 'package:beebase/presentation/profile/avatar_path_resolver.dart';
+import 'package:beebase/presentation/profile/avatar_image_resolver.dart';
 import 'package:beebase/presentation/profile/cubit/change_password_cubit/change_password_cubit.dart';
 import 'package:beebase/presentation/profile/cubit/profile_cubit/profile_cubit.dart';
 import 'package:beebase/presentation/profile/cubit/profile_edit_cubit/profile_edit_cubit.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/router/guardes/authentication_guard.dart';
-import 'package:beebase/presentation/sync/cubit/sync_banner_cubit/sync_banner_cubit.dart';
 import 'package:beebase/utils/app_config.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:get_it/get_it.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -121,27 +96,15 @@ Future<void> initDi() async {
     () => TokenStorage(secureStorage: di()),
   );
   di.registerLazySingleton<SessionService>(() => SessionService());
-  di.registerLazySingleton<LocationService>(
-    () => LocationService(connectivity: di()),
-  );
-  // A leaf with no dependencies of its own (see its doc for why the sync
-  // batch's "in progress" flag lives here rather than directly on
-  // `SyncEngine`) — must be registered before anything below that depends
-  // on it.
-  di.registerLazySingleton<SyncActivityTracker>(SyncActivityTracker.new);
+  di.registerLazySingleton<LocationService>(LocationService.new);
   di.registerLazySingleton<ApiaryListRefreshNotifier>(
-    () => ApiaryListRefreshNotifier(syncActivity: di<SyncActivityTracker>()),
+    ApiaryListRefreshNotifier.new,
   );
   di.registerLazySingleton<HiveListRefreshNotifier>(
-    () => HiveListRefreshNotifier(syncActivity: di<SyncActivityTracker>()),
+    HiveListRefreshNotifier.new,
   );
   di.registerLazySingleton<InspectionListRefreshNotifier>(
-    () =>
-        InspectionListRefreshNotifier(syncActivity: di<SyncActivityTracker>()),
-  );
-  di.registerLazySingleton<ConnectivityService>(ConnectivityService.new);
-  di.registerLazySingleton<IConnectivityService>(
-    () => di<ConnectivityService>(),
+    InspectionListRefreshNotifier.new,
   );
   // #endregion
 
@@ -157,71 +120,20 @@ Future<void> initDi() async {
   di.registerLazySingleton<CookieJar>(() => cookieJar);
   di.registerLazySingleton<CookieManager>(() => CookieManager(di()));
 
-  final appDatabase = AppDatabase();
-  await appDatabase.open();
-  di.registerLazySingleton<AppDatabase>(() => appDatabase);
-
-  di.registerLazySingleton<LocalDataSource<UserResponse>>(
-    () => SqliteLocalDataSource<UserResponse>(
-      database: di(),
-      key: 'cached_user',
-      toJson: (user) => user.toJson(),
-      fromJson: (json) => UserResponse.fromJson(json as Map<String, dynamic>),
-    ),
-  );
-  di.registerLazySingleton<LocalDataSource<ProfileResponse>>(
-    () => SqliteLocalDataSource<ProfileResponse>(
-      database: di(),
-      key: profileCacheKey,
-      toJson: (profile) => profile.toJson(),
-      fromJson: (json) =>
-          ProfileResponse.fromJson(json as Map<String, dynamic>),
-    ),
-  );
-  di.registerLazySingleton<LocalDataSource<List<ApiaryResponse>>>(
-    () => SqliteLocalDataSource<List<ApiaryResponse>>(
-      database: di(),
-      key: apiaryCacheKey,
-      toJson: (apiaries) => apiaries.map((apiary) => apiary.toJson()).toList(),
-      fromJson: (json) => (json as List<dynamic>)
-          .map((item) => ApiaryResponse.fromJson(item as Map<String, dynamic>))
-          .toList(),
-    ),
-  );
-  di.registerLazySingleton<LocalDataSource<List<HiveResponse>>>(
-    () => SqliteLocalDataSource<List<HiveResponse>>(
-      database: di(),
-      key: hiveCacheKey,
-      toJson: (hives) => hives.map((hive) => hive.toJson()).toList(),
-      fromJson: (json) => (json as List<dynamic>)
-          .map((item) => HiveResponse.fromJson(item as Map<String, dynamic>))
-          .toList(),
-    ),
-  );
-  di.registerLazySingleton<LocalDataSource<List<MediaResponse>>>(
-    () => SqliteLocalDataSource<List<MediaResponse>>(
-      database: di(),
-      key: mediaCacheKey,
-      toJson: (items) => items.map((response) => response.toJson()).toList(),
-      fromJson: (json) => (json as List<dynamic>)
-          .map((item) => MediaResponse.fromJson(item as Map<String, dynamic>))
-          .toList(),
-    ),
-  );
-  di.registerLazySingleton<LocalDataSource<List<InspectionResponse>>>(
-    () => SqliteLocalDataSource<List<InspectionResponse>>(
-      database: di(),
-      key: inspectionCacheKey,
-      toJson: (inspections) =>
-          inspections.map((inspection) => inspection.toJson()).toList(),
-      fromJson: (json) => (json as List<dynamic>)
-          .map(
-            (item) => InspectionResponse.fromJson(item as Map<String, dynamic>),
-          )
-          .toList(),
-    ),
-  );
-  di.registerLazySingleton<LocalMediaStore>(LocalMediaStore.new);
+  // The one image cache every `CachedMediaImage` renders through. Reads the
+  // access token per request (media URLs are authenticated) rather than
+  // capturing one, so an image loaded after a token refresh still succeeds.
+  di
+    ..registerLazySingleton<MediaImageCacheManager>(
+      () => MediaImageCacheManager(accessToken: di<TokenStorage>().accessToken),
+    )
+    ..registerLazySingleton<IMediaImageCache>(() => di<MediaImageCacheManager>())
+    // `CachedMediaImage` resolves the manager by its `flutter_cache_manager`
+    // supertype rather than the concrete class, so a widget test can stand
+    // in its own without touching the filesystem.
+    ..registerLazySingleton<BaseCacheManager>(
+      () => di<MediaImageCacheManager>(),
+    );
   // #endregion
 
   // #region Interceptors
@@ -290,81 +202,6 @@ Future<void> initDi() async {
   );
   // #endregion
 
-  // #region Offline
-  di.registerLazySingleton<OfflineOperationsChangeNotifier>(
-    OfflineOperationsChangeNotifier.new,
-  );
-  di.registerLazySingleton<SqliteOperationQueue>(
-    () => SqliteOperationQueue(database: di(), changeNotifier: di()),
-  );
-  di.registerLazySingleton<OperationQueue>(() => di<SqliteOperationQueue>());
-  di.registerLazySingleton<SqliteOfflineMutationStore>(
-    () => SqliteOfflineMutationStore(database: di(), changeNotifier: di()),
-  );
-  di.registerLazySingleton<OfflineMutationStore>(
-    () => di<SqliteOfflineMutationStore>(),
-  );
-  di.registerLazySingleton<ApiaryOperationHandler>(
-    () => ApiaryOperationHandler(
-      dataSource: di(),
-      localDataSource: di(),
-      refreshNotifier: di(),
-      operationQueue: di(),
-      locationService: di(),
-    ),
-  );
-  di.registerLazySingleton<HiveOperationHandler>(
-    () => HiveOperationHandler(
-      dataSource: di(),
-      localDataSource: di(),
-      refreshNotifier: di(),
-      operationQueue: di(),
-    ),
-  );
-  di.registerLazySingleton<InspectionOperationHandler>(
-    () => InspectionOperationHandler(
-      dataSource: di(),
-      localDataSource: di(),
-      refreshNotifier: di(),
-      operationQueue: di(),
-    ),
-  );
-  di.registerLazySingleton<MediaOperationHandler>(
-    () => MediaOperationHandler(
-      dataSource: di(),
-      localDataSource: di(),
-      localMediaStore: di(),
-      operationQueue: di(),
-    ),
-  );
-  di.registerLazySingleton<ProfileOperationHandler>(
-    () => ProfileOperationHandler(
-      dataSource: di(),
-      mediaDataSource: di(),
-      localDataSource: di(),
-      operationQueue: di(),
-    ),
-  );
-  di.registerLazySingleton<OperationRegistry>(
-    () => OperationRegistry({
-      'apiary': di<ApiaryOperationHandler>(),
-      'hive': di<HiveOperationHandler>(),
-      'inspection': di<InspectionOperationHandler>(),
-      'media': di<MediaOperationHandler>(),
-      'profile': di<ProfileOperationHandler>(),
-    }),
-  );
-  di.registerLazySingleton<SyncEngineImpl>(
-    () => SyncEngineImpl(
-      queue: di(),
-      registry: di(),
-      connectivity: di(),
-      activity: di(),
-    ),
-  );
-  di.registerLazySingleton<SyncEngine>(() => di<SyncEngineImpl>());
-  // #endregion
-
   // #region Repositories
   di.registerLazySingleton<AuthenticationRepositoryImpl>(
     () => AuthenticationRepositoryImpl(
@@ -372,7 +209,6 @@ Future<void> initDi() async {
       passwordChangeDataSource: di(),
       passwordResetDataSource: di(),
       tokenStorage: di(),
-      userLocalDataSource: di(),
     ),
   );
   di.registerLazySingleton<AuthenticationRepository>(
@@ -385,24 +221,12 @@ Future<void> initDi() async {
     () => di<AuthenticationRepositoryImpl>(),
   );
   di.registerLazySingleton<ApiaryRepositoryImpl>(
-    () => ApiaryRepositoryImpl(
-      dataSource: di(),
-      localDataSource: di(),
-      connectivity: di(),
-      operationQueue: di(),
-      offlineMutationStore: di(),
-    ),
+    () => ApiaryRepositoryImpl(dataSource: di()),
   );
   di.registerLazySingleton<IApiaryReader>(() => di<ApiaryRepositoryImpl>());
   di.registerLazySingleton<IApiaryWriter>(() => di<ApiaryRepositoryImpl>());
   di.registerLazySingleton<HiveRepositoryImpl>(
-    () => HiveRepositoryImpl(
-      dataSource: di(),
-      localDataSource: di(),
-      connectivity: di(),
-      operationQueue: di(),
-      offlineMutationStore: di(),
-    ),
+    () => HiveRepositoryImpl(dataSource: di()),
   );
   di.registerLazySingleton<IHiveReader>(() => di<HiveRepositoryImpl>());
   di.registerLazySingleton<IHiveWriter>(() => di<HiveRepositoryImpl>());
@@ -410,13 +234,7 @@ Future<void> initDi() async {
     () => OwnerImageWriter(apiaryWriter: di(), hiveWriter: di()),
   );
   di.registerLazySingleton<InspectionRepositoryImpl>(
-    () => InspectionRepositoryImpl(
-      dataSource: di(),
-      localDataSource: di(),
-      connectivity: di(),
-      operationQueue: di(),
-      offlineMutationStore: di(),
-    ),
+    () => InspectionRepositoryImpl(dataSource: di()),
   );
   di.registerLazySingleton<IInspectionReader>(
     () => di<InspectionRepositoryImpl>(),
@@ -427,11 +245,7 @@ Future<void> initDi() async {
   di.registerLazySingleton<MediaRepositoryImpl>(
     () => MediaRepositoryImpl(
       dataSource: di(),
-      localDataSource: di(),
-      localMediaStore: di(),
-      connectivity: di(),
-      operationQueue: di(),
-      offlineMutationStore: di(),
+      imageCache: di(),
       ownerImageWriter: di(),
     ),
   );
@@ -441,11 +255,7 @@ Future<void> initDi() async {
     () => ProfileRepositoryImpl(
       dataSource: di(),
       mediaDataSource: di(),
-      userLocalDataSource: di(),
-      profileLocalDataSource: di(),
-      connectivity: di(),
-      operationQueue: di(),
-      offlineMutationStore: di(),
+      imageCache: di(),
     ),
   );
   di.registerLazySingleton<IProfileReader>(() => di<ProfileRepositoryImpl>());
@@ -456,8 +266,8 @@ Future<void> initDi() async {
   di.registerLazySingleton<IStatisticsReader>(
     () => di<StatisticsRepositoryImpl>(),
   );
-  di.registerLazySingleton<AvatarPathResolver>(
-    () => AvatarPathResolver(mediaReader: di(), localMediaStore: di()),
+  di.registerLazySingleton<AvatarImageResolver>(
+    () => AvatarImageResolver(mediaReader: di()),
   );
   // #endregion
 
@@ -473,12 +283,6 @@ Future<void> initDi() async {
   // #region Blocs
   di.registerLazySingleton<AuthenticationCubit>(
     () => AuthenticationCubit(repository: di(), sessionService: di()),
-  );
-  di.registerLazySingleton<SyncBannerCubit>(
-    () => SyncBannerCubit(engine: di()),
-  );
-  di.registerLazySingleton<ConnectivityCubit>(
-    () => ConnectivityCubit(connectivity: di()),
   );
   di.registerFactory<LoginCubit>(() => LoginCubit(repository: di()));
   di.registerFactory<RegisterCubit>(() => RegisterCubit(repository: di()));
@@ -506,7 +310,6 @@ Future<void> initDi() async {
       apiaryReader: di(),
       hiveReader: di(),
       inspectionReader: di(),
-      connectivity: di(),
       apiaryRefreshNotifier: di(),
       hiveRefreshNotifier: di(),
       inspectionRefreshNotifier: di(),
@@ -583,7 +386,6 @@ Future<void> initDi() async {
     (ownerType, ownerId) => MediaGalleryCubit(
       reader: di(),
       writer: di(),
-      localMediaStore: di(),
       ownerType: ownerType,
       ownerId: ownerId,
       notifyOwnerListChanged: switch (ownerType) {
@@ -594,20 +396,21 @@ Future<void> initDi() async {
         MediaOwnerType.apiary => di<ApiaryListRefreshNotifier>().onChanged,
         MediaOwnerType.hive => di<HiveListRefreshNotifier>().onChanged,
       },
-      // Apiary/hive-service is now the source of truth for "which media ids
+      // Apiary/hive-service is the source of truth for "which media ids
       // belong to me" (see `ApiaryResponse.images`/`HiveResponse.images`) —
       // a gallery reload sources its `ids` from here instead of asking
       // media-service "what's attached to owner X" the old owner-scoped way.
-      // A cache read (never `null` on a cache miss — see [Apiary.images]'s
-      // default), so this never needs its own network round trip.
       resolveImages: switch (ownerType) {
         MediaOwnerType.apiary =>
-          (id) async =>
-              (await di<IApiaryReader>().getCachedApiary(id))?.images ??
-              const [],
+          (id) async => (await di<IApiaryReader>().getApiary(id)).fold(
+            (_) => const <String>[],
+            (apiary) => apiary.images,
+          ),
         MediaOwnerType.hive =>
-          (id) async =>
-              (await di<IHiveReader>().getCachedHive(id))?.images ?? const [],
+          (id) async => (await di<IHiveReader>().getHive(id)).fold(
+            (_) => const <String>[],
+            (hive) => hive.images,
+          ),
       },
     ),
   );

@@ -16,8 +16,7 @@ import 'package:flutter/material.dart';
 /// entry in place (e.g. swapping [isLoading] on while work is in flight)
 /// rather than stacking a new one, and [hide] removes it. Persistent entries
 /// should also pass `duration: null` (the default when [tag] isn't used is
-/// a 4-second auto-dismiss) since there's no fixed lifetime to expire on —
-/// see `OfflineSyncBanner` for a full example of this pattern.
+/// a 4-second auto-dismiss) since there's no fixed lifetime to expire on.
 abstract final class AppSnackBar {
   static void show(
     BuildContext context, {

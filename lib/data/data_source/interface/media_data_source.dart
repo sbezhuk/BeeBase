@@ -8,21 +8,22 @@ abstract interface class IMediaDataSource {
   Future<List<MediaResponse>> listMedia({required List<String> ids});
 
   /// Uploads a file on its own, owned only by the caller — no apiary or hive
-  /// needs to exist yet, and this never attaches it to one. Returns the
-  /// uploaded file's id. media-service's own attach endpoint is
+  /// needs to exist yet, and this never attaches it to one.
+  /// media-service's own attach endpoint is
   /// internal-only (blocked at beebase-gateway) - linking this id to an
   /// owner happens via `IApiaryDataSource.updateApiary`/
   /// `IHiveDataSource.updateHive`'s `images` field instead (see
   /// `ApiaryRepositoryImpl.addApiaryImage`/`HiveRepositoryImpl.addHiveImage`).
-  Future<String> uploadMedia({
+  ///
+  /// Returns the stored file's full metadata rather than just its id — most
+  /// importantly [MediaResponse.imageUrl], the authenticated URL the photo
+  /// is rendered from from this moment on (see `CachedMediaImage`).
+  Future<MediaResponse> uploadMedia({
     required String filePath,
     required String originalFilename,
     required String contentType,
-    String? idempotencyKey,
     void Function(int sent, int total)? onSendProgress,
   });
-
-  Future<List<int>> downloadMedia(String id);
 
   Future<void> deleteMedia(String id);
 }

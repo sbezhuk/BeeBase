@@ -27,13 +27,14 @@ dependencies:
     path: plugins/liquid_glass_widgets
   geolocator: ^14.0.2
   geocoding: ^5.0.0
-  connectivity_plus: ^6.1.5
   fl_chart: ^1.2.0
-  sqflite: ^2.4.1
   path: ^1.9.1
   image_picker: ^1.2.3
   package_info_plus: ^8.1.1
   qr_flutter: ^4.1.0
+  cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.1
+  http: ^1.2.2
 
 dev_dependencies:
   flutter_test:
@@ -44,7 +45,6 @@ dev_dependencies:
   auto_route_generator: ^10.6.0
   bloc_test: ^9.1.7
   mocktail: ^1.0.4
-  sqflite_common_ffi: ^2.3.4
   path_provider_platform_interface: ^2.1.0
 
 flutter:

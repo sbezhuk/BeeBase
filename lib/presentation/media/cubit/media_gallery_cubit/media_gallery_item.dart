@@ -1,19 +1,12 @@
 import 'package:beebase/domain/entity/media_attachment.dart';
 
-enum MediaGalleryItemStatus {
-  staged,
-  uploading,
-  removing,
-  pending,
-  synced,
-  failed,
-}
+enum MediaGalleryItemStatus { staged, uploading, removing, synced, failed }
 
 /// One photo in a `MediaGalleryCubit`'s working list — a staged pick with no
 /// server counterpart yet, an in-flight upload, an in-flight removal, an
-/// offline-queued pending photo, an already-synced one, or one whose most
-/// recent attach/remove attempt failed. Wraps [MediaAttachment] rather than
-/// being one, since a staged item has no id/ownerId to give it yet.
+/// already-uploaded one, or one whose most recent attach/remove attempt
+/// failed. Wraps [MediaAttachment] rather than being one, since a staged
+/// item has no id to give it yet.
 final class MediaGalleryItem {
   const MediaGalleryItem({
     required this.localId,
@@ -26,10 +19,10 @@ final class MediaGalleryItem {
     this.errorMessage,
   });
 
-  /// Stable identity for this item regardless of server sync — generated the
-  /// moment the photo is picked, so the UI never rekeys the widget mid-upload
-  /// even once [attachment] (with its own, different, server-assigned id)
-  /// arrives.
+  /// Stable identity for this item regardless of upload state — generated
+  /// the moment the photo is picked, so the UI never rekeys the widget
+  /// mid-upload even once [attachment] (with its own, different,
+  /// server-assigned id) arrives.
   final String localId;
 
   final String? localFilePath;
@@ -42,12 +35,6 @@ final class MediaGalleryItem {
   final double? uploadProgress;
 
   final String? errorMessage;
-
-  /// Whether this photo has never reached the server — a staged pick (no
-  /// [attachment] yet) or an attached one still carrying a local-only id
-  /// (offline-created, not yet synced). These stay deletable offline; an
-  /// already-synced photo (real server id) requires connectivity to delete.
-  bool get isLocalOnly => attachment?.isLocalOnly ?? true;
 
   MediaGalleryItem copyWith({
     MediaGalleryItemStatus? status,

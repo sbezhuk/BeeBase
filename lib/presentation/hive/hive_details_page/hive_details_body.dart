@@ -27,10 +27,6 @@ final class _HiveDetailsBody extends StatelessWidget {
             Text('hive.details.section_label'.tr(), style: context.textStyles.label.copyWith(color: colors.honey.muted)),
             SizedBox(height: context.spacing.xs),
             Text(hive.name, style: context.textStyles.title),
-            if (hive.syncStatus != HiveSyncStatus.synced) ...[
-              SizedBox(height: context.spacing.xs),
-              HiveSyncBadge(status: hive.syncStatus),
-            ],
             SizedBox(height: context.spacing.sm),
             _HiveDetailsDetailRow(
               icon: Icons.calendar_today_outlined,

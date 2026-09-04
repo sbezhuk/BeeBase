@@ -1,5 +1,3 @@
-import 'package:beebase/core/offline/local_id_generator.dart';
-import 'package:beebase/domain/enum/local/inspection_sync_status.dart';
 import 'package:beebase/domain/enum/backend/inspection_type.dart';
 
 final class Inspection {
@@ -11,7 +9,6 @@ final class Inspection {
     required this.notes,
     required this.createdAt,
     required this.updatedAt,
-    this.syncStatus = InspectionSyncStatus.synced,
   });
 
   final String id;
@@ -26,25 +23,6 @@ final class Inspection {
   final String notes;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final InspectionSyncStatus syncStatus;
-
-  /// Whether this inspection was created while offline and has never reached
-  /// the server yet — the only data that stays freely deletable while
-  /// offline (see `InspectionRepositoryImpl.deleteInspection`).
-  bool get isLocalOnly => LocalIdGenerator.isLocal(id);
-
-  Inspection copyWith({InspectionSyncStatus? syncStatus}) {
-    return Inspection(
-      id: id,
-      hiveId: hiveId,
-      date: date,
-      type: type,
-      notes: notes,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
-      syncStatus: syncStatus ?? this.syncStatus,
-    );
-  }
 
   @override
   bool operator ==(Object other) =>
@@ -56,9 +34,8 @@ final class Inspection {
           other.type == type &&
           other.notes == notes &&
           other.createdAt == createdAt &&
-          other.updatedAt == updatedAt &&
-          other.syncStatus == syncStatus);
+          other.updatedAt == updatedAt);
 
   @override
-  int get hashCode => Object.hash(id, hiveId, date, type, notes, createdAt, updatedAt, syncStatus);
+  int get hashCode => Object.hash(id, hiveId, date, type, notes, createdAt, updatedAt);
 }

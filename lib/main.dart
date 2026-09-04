@@ -1,5 +1,5 @@
 import 'package:beebase/application.dart';
-import 'package:beebase/core/offline/sync_engine.dart';
+import 'package:beebase/core/media/media_image_cache_manager.dart';
 import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';
 import 'package:beebase/presentation/profile/cubit/profile_cubit/profile_cubit.dart';
 import 'package:beebase/utils/app_config.dart';
@@ -15,6 +15,7 @@ Future<void> main() async {
   await EasyLocalization.ensureInitialized();
   await AppConfig.instance.load(env);
   await initDi();
+  MediaImageCacheManager.configureMemoryCache();
   await di<AuthenticationCubit>().restoreSession();
   // `/auth/me` (restoreSession above) no longer carries name/avatar — those
   // live on `GET /api/v1/profile` (see `Profile` entity doc). Without this,
@@ -30,8 +31,6 @@ Future<void> main() async {
     await profileCubit.load();
     await profileCubit.close();
   }
-  di<SyncEngine>().start();
-
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('en', 'US'), Locale('uk', 'UA')],

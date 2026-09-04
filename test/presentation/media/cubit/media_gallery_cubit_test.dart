@@ -3,7 +3,6 @@ import 'dart:typed_data';
 
 import 'package:beebase/core/error/error_text.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
-import 'package:beebase/core/storage/local_media_store.dart';
 import 'package:beebase/domain/entity/media_attachment.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/domain/repositories/media_reader.dart';
@@ -20,14 +19,11 @@ class MockMediaReader extends Mock implements IMediaReader {}
 
 class MockMediaWriter extends Mock implements IMediaWriter {}
 
-class MockLocalMediaStore extends Mock implements LocalMediaStore {}
-
 class MockImagePicker extends Mock implements ImagePicker {}
 
 void main() {
   late MockMediaReader reader;
   late MockMediaWriter writer;
-  late MockLocalMediaStore localMediaStore;
   late MockImagePicker imagePicker;
 
   final attachment = MediaAttachment(
@@ -48,27 +44,7 @@ void main() {
   setUp(() {
     reader = MockMediaReader();
     writer = MockMediaWriter();
-    localMediaStore = MockLocalMediaStore();
     imagePicker = MockImagePicker();
-    when(
-      () => localMediaStore.save(
-        any(),
-        id: any(named: 'id'),
-        extension: any(named: 'extension'),
-      ),
-    ).thenAnswer(
-      (invocation) async => '/tmp/${invocation.namedArguments[#id]}.jpg',
-    );
-    when(() => localMediaStore.delete(any())).thenAnswer((_) async {});
-    when(
-      () => localMediaStore.validExistingPath(
-        any(),
-        extension: any(named: 'extension'),
-      ),
-    ).thenAnswer((_) async => null);
-    when(
-      () => reader.cacheDownloadedMedia(any(), any()),
-    ).thenAnswer((_) async {});
   });
 
   MediaGalleryCubit buildCubit({
@@ -78,7 +54,6 @@ void main() {
     return MediaGalleryCubit(
       reader: reader,
       writer: writer,
-      localMediaStore: localMediaStore,
       ownerType: MediaOwnerType.apiary,
       ownerId: ownerId,
       imagePicker: imagePicker,
@@ -223,7 +198,6 @@ void main() {
         await cubit.remove(localId);
 
         expect((cubit.state as MediaGalleryLoaded).items, isEmpty);
-        verify(() => localMediaStore.delete(any())).called(1);
         verifyNever(
           () => writer.removeMedia(
             ownerType: any(named: 'ownerType'),
@@ -582,7 +556,6 @@ void main() {
 
         expect((cubit.state as MediaGalleryLoaded).items, isEmpty);
         expect(cubit.hasPendingChanges, isFalse);
-        verify(() => localMediaStore.delete(any())).called(1);
         verifyNever(
           () => writer.removeMedia(
             ownerType: any(named: 'ownerType'),
@@ -658,7 +631,6 @@ void main() {
         final cubit = MediaGalleryCubit(
           reader: reader,
           writer: writer,
-          localMediaStore: localMediaStore,
           ownerType: MediaOwnerType.apiary,
           ownerId: 'apiary-1',
           imagePicker: imagePicker,
@@ -676,126 +648,6 @@ void main() {
     );
   });
 
-  group('resolveDisplayPath', () {
-    final serverAttachment = MediaAttachment(
-      id: 'media-1',
-      originalFilename: 'photo.jpg',
-      contentType: 'image/jpeg',
-      sizeBytes: 4,
-      createdAt: DateTime(2026),
-      updatedAt: DateTime(2026),
-      // No localFilePath — exactly what a `MediaAttachment` built straight
-      // from a server response looks like (see `MediaResponseX.toEntity()`),
-      // regardless of whether this photo was already downloaded and cached
-      // once before.
-    );
-    final item = MediaGalleryItem(
-      localId: 'media-1',
-      originalFilename: 'photo.jpg',
-      contentType: 'image/jpeg',
-      status: MediaGalleryItemStatus.synced,
-      attachment: serverAttachment,
-    );
-
-    test('a photo already sitting at its deterministic cache path is returned '
-        'without any network call — this is what makes offline viewing of a '
-        'previously-downloaded photo work at all', () async {
-      when(
-        () => localMediaStore.validExistingPath('media-1', extension: 'jpg'),
-      ).thenAnswer((_) async => '/media/media-1.jpg');
-      final cubit = buildCubit(ownerId: 'apiary-1');
-
-      final path = await cubit.resolveDisplayPath(item);
-
-      expect(path, '/media/media-1.jpg');
-      verifyNever(() => reader.downloadMedia(any()));
-      verify(
-        () => reader.cacheDownloadedMedia('media-1', '/media/media-1.jpg'),
-      ).called(1);
-      await cubit.close();
-    });
-
-    test(
-      'downloads, disk-caches, and remembers a photo with no local copy yet',
-      () async {
-        when(
-          () => reader.downloadMedia('media-1'),
-        ).thenAnswer((_) async => Right([1, 2, 3, 4]));
-        final cubit = buildCubit(ownerId: 'apiary-1');
-
-        final path = await cubit.resolveDisplayPath(item);
-
-        expect(path, '/tmp/media-1.jpg');
-        verify(() => reader.downloadMedia('media-1')).called(1);
-        verify(
-          () => localMediaStore.save(any(), id: 'media-1', extension: 'jpg'),
-        ).called(1);
-        verify(
-          () => reader.cacheDownloadedMedia('media-1', '/tmp/media-1.jpg'),
-        ).called(1);
-        await cubit.close();
-      },
-    );
-
-    test('two concurrent requests for the same photo share a single download — '
-        'e.g. the hero preview and the gallery strip resolving the same '
-        'attachment at once', () async {
-      final completer = Completer<Either<Failure, List<int>>>();
-      when(
-        () => reader.downloadMedia('media-1'),
-      ).thenAnswer((_) => completer.future);
-      final cubit = buildCubit(ownerId: 'apiary-1');
-
-      final first = cubit.resolveDisplayPath(item);
-      final second = cubit.resolveDisplayPath(item);
-      completer.complete(Right([1, 2, 3, 4]));
-      final results = await Future.wait([first, second]);
-
-      expect(results, ['/tmp/media-1.jpg', '/tmp/media-1.jpg']);
-      verify(() => reader.downloadMedia('media-1')).called(1);
-      await cubit.close();
-    });
-
-    test('retries once after a failed download before giving up', () async {
-      var attempts = 0;
-      when(() => reader.downloadMedia('media-1')).thenAnswer((_) async {
-        attempts++;
-        return attempts == 1
-            ? const Left(InternalFailure(ErrorTextRaw('blip')))
-            : Right([1, 2, 3, 4]);
-      });
-      final cubit = buildCubit(ownerId: 'apiary-1');
-
-      final path = await cubit.resolveDisplayPath(item);
-
-      expect(path, '/tmp/media-1.jpg');
-      expect(attempts, 2);
-      await cubit.close();
-    });
-
-    test('gives up (returns null, no cache write) after two consecutive '
-        'failed download attempts', () async {
-      when(() => reader.downloadMedia('media-1')).thenAnswer(
-        (_) async => const Left(InternalFailure(ErrorTextRaw('offline'))),
-      );
-      final cubit = buildCubit(ownerId: 'apiary-1');
-
-      final path = await cubit.resolveDisplayPath(item);
-
-      expect(path, isNull);
-      verify(() => reader.downloadMedia('media-1')).called(2);
-      verifyNever(
-        () => localMediaStore.save(
-          any(),
-          id: any(named: 'id'),
-          extension: any(named: 'extension'),
-        ),
-      );
-      verifyNever(() => reader.cacheDownloadedMedia(any(), any()));
-      await cubit.close();
-    });
-  });
-
   group('notifyOwnerListChanged / ownerListChanges', () {
     test(
       'staging a photo does not notify — nothing changed server-side yet',
@@ -805,7 +657,6 @@ void main() {
         final cubit = MediaGalleryCubit(
           reader: reader,
           writer: writer,
-          localMediaStore: localMediaStore,
           ownerType: MediaOwnerType.apiary,
           imagePicker: imagePicker,
           notifyOwnerListChanged: () => notified++,
@@ -839,7 +690,6 @@ void main() {
       final cubit = MediaGalleryCubit(
         reader: reader,
         writer: writer,
-        localMediaStore: localMediaStore,
         ownerType: MediaOwnerType.apiary,
         ownerId: 'apiary-1',
         imagePicker: imagePicker,
@@ -876,7 +726,6 @@ void main() {
         final cubit = MediaGalleryCubit(
           reader: reader,
           writer: writer,
-          localMediaStore: localMediaStore,
           ownerType: MediaOwnerType.apiary,
           ownerId: 'apiary-1',
           imagePicker: imagePicker,
@@ -907,7 +756,6 @@ void main() {
       final cubit = MediaGalleryCubit(
         reader: reader,
         writer: writer,
-        localMediaStore: localMediaStore,
         ownerType: MediaOwnerType.apiary,
         imagePicker: imagePicker,
         notifyOwnerListChanged: () => notified++,
@@ -939,7 +787,6 @@ void main() {
         final cubit = MediaGalleryCubit(
           reader: reader,
           writer: writer,
-          localMediaStore: localMediaStore,
           ownerType: MediaOwnerType.apiary,
           ownerId: 'apiary-1',
           imagePicker: imagePicker,
@@ -963,7 +810,6 @@ void main() {
       final cubit = MediaGalleryCubit(
         reader: reader,
         writer: writer,
-        localMediaStore: localMediaStore,
         ownerType: MediaOwnerType.apiary,
         ownerId: 'apiary-1',
         imagePicker: imagePicker,
@@ -986,7 +832,6 @@ void main() {
         final cubit = MediaGalleryCubit(
           reader: reader,
           writer: writer,
-          localMediaStore: localMediaStore,
           ownerType: MediaOwnerType.apiary,
           imagePicker: imagePicker,
           ownerListChanges: controller.stream,

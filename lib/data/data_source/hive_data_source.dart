@@ -5,7 +5,6 @@ import 'package:beebase/core/networking/interceptors/interceptor_resolver.dart';
 import 'package:beebase/data/data_source/interface/hive_data_source.dart';
 import 'package:beebase/data/models/hive_request.dart';
 import 'package:beebase/data/models/hive_response.dart';
-import 'package:beebase/data/models/idempotency_key_header.dart';
 import 'package:beebase/data/models/page_request.dart';
 import 'package:beebase/data/models/paginated_response.dart';
 
@@ -47,14 +46,10 @@ final class HiveDataSource implements IHiveDataSource {
   Future<HiveResponse> createHive(
     HiveRequest request, {
     required String apiaryId,
-    String? idempotencyKey,
   }) async {
     final response = await _dioClient.post<Map<String, dynamic>>(
       ApiEndpoints.hives.list,
       data: {'apiary_id': apiaryId, ...request.toJson()},
-      headers: idempotencyKey == null
-          ? null
-          : IdempotencyKeyHeader(idempotencyKey: idempotencyKey).toJson(),
     );
     return HiveResponse.fromJson(response.data!);
   }

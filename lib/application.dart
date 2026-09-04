@@ -1,13 +1,10 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:beebase/core/offline/sync_engine.dart';
 import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';
 import 'package:beebase/presentation/component/color.dart';
-import 'package:beebase/presentation/connectivity/cubit/connectivity_cubit/connectivity_cubit.dart';
 import 'package:beebase/presentation/component/font.dart';
 import 'package:beebase/presentation/router/app_router.dart';
-import 'package:beebase/presentation/sync/cubit/sync_banner_cubit/sync_banner_cubit.dart';
 import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/themes/spacing.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -21,8 +18,7 @@ final class Application extends StatefulWidget {
   State<Application> createState() => _ApplicationState();
 }
 
-final class _ApplicationState extends State<Application>
-    with WidgetsBindingObserver {
+final class _ApplicationState extends State<Application> {
   late final AppRouter _appRouter;
   late final StreamSubscription<AuthenticationState>
   _authenticationSubscription;
@@ -30,7 +26,6 @@ final class _ApplicationState extends State<Application>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _appRouter = di<AppRouter>();
     // Any place in the app can lose the session (e.g. a 401 whose refresh
     // also failed) — react here so the redirect isn't tied to a screen.
@@ -44,31 +39,15 @@ final class _ApplicationState extends State<Application>
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Never triggers a sync — synchronization is user-initiated only (see
-    // the "Sync now" banner). This just re-derives whether the banner
-    // should show, in case connectivity changed while backgrounded without
-    // the connectivity stream catching it.
-    if (state == AppLifecycleState.resumed) {
-      di<SyncEngine>().refreshAvailability();
-    }
-  }
-
-  @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     unawaited(_authenticationSubscription.cancel());
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider.value(value: di<AuthenticationCubit>()),
-        BlocProvider.value(value: di<SyncBannerCubit>()),
-        BlocProvider.value(value: di<ConnectivityCubit>()),
-      ],
+    return BlocProvider.value(
+      value: di<AuthenticationCubit>(),
       child: MaterialApp.router(
         theme: _buildTheme(const AppColor.light(), Brightness.light),
         darkTheme: _buildTheme(const AppColor.dark(), Brightness.dark),

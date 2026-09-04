@@ -8,11 +8,7 @@ abstract interface class IInspectionDataSource {
 
   Future<InspectionResponse> getInspection(String hiveId, String id);
 
-  Future<InspectionResponse> createInspection(
-    String hiveId,
-    InspectionRequest request, {
-    String? idempotencyKey,
-  });
+  Future<InspectionResponse> createInspection(String hiveId, InspectionRequest request);
 
   Future<InspectionResponse> updateInspection(String hiveId, String id, InspectionRequest request);
 

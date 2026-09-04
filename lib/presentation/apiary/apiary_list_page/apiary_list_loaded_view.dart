@@ -21,14 +21,11 @@ final class _ApiaryListLoadedView extends StatelessWidget {
             final apiary = apiaries[index];
             // Keyed by id, not just position: `_ApiaryListTile` owns a
             // `MediaGalleryCubit` (via `BlocProvider`) created once and bound
-            // to whatever `apiary.id` was current at that moment. An apiary
-            // created offline is later replaced in this list — same index,
-            // new (real, server-assigned) id — once it syncs; without a key
-            // tied to that id, Flutter treats it as the same widget updated
-            // in place and reuses the old Element, so the tile's cubit stays
-            // stuck on the stale local id forever and never shows a photo
-            // that synced under the real one. A `ValueKey` on the id forces
-            // a fresh Element (and cubit) exactly when the id changes.
+            // to whatever `apiary.id` was current at that moment. Without a
+            // key tied to the id, Flutter treats updated items as the same
+            // widget in place and reuses the old Element, so the tile's cubit
+            // stays stuck on a stale id and never refreshes. A `ValueKey` on
+            // the id forces a fresh Element exactly when the id changes.
             return _ApiaryListTile(key: ValueKey(apiary.id), apiary: apiary, hiveCount: state.hiveCounts[apiary.id] ?? 0);
           }
           if (state.isLoadingNextPage) {

@@ -7,7 +7,7 @@ extension MediaResponseX on MediaResponse {
     originalFilename: originalFilename,
     contentType: contentType,
     sizeBytes: sizeBytes,
-    localFilePath: localFilePath,
+    imageUrl: imageUrl,
     createdAt: createdAt,
     updatedAt: updatedAt,
   );

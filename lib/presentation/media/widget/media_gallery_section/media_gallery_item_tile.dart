@@ -13,8 +13,8 @@ final class _MediaGalleryItemTile extends StatelessWidget {
     return Stack(
       children: [
         MediaThumbnail(item: item, size: size),
-        if (item.status != MediaGalleryItemStatus.synced)
-          Positioned(bottom: 2, left: 2, child: _MediaGalleryStatusBadge(item: item)),
+        if (item.status == MediaGalleryItemStatus.failed)
+          Positioned(bottom: 2, left: 2, child: _MediaGalleryRetryBadge(item: item)),
         // Hidden while busy — the overlay spinner already covers the tile,
         // and a tap mid-request (e.g. remove during an in-flight upload,
         // before there's even a server id to delete) is a dead end today.
@@ -24,12 +24,34 @@ final class _MediaGalleryItemTile extends StatelessWidget {
   }
 }
 
-/// A never-synced ([MediaGalleryItem.isLocalOnly]) photo is always
-/// deletable, online or off. An already-synced photo requires live
-/// connectivity — [MediaRepositoryImpl] enforces this too, but hiding the
-/// button here (via [ConnectivityCubit]) avoids a tap that silently fails,
-/// mirroring `_ApiaryDeleteLink`/`_HiveDeleteLink`. A tap always goes through
-/// [showConfirmationSheet] first, same as apiary/hive delete.
+/// Overlaid on a photo whose last upload/remove attempt failed — tapping it
+/// retries that upload against the backend.
+final class _MediaGalleryRetryBadge extends StatelessWidget {
+  const _MediaGalleryRetryBadge({required this.item});
+
+  final MediaGalleryItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Tooltip(
+      message: 'media.gallery.upload_failed_retry'.tr(),
+      child: GestureDetector(
+        onTap: () => context.read<MediaGalleryCubit>().retry(item.localId),
+        child: Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(color: colors.status.error, shape: BoxShape.circle),
+          alignment: Alignment.center,
+          child: Icon(Icons.refresh, size: 12, color: colors.brand.onPrimary),
+        ),
+      ),
+    );
+  }
+}
+
+/// A tap always goes through [showConfirmationSheet] first, same as
+/// apiary/hive delete.
 final class _MediaGalleryRemoveButton extends StatelessWidget {
   const _MediaGalleryRemoveButton({required this.item});
 
@@ -37,20 +59,6 @@ final class _MediaGalleryRemoveButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (item.isLocalOnly) {
-      return _buildButton(context);
-    }
-    return BlocBuilder<ConnectivityCubit, ConnectivityState>(
-      builder: (context, state) {
-        if (state is ConnectivityOffline) {
-          return const SizedBox.shrink();
-        }
-        return _buildButton(context);
-      },
-    );
-  }
-
-  Widget _buildButton(BuildContext context) {
     return Tooltip(
       message: 'media.gallery.remove'.tr(),
       child: GestureDetector(

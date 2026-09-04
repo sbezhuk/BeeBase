@@ -1,6 +1,3 @@
-import 'package:beebase/core/offline/local_id_generator.dart';
-import 'package:beebase/domain/enum/local/apiary_sync_status.dart';
-
 final class Apiary {
   const Apiary({
     required this.id,
@@ -12,7 +9,6 @@ final class Apiary {
     required this.createdAt,
     required this.updatedAt,
     this.images = const [],
-    this.syncStatus = ApiarySyncStatus.synced,
   });
 
   final String id;
@@ -26,31 +22,8 @@ final class Apiary {
 
   /// Media ids currently attached to this apiary — apiary-service's own
   /// source of truth (see `ApiaryResponse.images`), not something media-
-  /// service is asked about anymore. Only as fresh as the last fetch/cache
-  /// read that produced this instance.
+  /// service is asked about anymore.
   final List<String> images;
-
-  final ApiarySyncStatus syncStatus;
-
-  /// Whether this apiary was created while offline and has never reached
-  /// the server yet — the only data that stays freely deletable while
-  /// offline (see `ApiaryRepositoryImpl.deleteApiary`).
-  bool get isLocalOnly => LocalIdGenerator.isLocal(id);
-
-  Apiary copyWith({ApiarySyncStatus? syncStatus}) {
-    return Apiary(
-      id: id,
-      name: name,
-      description: description,
-      location: location,
-      lat: lat,
-      lon: lon,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
-      images: images,
-      syncStatus: syncStatus ?? this.syncStatus,
-    );
-  }
 
   @override
   bool operator ==(Object other) =>
@@ -64,12 +37,11 @@ final class Apiary {
           other.lon == lon &&
           other.createdAt == createdAt &&
           other.updatedAt == updatedAt &&
-          _listEquals(other.images, images) &&
-          other.syncStatus == syncStatus);
+          _listEquals(other.images, images));
 
   @override
   int get hashCode =>
-      Object.hash(id, name, description, location, lat, lon, createdAt, updatedAt, Object.hashAll(images), syncStatus);
+      Object.hash(id, name, description, location, lat, lon, createdAt, updatedAt, Object.hashAll(images));
 }
 
 bool _listEquals(List<String> a, List<String> b) {

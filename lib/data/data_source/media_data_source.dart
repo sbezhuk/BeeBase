@@ -5,7 +5,6 @@ import 'package:beebase/core/networking/interceptors/interceptor_resolver.dart';
 import 'package:beebase/data/data_source/interface/media_data_source.dart';
 import 'package:beebase/data/models/media_list_request.dart';
 import 'package:beebase/data/models/media_response.dart';
-import 'package:beebase/data/models/media_upload_form_request.dart';
 import 'package:dio/dio.dart' as dio;
 
 final class MediaDataSource implements IMediaDataSource {
@@ -25,15 +24,13 @@ final class MediaDataSource implements IMediaDataSource {
   }
 
   @override
-  Future<String> uploadMedia({
+  Future<MediaResponse> uploadMedia({
     required String filePath,
     required String originalFilename,
     required String contentType,
-    String? idempotencyKey,
     void Function(int sent, int total)? onSendProgress,
   }) async {
     final formData = dio.FormData.fromMap({
-      ...MediaUploadFormRequest(mediaId: idempotencyKey).toJson(),
       'file': await dio.MultipartFile.fromFile(
         filePath,
         filename: originalFilename,
@@ -45,13 +42,7 @@ final class MediaDataSource implements IMediaDataSource {
       data: formData,
       onSendProgress: onSendProgress,
     );
-    return response.data!['id'] as String;
-  }
-
-  @override
-  Future<List<int>> downloadMedia(String id) async {
-    final response = await _dioClient.getBytes(ApiEndpoints.media.download(id));
-    return response.data!;
+    return MediaResponse.fromJson(response.data!);
   }
 
   @override

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:beebase/core/networking/failures/failure.dart';
-import 'package:beebase/core/services/connectivity_service.dart';
 import 'package:beebase/domain/entity/activity_item.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/entity/apiary_stats.dart';
@@ -21,15 +20,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 part 'state/dashboard_state.dart';
 part 'state/dashboard_loading.dart';
-part 'state/dashboard_offline.dart';
 part 'state/dashboard_loaded.dart';
 part 'state/dashboard_section.dart';
 part 'mixin/dashboard_emitter.dart';
 
-/// Online-only Dashboard/statistics screen (BEEB-24): fetches every section
-/// fresh from statistics-service on load/refresh, never from a local cache,
-/// and shows a dedicated full-page offline state instead of stale data when
-/// there's no connectivity.
+/// Dashboard/statistics screen (BEEB-24): fetches every section fresh from
+/// statistics-service on load/refresh.
 ///
 /// Stays current without a manual refresh (BEEB-31) by subscribing to the
 /// same [ApiaryListRefreshNotifier]/[HiveListRefreshNotifier]/
@@ -45,14 +41,10 @@ final class DashboardCubit extends Cubit<DashboardState> with DashboardEmitter {
     required this.apiaryReader,
     required this.hiveReader,
     required this.inspectionReader,
-    required this.connectivity,
     required this.apiaryRefreshNotifier,
     required this.hiveRefreshNotifier,
     required this.inspectionRefreshNotifier,
   }) : super(const DashboardLoading()) {
-    _connectivitySubscription = connectivity.status.listen(
-      (isOnline) => emitOfflineIfConnectionLost(isOnline: isOnline),
-    );
     _apiarySubscription = apiaryRefreshNotifier.onChanged.listen(
       (_) => _refreshApiaryDerivedSections(),
     );
@@ -68,24 +60,18 @@ final class DashboardCubit extends Cubit<DashboardState> with DashboardEmitter {
   final IApiaryReader apiaryReader;
   final IHiveReader hiveReader;
   final IInspectionReader inspectionReader;
-  final IConnectivityService connectivity;
   final ApiaryListRefreshNotifier apiaryRefreshNotifier;
   final HiveListRefreshNotifier hiveRefreshNotifier;
   final InspectionListRefreshNotifier inspectionRefreshNotifier;
-  StreamSubscription<bool>? _connectivitySubscription;
   StreamSubscription<void>? _apiarySubscription;
   StreamSubscription<void>? _hiveSubscription;
   StreamSubscription<void>? _inspectionSubscription;
 
   /// Initial load — replaces the body with a full-screen spinner.
-  Future<void> loadDashboard() => emitLoad(statisticsReader, connectivity);
+  Future<void> loadDashboard() => emitLoad(statisticsReader);
 
   /// Pull-to-refresh — keeps the current sections visible while refetching.
-  Future<void> refresh() => emitRefresh(statisticsReader, connectivity);
-
-  /// Used by the full-page offline state's Retry button — always re-checks
-  /// connectivity and, if online, fetches fresh (never cached) data.
-  Future<void> retry() => emitLoad(statisticsReader, connectivity);
+  Future<void> refresh() => emitRefresh(statisticsReader);
 
   Future<void> retryOverview() => emitRetryOverview(statisticsReader);
 
@@ -133,7 +119,6 @@ final class DashboardCubit extends Cubit<DashboardState> with DashboardEmitter {
 
   @override
   Future<void> close() {
-    unawaited(_connectivitySubscription?.cancel());
     unawaited(_apiarySubscription?.cancel());
     unawaited(_hiveSubscription?.cancel());
     unawaited(_inspectionSubscription?.cancel());

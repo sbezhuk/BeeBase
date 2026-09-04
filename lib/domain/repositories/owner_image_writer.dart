@@ -1,6 +1,5 @@
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
-import 'package:beebase/domain/enum/local/media_sync_status.dart';
 import 'package:beebase/utils/either.dart';
 
 /// `MediaRepositoryImpl`'s one dependency on Apiary/Hive: linking an
@@ -12,7 +11,7 @@ import 'package:beebase/utils/either.dart';
 /// [MediaOwnerType], keeping `MediaRepositoryImpl` itself generic over
 /// which kind of owner it's attaching to.
 abstract interface class IOwnerImageWriter {
-  Future<Either<Failure, MediaSyncStatus>> addImage({
+  Future<Either<Failure, void>> addImage({
     required MediaOwnerType ownerType,
     required String ownerId,
     required String mediaId,

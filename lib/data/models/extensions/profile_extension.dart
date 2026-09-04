@@ -8,6 +8,5 @@ extension ProfileResponseX on ProfileResponse {
     firstName: firstName,
     lastName: lastName,
     avatarId: avatar,
-    avatarLocalFilePath: avatarLocalFilePath,
   );
 }

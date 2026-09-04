@@ -1,13 +1,11 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/entity/apiary.dart';
-import 'package:beebase/domain/enum/local/apiary_sync_status.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_list_cubit/apiary_list_cubit.dart';
 import 'package:beebase/presentation/apiary/extension/apiary_date_x.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_hexagon_badge.dart';
 import 'package:beebase/presentation/apiary/widget/apiary_preview_image.dart';
-import 'package:beebase/presentation/apiary/widget/apiary_sync_badge.dart';
 import 'package:beebase/presentation/component/honeycomb_pattern.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/presentation/router/app_router.dart';

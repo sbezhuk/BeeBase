@@ -41,10 +41,6 @@ final class _InspectionListTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                    if (inspection.syncStatus != InspectionSyncStatus.synced) ...[
-                      SizedBox(height: context.spacing.xs),
-                      InspectionSyncBadge(status: inspection.syncStatus),
-                    ],
                   ],
                 ),
               ),

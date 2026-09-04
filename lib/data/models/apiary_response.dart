@@ -1,3 +1,4 @@
+import 'package:beebase/data/models/entity_image_response.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'apiary_response.g.dart';
@@ -29,14 +30,11 @@ final class ApiaryResponse {
   @JsonKey(name: 'created_at')
   final DateTime createdAt;
 
-  /// Media ids currently attached to this apiary — apiary-service's own
-  /// source of truth (a local column there), returned on every read/write
-  /// response rather than queried live from media-service. Only as fresh as
-  /// the last fetch. Defaults to `[]` for a response rebuilt locally from a
-  /// plain field-edit request (see `ApiaryRequestX.toResponse`), which never
-  /// carries a caller-supplied value for it.
-  @JsonKey(defaultValue: <String>[])
-  final List<String> images;
+  /// Media attached to this apiary — apiary-service's own source of truth,
+  /// returned on every read/write response.
+  @EntityImageListConverter()
+  @JsonKey(defaultValue: <EntityImageResponse>[])
+  final List<EntityImageResponse> images;
 
   @JsonKey(name: 'updated_at')
   final DateTime updatedAt;

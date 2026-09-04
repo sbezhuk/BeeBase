@@ -21,13 +21,9 @@ abstract class Repository {
   /// Any *other* exception — most notably one thrown while decoding an
   /// already-successful HTTP response (a null/malformed body reaching a
   /// DTO's `fromJson`, e.g. `response.data!`) — is also caught here rather
-  /// than left to propagate uncaught. For an offline sync operation that
-  /// would otherwise mean the backend write had already durably succeeded,
-  /// yet the exception looked identical to a real request failure by the
-  /// time it reached `SyncEngineImpl`'s generic catch. Classifying it as an
-  /// [InternalFailure], the same bucket a connectivity blip already falls
-  /// into, means it flows through the exact same retry path as any other
-  /// transient failure instead of a separate, less visible one.
+  /// than left to propagate uncaught. It is classified as an
+  /// [InternalFailure] so it flows through the same retry path as any other
+  /// transient failure.
   Future<Either<Failure, T>> on<T>(
     Future<T> Function() action, {
     int? ignoreStatusCode,
@@ -36,14 +32,10 @@ abstract class Repository {
     try {
       return Right(await action());
     } on ServerException catch (e) {
-      if (ignoreStatusCode != null &&
-          e.statusCode == ignoreStatusCode &&
-          onIgnoredStatusCode != null) {
+      if (ignoreStatusCode != null && e.statusCode == ignoreStatusCode && onIgnoredStatusCode != null) {
         return Right(onIgnoredStatusCode());
       }
-      return Left(
-        ServerFailure(code: e.code, message: e.message, fields: e.fields),
-      );
+      return Left(ServerFailure(code: e.code, message: e.message, fields: e.fields));
     } on CancellationException catch (e) {
       return Left(CancellationFailure(e.message));
     } on InternalException catch (e) {

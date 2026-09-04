@@ -10,9 +10,9 @@ import 'package:flutter/material.dart';
 /// identity ([ApiaryHexagonBadge] over [HoneycombPattern]) shown full-bleed
 /// at the height of the photo slot it fills. Shared by the list, details,
 /// and form pages so every apiary hero photo slot degrades the same way.
-/// [titleKey]/[subtitleKey] let a caller swap the copy (e.g. "unavailable
-/// offline, will sync later") while keeping the same visual identity — never
-/// introduce a second placeholder widget for a different message.
+/// [titleKey]/[subtitleKey] let a caller swap the copy while keeping the
+/// same visual identity — never introduce a second placeholder widget for
+/// a different message.
 final class ApiaryPhotoPlaceholder extends StatelessWidget {
   const ApiaryPhotoPlaceholder({required this.height, this.titleKey = 'apiary.photo_placeholder', this.subtitleKey, super.key});
 
