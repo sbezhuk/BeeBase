@@ -258,6 +258,13 @@
     "sync_blocked_action": "OK"
   },
   "inspection": {
+    "sync_status": {
+      "synced": "Synced",
+      "pendingCreate": "Not synced (pending upload)",
+      "pendingUpdate": "Not synced (pending update)",
+      "pendingDelete": "Pending deletion",
+      "syncing": "Syncing..."
+    },
     "list": {
       "add_inspection": "Add Inspection",
       "empty_title": "No inspections yet",
@@ -272,7 +279,8 @@
       "cancel": "Cancel",
       "added_on": "Added {date}",
       "delete_confirm_title": "Delete inspection?",
-      "delete_confirm_message": "This will permanently remove this inspection. This action cannot be undone."
+      "delete_confirm_message": "This will permanently remove this inspection. This action cannot be undone.",
+      "delete_offline_blocked": "Deleting this inspection is only available in online mode."
     },
     "form": {
       "create_title": "New Inspection",
@@ -294,7 +302,10 @@
       "health": "Health",
       "feeding": "Feeding",
       "seasonal": "Seasonal"
-    }
+    },
+    "sync_blocked_title": "Unsynchronized Changes",
+    "sync_blocked_message": "This inspection has local changes that haven't been synced to the server yet. Please sync your data from the Profile tab before editing.",
+    "sync_blocked_action": "OK"
   },
   "media": {
     "gallery": {

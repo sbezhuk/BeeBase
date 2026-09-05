@@ -354,6 +354,62 @@ void main() {
     );
 
     test(
+      'multiple offline edits overwrite the same local record with only the '
+      'latest state, rather than accumulating separate sync operations',
+      () async {
+        // First edit: the repository reads the originally-synced version.
+        when(
+          () => localDataSource.getInspectionById('server-inspection-1'),
+        ).thenAnswer((_) async => sampleSyncedInspection);
+        when(() => localDataSource.updateInspection(any())).thenAnswer(
+          (invocation) async => invocation.positionalArguments[0] as Inspection,
+        );
+
+        final firstEdit = await repository.updateInspection(
+          hiveId: 'hive-server-1',
+          id: 'server-inspection-1',
+          date: DateTime(2026, 1, 2),
+          type: InspectionType.queen,
+          notes: 'First edit',
+        );
+        final firstUpdated = firstEdit.fold(
+          (_) => fail('should succeed'),
+          (inspection) => inspection,
+        );
+
+        // Second edit: the repository now reads back the pendingUpdate
+        // record produced by the first edit — not the original synced one.
+        when(
+          () => localDataSource.getInspectionById('server-inspection-1'),
+        ).thenAnswer((_) async => firstUpdated);
+
+        final secondEdit = await repository.updateInspection(
+          hiveId: 'hive-server-1',
+          id: 'server-inspection-1',
+          date: DateTime(2026, 1, 3),
+          type: InspectionType.health,
+          notes: 'Second edit',
+        );
+
+        expect(secondEdit.isRight, isTrue);
+        secondEdit.fold((_) => fail('should succeed'), (inspection) {
+          expect(inspection.notes, 'Second edit');
+          expect(inspection.type, InspectionType.health);
+          expect(inspection.syncStatus, SyncStatus.pendingUpdate);
+          // Same underlying local record — an edit never creates a second
+          // local/server id pair for the same inspection.
+          expect(inspection.localId, sampleSyncedInspection.localId);
+          expect(inspection.serverId, sampleSyncedInspection.serverId);
+        });
+        // Exactly two writes to SQLite — one per edit — and both target the
+        // same row (`localDataSource.updateInspection` always keys off
+        // local_id/server_id), never a second, separate pending record.
+        verify(() => localDataSource.updateInspection(any())).called(2);
+        verifyNever(() => localDataSource.insertInspection(any()));
+      },
+    );
+
+    test(
       'offline delete of unsynced record deletes permanently from SQLite',
       () async {
         when(

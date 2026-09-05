@@ -290,6 +290,67 @@ void main() {
         verifyNever(() => localDataSource.deleteInspectionPermanently(any()));
       },
     );
+
+    test(
+      'retrying after a failed sync successfully synchronizes the inspection '
+      'without losing or duplicating it',
+      () async {
+        final inspection = inspectionUnderSyncedHive();
+        when(() => networkInfo.isConnected).thenAnswer((_) async => true);
+        when(
+          () => localDataSource.getPendingSyncInspections(),
+        ).thenAnswer((_) async => [inspection]);
+        when(
+          () => inspectionRemoteDataSource.createInspection(
+            'hive-server-1',
+            any(),
+          ),
+        ).thenThrow(
+          const ServerException(
+            statusCode: 500,
+            code: 'internal_error',
+            message: 'DB Error',
+          ),
+        );
+
+        final failedResult = await synchronizer.syncInspections();
+        expect(failedResult.isSuccess, isFalse);
+        expect(failedResult.failedCount, 1);
+
+        // The exact same still-pending inspection is handed back on retry —
+        // nothing was lost or duplicated by the failed attempt.
+        when(
+          () => inspectionRemoteDataSource.createInspection(
+            'hive-server-1',
+            any(),
+          ),
+        ).thenAnswer((_) async => createdInspectionResponse);
+        when(
+          () => localDataSource.markSynced(
+            localId: 'local-inspection-2',
+            serverId: 'server-inspection-1',
+          ),
+        ).thenAnswer((_) async {});
+
+        final retryResult = await synchronizer.syncInspections();
+
+        expect(retryResult.isSuccess, isTrue);
+        expect(retryResult.syncedCount, 1);
+        expect(retryResult.failedCount, 0);
+        verify(
+          () => inspectionRemoteDataSource.createInspection(
+            'hive-server-1',
+            any(),
+          ),
+        ).called(2);
+        verify(
+          () => localDataSource.markSynced(
+            localId: 'local-inspection-2',
+            serverId: 'server-inspection-1',
+          ),
+        ).called(1);
+      },
+    );
   });
 
   group('InspectionSynchronizer - Hive -> Inspection dependency (mandatory)', () {

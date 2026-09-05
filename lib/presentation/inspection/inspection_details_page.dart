@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
+import 'package:beebase/core/networking/network_info.dart';
 import 'package:beebase/domain/entity/inspection.dart';
+import 'package:beebase/domain/enum/sync_status.dart';
 import 'package:beebase/presentation/inspection/cubit/inspection_delete_cubit/inspection_delete_cubit.dart';
 import 'package:beebase/presentation/inspection/extension/inspection_date_x.dart';
 import 'package:beebase/presentation/inspection/extension/inspection_type_x.dart';
@@ -24,7 +28,8 @@ part 'inspection_details_page/inspection_details_delete_link.dart';
 part 'inspection_details_page/inspection_details_info_section.dart';
 
 @RoutePage()
-final class InspectionDetailsPage extends StatefulWidget implements AutoRouteWrapper {
+final class InspectionDetailsPage extends StatefulWidget
+    implements AutoRouteWrapper {
   const InspectionDetailsPage({required this.inspection, super.key});
 
   final Inspection inspection;
@@ -61,7 +66,10 @@ final class _InspectionDetailsPageState extends State<InspectionDetailsPage> {
           listener: _handleStateChange,
           builder: (context, state) {
             _isDeleting = state is InspectionDeleteLoading;
-            return _InspectionDetailsBody(inspection: _inspection, isDeleting: _isDeleting);
+            return _InspectionDetailsBody(
+              inspection: _inspection,
+              isDeleting: _isDeleting,
+            );
           },
         ),
       ],
@@ -69,10 +77,39 @@ final class _InspectionDetailsPageState extends State<InspectionDetailsPage> {
   }
 
   Future<void> _edit(BuildContext context) async {
+    // If the inspection has unsynchronized local changes, block online
+    // editing to prevent accidentally overwriting the pending local data.
+    // Offline users can always edit — the guard only fires when
+    // connectivity is available.
+    if (_inspection.syncStatus.isPending) {
+      final networkInfo = di.get<INetworkInfo>();
+      final isOnline = await networkInfo.isConnected;
+      if (isOnline && context.mounted) {
+        _showSyncBlockedDialog(context);
+        return;
+      }
+    }
+    if (!context.mounted) return;
     final updated = await context.router.push<Inspection>(
       InspectionFormRoute(hiveId: _inspection.hiveId, inspection: _inspection),
     );
     if (updated != null && mounted) setState(() => _inspection = updated);
+  }
+
+  void _showSyncBlockedDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('inspection.sync_blocked_title'.tr()),
+        content: Text('inspection.sync_blocked_message'.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text('inspection.sync_blocked_action'.tr()),
+          ),
+        ],
+      ),
+    );
   }
 
   void _handleStateChange(BuildContext context, InspectionDeleteState state) {
