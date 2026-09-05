@@ -147,6 +147,10 @@
       "yesterday": "Yesterday",
       "empty_title": "No recent activity",
       "empty_subtitle": "Inspections you record will show up here."
+    },
+    "offline": {
+      "title": "You're offline",
+      "message": "The Dashboard requires an internet connection. Please reconnect and try again."
     }
   },
   "apiary": {
@@ -407,6 +411,10 @@
     },
     "snackbar": {
       "dismiss": "Dismiss"
+    },
+    "connectivity": {
+      "offline": "You're offline",
+      "online": "You're back online"
     }
   },
   "server": {

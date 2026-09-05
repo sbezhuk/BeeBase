@@ -290,6 +290,7 @@ Future<void> initDi() async {
       apiaryReader: di(),
       hiveReader: di(),
       inspectionReader: di(),
+      networkInfo: di(),
       apiaryRefreshNotifier: di(),
       hiveRefreshNotifier: di(),
       inspectionRefreshNotifier: di(),

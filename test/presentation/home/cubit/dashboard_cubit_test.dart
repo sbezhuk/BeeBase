@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:beebase/core/networking/failures/failure.dart';
+import 'package:beebase/core/networking/network_info.dart';
 import 'package:beebase/domain/entity/activity_item.dart';
 import 'package:beebase/domain/entity/apiary_stats.dart';
 import 'package:beebase/domain/entity/dashboard_overview.dart';
@@ -26,6 +27,8 @@ class MockHiveReader extends Mock implements IHiveReader {}
 
 class MockInspectionReader extends Mock implements IInspectionReader {}
 
+class MockNetworkInfo extends Mock implements INetworkInfo {}
+
 const _overview = DashboardOverview(
   totalApiaries: 3,
   totalHives: 10,
@@ -39,11 +42,7 @@ const _overview = DashboardOverview(
   avgInspectionsPerHive: 4.2,
 );
 
-const _apiaryStats = ApiaryStats(
-  totalApiaries: 3,
-  apiariesWithoutHives: 1,
-  hiveDistribution: [],
-);
+const _apiaryStats = ApiaryStats(totalApiaries: 3, apiariesWithoutHives: 1, hiveDistribution: []);
 
 const _inspectionStats = InspectionStats(
   totalInspections: 42,
@@ -60,6 +59,8 @@ void main() {
   late MockApiaryReader apiaryReader;
   late MockHiveReader hiveReader;
   late MockInspectionReader inspectionReader;
+  late MockNetworkInfo networkInfo;
+  late StreamController<bool> connectivityController;
   late ApiaryListRefreshNotifier apiaryRefreshNotifier;
   late HiveListRefreshNotifier hiveRefreshNotifier;
   late InspectionListRefreshNotifier inspectionRefreshNotifier;
@@ -70,6 +71,7 @@ void main() {
       apiaryReader: apiaryReader,
       hiveReader: hiveReader,
       inspectionReader: inspectionReader,
+      networkInfo: networkInfo,
       apiaryRefreshNotifier: apiaryRefreshNotifier,
       hiveRefreshNotifier: hiveRefreshNotifier,
       inspectionRefreshNotifier: inspectionRefreshNotifier,
@@ -77,18 +79,10 @@ void main() {
   }
 
   void stubAllSuccess() {
-    when(
-      () => statisticsReader.getOverview(),
-    ).thenAnswer((_) async => const Right(_overview));
-    when(
-      () => statisticsReader.getApiaryStats(),
-    ).thenAnswer((_) async => const Right(_apiaryStats));
-    when(
-      () => statisticsReader.getInspectionStats(),
-    ).thenAnswer((_) async => const Right(_inspectionStats));
-    when(
-      () => statisticsReader.getRecentActivity(),
-    ).thenAnswer((_) async => const Right(_activity));
+    when(() => statisticsReader.getOverview()).thenAnswer((_) async => const Right(_overview));
+    when(() => statisticsReader.getApiaryStats()).thenAnswer((_) async => const Right(_apiaryStats));
+    when(() => statisticsReader.getInspectionStats()).thenAnswer((_) async => const Right(_inspectionStats));
+    when(() => statisticsReader.getRecentActivity()).thenAnswer((_) async => const Right(_activity));
   }
 
   setUp(() {
@@ -96,10 +90,16 @@ void main() {
     apiaryReader = MockApiaryReader();
     hiveReader = MockHiveReader();
     inspectionReader = MockInspectionReader();
+    networkInfo = MockNetworkInfo();
+    connectivityController = StreamController<bool>.broadcast();
+    when(() => networkInfo.isConnected).thenAnswer((_) async => true);
+    when(() => networkInfo.onConnectivityChanged).thenAnswer((_) => connectivityController.stream);
     apiaryRefreshNotifier = ApiaryListRefreshNotifier();
     hiveRefreshNotifier = HiveListRefreshNotifier();
     inspectionRefreshNotifier = InspectionListRefreshNotifier();
   });
+
+  tearDown(() => connectivityController.close());
 
   blocTest<DashboardCubit, DashboardState>(
     'loadDashboard emits Loading then Loaded with every section as data, when online',
@@ -111,167 +111,160 @@ void main() {
     expect: () => [
       const DashboardLoading(),
       isA<DashboardLoaded>()
-          .having(
-            (state) => state.overview,
-            'overview',
-            const SectionData(_overview),
-          )
-          .having(
-            (state) => state.apiaryStats,
-            'apiaryStats',
-            const SectionData(_apiaryStats),
-          )
-          .having(
-            (state) => state.inspectionStats,
-            'inspectionStats',
-            const SectionData(_inspectionStats),
-          )
-          .having(
-            (state) =>
-                (state.recentActivity as SectionData<List<ActivityItem>>).value,
-            'recentActivity',
-            _activity,
-          ),
+          .having((state) => state.overview, 'overview', const SectionData(_overview))
+          .having((state) => state.apiaryStats, 'apiaryStats', const SectionData(_apiaryStats))
+          .having((state) => state.inspectionStats, 'inspectionStats', const SectionData(_inspectionStats))
+          .having((state) => (state.recentActivity as SectionData<List<ActivityItem>>).value, 'recentActivity', _activity),
     ],
   );
 
+  blocTest<DashboardCubit, DashboardState>(
+    'loadDashboard emits DashboardOffline and makes no request when offline',
+    build: () {
+      when(() => networkInfo.isConnected).thenAnswer((_) async => false);
+      stubAllSuccess();
+      return buildCubit();
+    },
+    act: (cubit) => cubit.loadDashboard(),
+    expect: () => [const DashboardOffline()],
+    verify: (_) {
+      verifyNever(() => statisticsReader.getOverview());
+      verifyNever(() => statisticsReader.getApiaryStats());
+      verifyNever(() => statisticsReader.getInspectionStats());
+      verifyNever(() => statisticsReader.getRecentActivity());
+    },
+  );
 
+  blocTest<DashboardCubit, DashboardState>(
+    'refresh emits DashboardOffline and makes no request when offline',
+    build: () {
+      when(() => networkInfo.isConnected).thenAnswer((_) async => false);
+      stubAllSuccess();
+      return buildCubit();
+    },
+    act: (cubit) => cubit.refresh(),
+    expect: () => [const DashboardOffline()],
+    verify: (_) {
+      verifyNever(() => statisticsReader.getOverview());
+    },
+  );
+
+  blocTest<DashboardCubit, DashboardState>(
+    'losing connectivity while Loaded switches to DashboardOffline',
+    build: () {
+      stubAllSuccess();
+      return buildCubit();
+    },
+    act: (cubit) async {
+      await cubit.loadDashboard();
+      connectivityController.add(false);
+      await Future<void>.delayed(Duration.zero);
+    },
+    skip: 1,
+    expect: () => [isA<DashboardLoaded>(), const DashboardOffline()],
+  );
+
+  blocTest<DashboardCubit, DashboardState>(
+    'regaining connectivity does not auto-reload; retry does',
+    build: () {
+      when(() => networkInfo.isConnected).thenAnswer((_) async => false);
+      return buildCubit();
+    },
+    act: (cubit) async {
+      await cubit.loadDashboard();
+      connectivityController.add(true);
+      await Future<void>.delayed(Duration.zero);
+      when(() => networkInfo.isConnected).thenAnswer((_) async => true);
+      stubAllSuccess();
+      await cubit.loadDashboard();
+    },
+    expect: () => [const DashboardOffline(), const DashboardLoading(), isA<DashboardLoaded>()],
+  );
 
   blocTest<DashboardCubit, DashboardState>(
     'a single section failing does not block the other sections (per-section isolation)',
     build: () {
+      when(() => statisticsReader.getOverview()).thenAnswer((_) async => const Right(_overview));
       when(
-        () => statisticsReader.getOverview(),
-      ).thenAnswer((_) async => const Right(_overview));
-      when(() => statisticsReader.getApiaryStats()).thenAnswer(
-        (_) async =>
-            Left(ServerFailure(code: 'internal_error', message: 'boom')),
-      );
-      when(
-        () => statisticsReader.getInspectionStats(),
-      ).thenAnswer((_) async => const Right(_inspectionStats));
-      when(
-        () => statisticsReader.getRecentActivity(),
-      ).thenAnswer((_) async => const Right(_activity));
+        () => statisticsReader.getApiaryStats(),
+      ).thenAnswer((_) async => Left(ServerFailure(code: 'internal_error', message: 'boom')));
+      when(() => statisticsReader.getInspectionStats()).thenAnswer((_) async => const Right(_inspectionStats));
+      when(() => statisticsReader.getRecentActivity()).thenAnswer((_) async => const Right(_activity));
       return buildCubit();
     },
     act: (cubit) => cubit.loadDashboard(),
     expect: () => [
       const DashboardLoading(),
       isA<DashboardLoaded>()
-          .having(
-            (state) => state.overview,
-            'overview',
-            const SectionData(_overview),
-          )
-          .having(
-            (state) => state.apiaryStats,
-            'apiaryStats',
-            isA<SectionError<ApiaryStats>>(),
-          )
-          .having(
-            (state) => state.inspectionStats,
-            'inspectionStats',
-            const SectionData(_inspectionStats),
-          ),
+          .having((state) => state.overview, 'overview', const SectionData(_overview))
+          .having((state) => state.apiaryStats, 'apiaryStats', isA<SectionError<ApiaryStats>>())
+          .having((state) => state.inspectionStats, 'inspectionStats', const SectionData(_inspectionStats)),
     ],
   );
 
+  test('a response from a superseded load is discarded once it finally resolves', () async {
+    var overviewCallCount = 0;
+    final firstOverviewCompleter = Completer<Either<Failure, DashboardOverview>>();
+    when(() => statisticsReader.getOverview()).thenAnswer((_) {
+      overviewCallCount++;
+      return overviewCallCount == 1 ? firstOverviewCompleter.future : Future.value(const Right(_overview));
+    });
+    when(() => statisticsReader.getApiaryStats()).thenAnswer((_) async => const Right(_apiaryStats));
+    when(() => statisticsReader.getInspectionStats()).thenAnswer((_) async => const Right(_inspectionStats));
+    when(() => statisticsReader.getRecentActivity()).thenAnswer((_) async => const Right(_activity));
 
+    final cubit = buildCubit();
+    unawaited(cubit.loadDashboard()); // first load — stuck awaiting firstOverviewCompleter
+    await Future<void>.delayed(Duration.zero);
+    await cubit.loadDashboard(); // second load — supersedes the first, resolves immediately
 
-  test(
-    'a response from a superseded load is discarded once it finally resolves',
-    () async {
-      var overviewCallCount = 0;
-      final firstOverviewCompleter =
-          Completer<Either<Failure, DashboardOverview>>();
-      when(() => statisticsReader.getOverview()).thenAnswer((_) {
-        overviewCallCount++;
-        return overviewCallCount == 1
-            ? firstOverviewCompleter.future
-            : Future.value(const Right(_overview));
-      });
-      when(
-        () => statisticsReader.getApiaryStats(),
-      ).thenAnswer((_) async => const Right(_apiaryStats));
-      when(
-        () => statisticsReader.getInspectionStats(),
-      ).thenAnswer((_) async => const Right(_inspectionStats));
-      when(
-        () => statisticsReader.getRecentActivity(),
-      ).thenAnswer((_) async => const Right(_activity));
+    final stateAfterSecondLoad = cubit.state;
+    expect(stateAfterSecondLoad, isA<DashboardLoaded>());
 
-      final cubit = buildCubit();
-      unawaited(
-        cubit.loadDashboard(),
-      ); // first load — stuck awaiting firstOverviewCompleter
-      await Future<void>.delayed(Duration.zero);
-      await cubit
-          .loadDashboard(); // second load — supersedes the first, resolves immediately
+    firstOverviewCompleter.complete(const Right(_overview));
+    await Future<void>.delayed(Duration.zero);
 
-      final stateAfterSecondLoad = cubit.state;
-      expect(stateAfterSecondLoad, isA<DashboardLoaded>());
+    expect(cubit.state, same(stateAfterSecondLoad));
+    await cubit.close();
+  });
 
-      firstOverviewCompleter.complete(const Right(_overview));
-      await Future<void>.delayed(Duration.zero);
+  test('apiaryRefreshNotifier signalling a change while Loaded refetches only overview and apiary stats', () async {
+    stubAllSuccess();
+    final cubit = buildCubit();
+    await cubit.loadDashboard();
+    clearInteractions(statisticsReader);
 
-      expect(cubit.state, same(stateAfterSecondLoad));
-      await cubit.close();
-    },
-  );
+    const updatedApiaryStats = ApiaryStats(totalApiaries: 4, apiariesWithoutHives: 0, hiveDistribution: []);
+    when(() => statisticsReader.getApiaryStats()).thenAnswer((_) async => const Right(updatedApiaryStats));
 
-  test(
-    'apiaryRefreshNotifier signalling a change while Loaded refetches only overview and apiary stats',
-    () async {
-      stubAllSuccess();
-      final cubit = buildCubit();
-      await cubit.loadDashboard();
-      clearInteractions(statisticsReader);
+    apiaryRefreshNotifier.notify();
+    await Future<void>.delayed(Duration.zero);
 
-      const updatedApiaryStats = ApiaryStats(
-        totalApiaries: 4,
-        apiariesWithoutHives: 0,
-        hiveDistribution: [],
-      );
-      when(
-        () => statisticsReader.getApiaryStats(),
-      ).thenAnswer((_) async => const Right(updatedApiaryStats));
+    verify(() => statisticsReader.getOverview()).called(1);
+    verify(() => statisticsReader.getApiaryStats()).called(1);
+    verifyNever(() => statisticsReader.getInspectionStats());
+    verifyNever(() => statisticsReader.getRecentActivity());
+    expect((cubit.state as DashboardLoaded).apiaryStats, const SectionData(updatedApiaryStats));
 
-      apiaryRefreshNotifier.notify();
-      await Future<void>.delayed(Duration.zero);
+    await cubit.close();
+  });
 
-      verify(() => statisticsReader.getOverview()).called(1);
-      verify(() => statisticsReader.getApiaryStats()).called(1);
-      verifyNever(() => statisticsReader.getInspectionStats());
-      verifyNever(() => statisticsReader.getRecentActivity());
-      expect(
-        (cubit.state as DashboardLoaded).apiaryStats,
-        const SectionData(updatedApiaryStats),
-      );
+  test('hiveRefreshNotifier signalling a change while Loaded refetches only overview and apiary stats', () async {
+    stubAllSuccess();
+    final cubit = buildCubit();
+    await cubit.loadDashboard();
+    clearInteractions(statisticsReader);
 
-      await cubit.close();
-    },
-  );
+    hiveRefreshNotifier.notify();
+    await Future<void>.delayed(Duration.zero);
 
-  test(
-    'hiveRefreshNotifier signalling a change while Loaded refetches only overview and apiary stats',
-    () async {
-      stubAllSuccess();
-      final cubit = buildCubit();
-      await cubit.loadDashboard();
-      clearInteractions(statisticsReader);
+    verify(() => statisticsReader.getOverview()).called(1);
+    verify(() => statisticsReader.getApiaryStats()).called(1);
+    verifyNever(() => statisticsReader.getInspectionStats());
+    verifyNever(() => statisticsReader.getRecentActivity());
 
-      hiveRefreshNotifier.notify();
-      await Future<void>.delayed(Duration.zero);
-
-      verify(() => statisticsReader.getOverview()).called(1);
-      verify(() => statisticsReader.getApiaryStats()).called(1);
-      verifyNever(() => statisticsReader.getInspectionStats());
-      verifyNever(() => statisticsReader.getRecentActivity());
-
-      await cubit.close();
-    },
-  );
+    await cubit.close();
+  });
 
   test(
     'inspectionRefreshNotifier signalling a change while Loaded refetches only overview, inspection stats, and recent activity',
@@ -288,9 +281,7 @@ void main() {
         inspectionsThisYear: 21,
         activityLast30Days: [],
       );
-      when(
-        () => statisticsReader.getInspectionStats(),
-      ).thenAnswer((_) async => const Right(updatedInspectionStats));
+      when(() => statisticsReader.getInspectionStats()).thenAnswer((_) async => const Right(updatedInspectionStats));
 
       inspectionRefreshNotifier.notify();
       await Future<void>.delayed(Duration.zero);
@@ -299,33 +290,27 @@ void main() {
       verify(() => statisticsReader.getInspectionStats()).called(1);
       verify(() => statisticsReader.getRecentActivity()).called(1);
       verifyNever(() => statisticsReader.getApiaryStats());
-      expect(
-        (cubit.state as DashboardLoaded).inspectionStats,
-        const SectionData(updatedInspectionStats),
-      );
+      expect((cubit.state as DashboardLoaded).inspectionStats, const SectionData(updatedInspectionStats));
 
       await cubit.close();
     },
   );
 
-  test(
-    'a refresh notifier signalling a change before the dashboard has loaded is a no-op',
-    () async {
-      stubAllSuccess();
-      final cubit = buildCubit();
+  test('a refresh notifier signalling a change before the dashboard has loaded is a no-op', () async {
+    stubAllSuccess();
+    final cubit = buildCubit();
 
-      apiaryRefreshNotifier.notify();
-      hiveRefreshNotifier.notify();
-      inspectionRefreshNotifier.notify();
-      await Future<void>.delayed(Duration.zero);
+    apiaryRefreshNotifier.notify();
+    hiveRefreshNotifier.notify();
+    inspectionRefreshNotifier.notify();
+    await Future<void>.delayed(Duration.zero);
 
-      expect(cubit.state, const DashboardLoading());
-      verifyNever(() => statisticsReader.getOverview());
-      verifyNever(() => statisticsReader.getApiaryStats());
-      verifyNever(() => statisticsReader.getInspectionStats());
-      verifyNever(() => statisticsReader.getRecentActivity());
+    expect(cubit.state, const DashboardLoading());
+    verifyNever(() => statisticsReader.getOverview());
+    verifyNever(() => statisticsReader.getApiaryStats());
+    verifyNever(() => statisticsReader.getInspectionStats());
+    verifyNever(() => statisticsReader.getRecentActivity());
 
-      await cubit.close();
-    },
-  );
+    await cubit.close();
+  });
 }

@@ -32,6 +32,7 @@ part 'home_page/dashboard_apiary_stats_section.dart';
 part 'home_page/dashboard_body.dart';
 part 'home_page/dashboard_empty_view.dart';
 part 'home_page/dashboard_inspection_stats_section.dart';
+part 'home_page/dashboard_offline_view.dart';
 part 'home_page/dashboard_overview_section.dart';
 part 'home_page/dashboard_recent_activity_section.dart';
 part 'home_page/dashboard_section_error.dart';
@@ -50,10 +51,7 @@ final class HomePage extends StatelessWidget implements AutoRouteWrapper {
 
   @override
   Widget wrappedRoute(BuildContext context) {
-    return BlocProvider(
-      create: (_) => di.get<DashboardCubit>()..loadDashboard(),
-      child: this,
-    );
+    return BlocProvider(create: (_) => di.get<DashboardCubit>()..loadDashboard(), child: this);
   }
 
   @override
@@ -63,11 +61,12 @@ final class HomePage extends StatelessWidget implements AutoRouteWrapper {
         return switch (state) {
           DashboardLoading() => LoadingOverlay(
             isLoading: true,
-            child: AppScaffold(
-              title: 'dashboard.title'.tr(),
-              showBackButton: false,
-              slivers: const [],
-            ),
+            child: AppScaffold(title: 'dashboard.title'.tr(), showBackButton: false, slivers: const []),
+          ),
+          DashboardOffline() => AppScaffold(
+            title: 'dashboard.title'.tr(),
+            showBackButton: false,
+            slivers: [_DashboardOfflineView(onRetry: context.read<DashboardCubit>().loadDashboard)],
           ),
           final DashboardLoaded loaded => LoadingOverlay(
             isLoading: loaded.isRefreshing,
