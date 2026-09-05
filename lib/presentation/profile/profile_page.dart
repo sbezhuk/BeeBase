@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/data/data_source/interface/apiary_local_data_source.dart';
 import 'package:beebase/data/data_source/interface/hive_local_data_source.dart';
+import 'package:beebase/data/data_source/interface/inspection_local_data_source.dart';
 import 'package:beebase/data/sync/data_synchronizer.dart';
 import 'package:beebase/domain/entity/user.dart';
 import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';

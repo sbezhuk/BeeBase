@@ -1,8 +1,10 @@
 import 'package:beebase/data/data_source/interface/apiary_local_data_source.dart';
 import 'package:beebase/data/data_source/interface/hive_local_data_source.dart';
+import 'package:beebase/data/data_source/interface/inspection_local_data_source.dart';
 import 'package:beebase/data/sync/apiary_synchronizer.dart';
 import 'package:beebase/data/sync/data_synchronizer.dart';
 import 'package:beebase/data/sync/hive_synchronizer.dart';
+import 'package:beebase/data/sync/inspection_synchronizer.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/enum/sync_status.dart';
 import 'package:beebase/presentation/profile/profile_page.dart';
@@ -16,26 +18,37 @@ class MockApiaryLocalDataSource extends Mock
 
 class MockHiveLocalDataSource extends Mock implements IHiveLocalDataSource {}
 
+class MockInspectionLocalDataSource extends Mock
+    implements IInspectionLocalDataSource {}
+
 class MockDataSynchronizer extends Mock implements IDataSynchronizer {}
 
 void main() {
   late MockApiaryLocalDataSource apiaryLocalDataSource;
   late MockHiveLocalDataSource hiveLocalDataSource;
+  late MockInspectionLocalDataSource inspectionLocalDataSource;
   late MockDataSynchronizer synchronizer;
 
   setUp(() {
     apiaryLocalDataSource = MockApiaryLocalDataSource();
     hiveLocalDataSource = MockHiveLocalDataSource();
+    inspectionLocalDataSource = MockInspectionLocalDataSource();
     synchronizer = MockDataSynchronizer();
 
     di.registerLazySingleton<IApiaryLocalDataSource>(
       () => apiaryLocalDataSource,
     );
     di.registerLazySingleton<IHiveLocalDataSource>(() => hiveLocalDataSource);
+    di.registerLazySingleton<IInspectionLocalDataSource>(
+      () => inspectionLocalDataSource,
+    );
     di.registerLazySingleton<IDataSynchronizer>(() => synchronizer);
 
     when(
       () => hiveLocalDataSource.getPendingSyncHives(),
+    ).thenAnswer((_) async => []);
+    when(
+      () => inspectionLocalDataSource.getPendingSyncInspections(),
     ).thenAnswer((_) async => []);
   });
 
@@ -96,6 +109,11 @@ void main() {
           failedCount: 0,
         ),
         hives: HiveSyncResult(totalPending: 0, syncedCount: 0, failedCount: 0),
+        inspections: InspectionSyncResult(
+          totalPending: 0,
+          syncedCount: 0,
+          failedCount: 0,
+        ),
       ),
     );
 

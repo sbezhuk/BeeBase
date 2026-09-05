@@ -17,11 +17,13 @@ import 'package:beebase/data/data_source/authentication_data_source.dart';
 import 'package:beebase/data/data_source/hive_data_source.dart';
 import 'package:beebase/data/data_source/hive_local_data_source_impl.dart';
 import 'package:beebase/data/data_source/inspection_data_source.dart';
+import 'package:beebase/data/data_source/inspection_local_data_source_impl.dart';
 import 'package:beebase/data/data_source/interface/apiary_data_source.dart';
 import 'package:beebase/data/data_source/interface/authentication_data_source.dart';
 import 'package:beebase/data/data_source/interface/hive_data_source.dart';
 import 'package:beebase/data/data_source/interface/hive_local_data_source.dart';
 import 'package:beebase/data/data_source/interface/inspection_data_source.dart';
+import 'package:beebase/data/data_source/interface/inspection_local_data_source.dart';
 import 'package:beebase/data/data_source/interface/media_data_source.dart';
 import 'package:beebase/data/data_source/interface/password_change_data_source.dart';
 import 'package:beebase/data/data_source/interface/password_reset_data_source.dart';
@@ -41,6 +43,7 @@ import 'package:beebase/data/repositories/statistics_repository_impl.dart';
 import 'package:beebase/data/sync/apiary_synchronizer.dart';
 import 'package:beebase/data/sync/data_synchronizer.dart';
 import 'package:beebase/data/sync/hive_synchronizer.dart';
+import 'package:beebase/data/sync/inspection_synchronizer.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/entity/hive.dart';
 import 'package:beebase/domain/entity/inspection.dart';
@@ -212,6 +215,12 @@ Future<void> initDi() async {
   di.registerLazySingleton<IInspectionDataSource>(
     () => di<InspectionDataSource>(),
   );
+  di.registerLazySingleton<InspectionLocalDataSourceImpl>(
+    () => InspectionLocalDataSourceImpl(database: di()),
+  );
+  di.registerLazySingleton<IInspectionLocalDataSource>(
+    () => di<InspectionLocalDataSourceImpl>(),
+  );
   di.registerLazySingleton<MediaDataSource>(
     () => MediaDataSource(dioClient: di(), resolver: di()),
   );
@@ -251,6 +260,7 @@ Future<void> initDi() async {
       dataSource: di(),
       localDataSource: di(),
       hiveLocalDataSource: di(),
+      inspectionLocalDataSource: di(),
       networkInfo: di(),
     ),
   );
@@ -270,6 +280,7 @@ Future<void> initDi() async {
     () => HiveRepositoryImpl(
       dataSource: di(),
       localDataSource: di(),
+      inspectionLocalDataSource: di(),
       networkInfo: di(),
     ),
   );
@@ -286,18 +297,15 @@ Future<void> initDi() async {
     ),
   );
   di.registerLazySingleton<IHiveSynchronizer>(() => di<HiveSynchronizer>());
-  di.registerLazySingleton<DataSynchronizer>(
-    () => DataSynchronizer(
-      apiarySynchronizer: di<IApiarySynchronizer>(),
-      hiveSynchronizer: di<IHiveSynchronizer>(),
-    ),
-  );
-  di.registerLazySingleton<IDataSynchronizer>(() => di<DataSynchronizer>());
   di.registerLazySingleton<IOwnerImageWriter>(
     () => OwnerImageWriter(apiaryWriter: di(), hiveWriter: di()),
   );
   di.registerLazySingleton<InspectionRepositoryImpl>(
-    () => InspectionRepositoryImpl(dataSource: di()),
+    () => InspectionRepositoryImpl(
+      dataSource: di(),
+      localDataSource: di(),
+      networkInfo: di(),
+    ),
   );
   di.registerLazySingleton<IInspectionReader>(
     () => di<InspectionRepositoryImpl>(),
@@ -305,6 +313,26 @@ Future<void> initDi() async {
   di.registerLazySingleton<IInspectionWriter>(
     () => di<InspectionRepositoryImpl>(),
   );
+  di.registerLazySingleton<InspectionSynchronizer>(
+    () => InspectionSynchronizer(
+      localDataSource: di(),
+      hiveLocalDataSource: di(),
+      inspectionRemoteDataSource: di(),
+      networkInfo: di(),
+      refreshNotifier: di(),
+    ),
+  );
+  di.registerLazySingleton<IInspectionSynchronizer>(
+    () => di<InspectionSynchronizer>(),
+  );
+  di.registerLazySingleton<DataSynchronizer>(
+    () => DataSynchronizer(
+      apiarySynchronizer: di<IApiarySynchronizer>(),
+      hiveSynchronizer: di<IHiveSynchronizer>(),
+      inspectionSynchronizer: di<IInspectionSynchronizer>(),
+    ),
+  );
+  di.registerLazySingleton<IDataSynchronizer>(() => di<DataSynchronizer>());
   di.registerLazySingleton<MediaRepositoryImpl>(
     () => MediaRepositoryImpl(
       dataSource: di(),

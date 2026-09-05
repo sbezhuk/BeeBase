@@ -10,7 +10,7 @@ final class ApiaryDatabase {
 
   Database? _database;
   final String _databaseName;
-  static const int _version = 2;
+  static const int _version = 3;
   static const String dbName = 'beebase_apiary.db';
 
   Future<Database> get database async {
@@ -74,11 +74,15 @@ final class ApiaryDatabase {
     );
 
     await _createHivesTable(db);
+    await _createInspectionsTable(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await _createHivesTable(db);
+    }
+    if (oldVersion < 3) {
+      await _createInspectionsTable(db);
     }
   }
 
@@ -113,6 +117,44 @@ final class ApiaryDatabase {
     );
     await db.execute(
       'CREATE INDEX idx_hives_apiary_server_id ON hives(apiary_server_id)',
+    );
+  }
+
+  /// An inspection belongs to a hive (see `Inspection.hiveLocalId`/
+  /// `hiveServerId`) which, while that hive is still `pendingCreate`, may
+  /// not have a server id yet — both columns are kept for the same reason
+  /// `hives.apiary_local_id`/`apiary_server_id` are (see [_createHivesTable]):
+  /// so `InspectionSynchronizer` can resolve the local->server id once the
+  /// parent hive syncs without losing track of which local hive a
+  /// still-unsynced inspection belongs to. Inspections carry no media of
+  /// their own — inspection-service's API has no images/media field.
+  Future<void> _createInspectionsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE inspections (
+        local_id TEXT PRIMARY KEY,
+        server_id TEXT UNIQUE,
+        hive_local_id TEXT,
+        hive_server_id TEXT,
+        inspected_at TEXT NOT NULL,
+        type TEXT NOT NULL,
+        notes TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute(
+      'CREATE INDEX idx_inspections_sync_status ON inspections(sync_status)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_inspections_server_id ON inspections(server_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_inspections_hive_local_id ON inspections(hive_local_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_inspections_hive_server_id ON inspections(hive_server_id)',
     );
   }
 

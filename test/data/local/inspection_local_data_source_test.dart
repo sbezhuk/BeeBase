@@ -1,8 +1,7 @@
-import 'dart:convert';
-
 import 'package:beebase/core/storage/database/apiary_database.dart';
-import 'package:beebase/data/data_source/hive_local_data_source_impl.dart';
-import 'package:beebase/domain/entity/hive.dart';
+import 'package:beebase/data/data_source/inspection_local_data_source_impl.dart';
+import 'package:beebase/domain/entity/inspection.dart';
+import 'package:beebase/domain/enum/backend/inspection_type.dart';
 import 'package:beebase/domain/enum/sync_status.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -15,7 +14,7 @@ class MockTransaction extends Mock implements Transaction {}
 void main() {
   late MockDatabase db;
   late ApiaryDatabase apiaryDatabase;
-  late HiveLocalDataSourceImpl localDataSource;
+  late InspectionLocalDataSourceImpl localDataSource;
 
   setUpAll(() {
     registerFallbackValue(ConflictAlgorithm.replace);
@@ -24,17 +23,17 @@ void main() {
   setUp(() {
     db = MockDatabase();
     apiaryDatabase = ApiaryDatabase(database: db);
-    localDataSource = HiveLocalDataSourceImpl(database: apiaryDatabase);
+    localDataSource = InspectionLocalDataSourceImpl(database: apiaryDatabase);
   });
 
-  final sampleHive = Hive(
+  final sampleInspection = Inspection(
     id: 'local-1',
-    apiaryId: 'apiary-local-1',
+    hiveId: 'hive-local-1',
     localId: 'local-1',
-    apiaryLocalId: 'apiary-local-1',
-    name: 'Test Hive',
+    hiveLocalId: 'hive-local-1',
+    date: DateTime(2026, 1, 1),
+    type: InspectionType.routine,
     notes: 'A test note',
-    images: const ['img-1'],
     createdAt: DateTime(2026, 1, 1),
     updatedAt: DateTime(2026, 1, 1),
     syncStatus: SyncStatus.pendingCreate,
@@ -43,36 +42,37 @@ void main() {
   final sampleRow = {
     'local_id': 'local-1',
     'server_id': null,
-    'apiary_local_id': 'apiary-local-1',
-    'apiary_server_id': null,
-    'name': 'Test Hive',
+    'hive_local_id': 'hive-local-1',
+    'hive_server_id': null,
+    'inspected_at': DateTime(2026, 1, 1).toIso8601String(),
+    'type': 'routine',
     'notes': 'A test note',
-    'images': jsonEncode(['img-1']),
     'created_at': DateTime(2026, 1, 1).toIso8601String(),
     'updated_at': DateTime(2026, 1, 1).toIso8601String(),
     'sync_status': 'pendingCreate',
   };
 
-  group('HiveLocalDataSourceImpl', () {
-    test('insertHive calls db.insert and returns hive', () async {
+  group('InspectionLocalDataSourceImpl', () {
+    test('insertInspection calls db.insert and returns inspection', () async {
       when(
         () => db.insert(
-          'hives',
+          'inspections',
           any(),
           conflictAlgorithm: any(named: 'conflictAlgorithm'),
         ),
       ).thenAnswer((_) async => 1);
 
-      final result = await localDataSource.insertHive(sampleHive);
+      final result = await localDataSource.insertInspection(sampleInspection);
       expect(result.id, 'local-1');
       verify(
         () => db.insert(
-          'hives',
+          'inspections',
           any(
             that: allOf(
               containsPair('local_id', 'local-1'),
-              containsPair('apiary_local_id', 'apiary-local-1'),
-              containsPair('apiary_server_id', null),
+              containsPair('hive_local_id', 'hive-local-1'),
+              containsPair('hive_server_id', null),
+              containsPair('type', 'routine'),
             ),
           ),
           conflictAlgorithm: ConflictAlgorithm.replace,
@@ -80,33 +80,31 @@ void main() {
       ).called(1);
     });
 
+    test('getInspectionById returns mapped Inspection when found, deriving '
+        'hiveId from hiveLocalId', () async {
+      when(
+        () => db.query(
+          'inspections',
+          where: any(named: 'where'),
+          whereArgs: any(named: 'whereArgs'),
+          limit: 1,
+        ),
+      ).thenAnswer((_) async => [sampleRow]);
+
+      final result = await localDataSource.getInspectionById('local-1');
+      expect(result, isNotNull);
+      expect(result!.id, 'local-1');
+      expect(result.hiveId, 'hive-local-1');
+      expect(result.type, InspectionType.routine);
+      expect(result.syncStatus, SyncStatus.pendingCreate);
+    });
+
     test(
-      'getHiveById returns mapped Hive when found, deriving apiaryId from apiaryLocalId',
+      'getActiveInspectionsForHive matches either hive_local_id or hive_server_id',
       () async {
         when(
           () => db.query(
-            'hives',
-            where: any(named: 'where'),
-            whereArgs: any(named: 'whereArgs'),
-            limit: 1,
-          ),
-        ).thenAnswer((_) async => [sampleRow]);
-
-        final result = await localDataSource.getHiveById('local-1');
-        expect(result, isNotNull);
-        expect(result!.id, 'local-1');
-        expect(result.apiaryId, 'apiary-local-1');
-        expect(result.name, 'Test Hive');
-        expect(result.syncStatus, SyncStatus.pendingCreate);
-      },
-    );
-
-    test(
-      'getActiveHivesForApiary matches either apiary_local_id or apiary_server_id',
-      () async {
-        when(
-          () => db.query(
-            'hives',
+            'inspections',
             where: any(named: 'where'),
             whereArgs: any(named: 'whereArgs'),
             orderBy: any(named: 'orderBy'),
@@ -115,20 +113,20 @@ void main() {
           ),
         ).thenAnswer((_) async => [sampleRow]);
 
-        final result = await localDataSource.getActiveHivesForApiary(
-          apiaryId: 'apiary-local-1',
+        final result = await localDataSource.getActiveInspectionsForHive(
+          hiveId: 'hive-local-1',
           page: 1,
           limit: 10,
         );
         expect(result.length, 1);
         verify(
           () => db.query(
-            'hives',
+            'inspections',
             where:
-                '(apiary_local_id = ? OR apiary_server_id = ?) AND sync_status != ?',
+                '(hive_local_id = ? OR hive_server_id = ?) AND sync_status != ?',
             whereArgs: [
-              'apiary-local-1',
-              'apiary-local-1',
+              'hive-local-1',
+              'hive-local-1',
               SyncStatus.pendingDelete.name,
             ],
             orderBy: 'created_at DESC',
@@ -142,7 +140,7 @@ void main() {
     test('markPendingDelete sets status to pendingDelete', () async {
       when(
         () => db.update(
-          'hives',
+          'inspections',
           any(),
           where: any(named: 'where'),
           whereArgs: any(named: 'whereArgs'),
@@ -152,7 +150,7 @@ void main() {
       await localDataSource.markPendingDelete('local-1');
       verify(
         () => db.update(
-          'hives',
+          'inspections',
           {'sync_status': SyncStatus.pendingDelete.name},
           where: 'local_id = ? OR server_id = ?',
           whereArgs: ['local-1', 'local-1'],
@@ -160,19 +158,19 @@ void main() {
       ).called(1);
     });
 
-    test('deleteHivePermanently removes row from database', () async {
+    test('deleteInspectionPermanently removes row from database', () async {
       when(
         () => db.delete(
-          'hives',
+          'inspections',
           where: any(named: 'where'),
           whereArgs: any(named: 'whereArgs'),
         ),
       ).thenAnswer((_) async => 1);
 
-      await localDataSource.deleteHivePermanently('local-1');
+      await localDataSource.deleteInspectionPermanently('local-1');
       verify(
         () => db.delete(
-          'hives',
+          'inspections',
           where: 'local_id = ? OR server_id = ?',
           whereArgs: ['local-1', 'local-1'],
         ),
@@ -180,22 +178,22 @@ void main() {
     });
 
     test(
-      'getPendingSyncHives queries pendingCreate, pendingUpdate, and pendingDelete',
+      'getPendingSyncInspections queries pendingCreate, pendingUpdate, and pendingDelete',
       () async {
         when(
           () => db.query(
-            'hives',
+            'inspections',
             where: any(named: 'where'),
             whereArgs: any(named: 'whereArgs'),
             orderBy: any(named: 'orderBy'),
           ),
         ).thenAnswer((_) async => [sampleRow]);
 
-        final result = await localDataSource.getPendingSyncHives();
+        final result = await localDataSource.getPendingSyncInspections();
         expect(result.length, 1);
         verify(
           () => db.query(
-            'hives',
+            'inspections',
             where: 'sync_status IN (?, ?, ?)',
             whereArgs: [
               SyncStatus.pendingCreate.name,
@@ -208,10 +206,10 @@ void main() {
       },
     );
 
-    test('markSynced updates serverId, sync_status and images', () async {
+    test('markSynced updates serverId and sync_status', () async {
       when(
         () => db.update(
-          'hives',
+          'inspections',
           any(),
           where: any(named: 'where'),
           whereArgs: any(named: 'whereArgs'),
@@ -221,17 +219,12 @@ void main() {
       await localDataSource.markSynced(
         localId: 'local-1',
         serverId: 'server-1',
-        images: ['img-1', 'img-2'],
       );
 
       verify(
         () => db.update(
-          'hives',
-          {
-            'server_id': 'server-1',
-            'sync_status': SyncStatus.synced.name,
-            'images': jsonEncode(['img-1', 'img-2']),
-          },
+          'inspections',
+          {'server_id': 'server-1', 'sync_status': SyncStatus.synced.name},
           where: 'local_id = ?',
           whereArgs: ['local-1'],
         ),
@@ -239,96 +232,74 @@ void main() {
     });
 
     test(
-      'resolveApiaryServerId updates every hive tracking that local apiary',
+      'resolveHiveServerId updates every inspection tracking that local hive',
       () async {
         when(
           () => db.update(
-            'hives',
+            'inspections',
             any(),
             where: any(named: 'where'),
             whereArgs: any(named: 'whereArgs'),
           ),
         ).thenAnswer((_) async => 2);
 
-        await localDataSource.resolveApiaryServerId(
-          apiaryLocalId: 'apiary-local-1',
-          apiaryServerId: 'apiary-server-1',
+        await localDataSource.resolveHiveServerId(
+          hiveLocalId: 'hive-local-1',
+          hiveServerId: 'hive-server-1',
         );
 
         verify(
           () => db.update(
-            'hives',
-            {'apiary_server_id': 'apiary-server-1'},
-            where: 'apiary_local_id = ?',
-            whereArgs: ['apiary-local-1'],
+            'inspections',
+            {'hive_server_id': 'hive-server-1'},
+            where: 'hive_local_id = ?',
+            whereArgs: ['hive-local-1'],
           ),
         ).called(1);
       },
     );
 
     test(
-      'deleteHivesByApiaryLocalId removes every hive under that local apiary',
-      () async {
-        when(
-          () => db.delete(
-            'hives',
-            where: any(named: 'where'),
-            whereArgs: any(named: 'whereArgs'),
-          ),
-        ).thenAnswer((_) async => 2);
-
-        await localDataSource.deleteHivesByApiaryLocalId('apiary-local-1');
-        verify(
-          () => db.delete(
-            'hives',
-            where: 'apiary_local_id = ?',
-            whereArgs: ['apiary-local-1'],
-          ),
-        ).called(1);
-      },
-    );
-
-    test(
-      'getHivesByApiaryId matches either apiary_local_id or apiary_server_id, '
+      'getInspectionsByHiveId matches either hive_local_id or hive_server_id, '
       'regardless of sync status',
       () async {
         when(
           () => db.query(
-            'hives',
+            'inspections',
             where: any(named: 'where'),
             whereArgs: any(named: 'whereArgs'),
           ),
         ).thenAnswer((_) async => [sampleRow]);
 
-        final result = await localDataSource.getHivesByApiaryId('apiary-1');
+        final result = await localDataSource.getInspectionsByHiveId('hive-1');
         expect(result.length, 1);
         verify(
           () => db.query(
-            'hives',
-            where: 'apiary_local_id = ? OR apiary_server_id = ?',
-            whereArgs: ['apiary-1', 'apiary-1'],
+            'inspections',
+            where: 'hive_local_id = ? OR hive_server_id = ?',
+            whereArgs: ['hive-1', 'hive-1'],
           ),
         ).called(1);
       },
     );
 
     test(
-      'deleteHivesByApiaryId removes every hive matching either apiary id column',
+      'deleteInspectionsByHiveId removes every inspection under that hive',
       () async {
         when(
           () => db.delete(
-            'hives',
+            'inspections',
             where: any(named: 'where'),
             whereArgs: any(named: 'whereArgs'),
           ),
         ).thenAnswer((_) async => 2);
 
-        await localDataSource.deleteHivesByApiaryId('apiary-1');
+        await localDataSource.deleteInspectionsByHiveId('hive-1');
         verify(
           () => db.delete(
-            'hives',
-            where: 'apiary_local_id = ? OR apiary_server_id = ?',
-            whereArgs: ['apiary-1', 'apiary-1'],
+            'inspections',
+            where: 'hive_local_id = ? OR hive_server_id = ?',
+            whereArgs: ['hive-1', 'hive-1'],
           ),
         ).called(1);
       },

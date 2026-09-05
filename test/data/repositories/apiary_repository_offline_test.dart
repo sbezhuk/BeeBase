@@ -3,6 +3,7 @@ import 'package:beebase/core/networking/network_info.dart';
 import 'package:beebase/data/data_source/interface/apiary_data_source.dart';
 import 'package:beebase/data/data_source/interface/apiary_local_data_source.dart';
 import 'package:beebase/data/data_source/interface/hive_local_data_source.dart';
+import 'package:beebase/data/data_source/interface/inspection_local_data_source.dart';
 import 'package:beebase/data/models/apiary_request.dart';
 import 'package:beebase/data/models/apiary_response.dart';
 import 'package:beebase/data/models/entity_image_response.dart';
@@ -11,6 +12,7 @@ import 'package:beebase/data/models/paginated_response.dart';
 import 'package:beebase/data/models/pagination_meta.dart';
 import 'package:beebase/data/repositories/apiary_repository_impl.dart';
 import 'package:beebase/domain/entity/apiary.dart';
+import 'package:beebase/domain/entity/hive.dart';
 import 'package:beebase/domain/enum/sync_status.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -22,12 +24,16 @@ class MockApiaryLocalDataSource extends Mock
 
 class MockHiveLocalDataSource extends Mock implements IHiveLocalDataSource {}
 
+class MockInspectionLocalDataSource extends Mock
+    implements IInspectionLocalDataSource {}
+
 class MockNetworkInfo extends Mock implements INetworkInfo {}
 
 void main() {
   late MockApiaryDataSource remoteDataSource;
   late MockApiaryLocalDataSource localDataSource;
   late MockHiveLocalDataSource hiveLocalDataSource;
+  late MockInspectionLocalDataSource inspectionLocalDataSource;
   late MockNetworkInfo networkInfo;
   late ApiaryRepositoryImpl repository;
 
@@ -78,13 +84,23 @@ void main() {
     remoteDataSource = MockApiaryDataSource();
     localDataSource = MockApiaryLocalDataSource();
     hiveLocalDataSource = MockHiveLocalDataSource();
+    inspectionLocalDataSource = MockInspectionLocalDataSource();
     networkInfo = MockNetworkInfo();
     repository = ApiaryRepositoryImpl(
       dataSource: remoteDataSource,
       localDataSource: localDataSource,
       hiveLocalDataSource: hiveLocalDataSource,
+      inspectionLocalDataSource: inspectionLocalDataSource,
       networkInfo: networkInfo,
     );
+
+    // No descendant hives to cascade unless a test says otherwise.
+    when(
+      () => hiveLocalDataSource.getHivesByApiaryId(any()),
+    ).thenAnswer((_) async => []);
+    when(
+      () => hiveLocalDataSource.deleteHivesByApiaryId(any()),
+    ).thenAnswer((_) async {});
   });
 
   group('ApiaryRepositoryImpl - Online operations', () {
@@ -453,11 +469,30 @@ void main() {
 
     test(
       'offline delete of a never-synced apiary cascades to permanently remove its '
-      'offline-only hives too, since none of them could have synced without it',
+      'offline-only hives and their inspections too, since none of them could '
+      'have synced without it',
       () async {
+        final descendantHive = Hive(
+          id: 'local-hive-1',
+          apiaryId: 'local-123',
+          localId: 'local-hive-1',
+          apiaryLocalId: 'local-123',
+          name: 'Descendant Hive',
+          createdAt: DateTime(2026, 1, 1),
+          updatedAt: DateTime(2026, 1, 1),
+          syncStatus: SyncStatus.pendingCreate,
+        );
         when(
           () => localDataSource.getApiaryById('local-123'),
         ).thenAnswer((_) async => sampleOfflineApiary);
+        when(
+          () => hiveLocalDataSource.getHivesByApiaryId('local-123'),
+        ).thenAnswer((_) async => [descendantHive]);
+        when(
+          () => inspectionLocalDataSource.deleteInspectionsByHiveId(
+            'local-hive-1',
+          ),
+        ).thenAnswer((_) async {});
         when(
           () => localDataSource.deleteApiaryPermanently('local-123'),
         ).thenAnswer((_) async {});
@@ -469,25 +504,64 @@ void main() {
 
         expect(result.isRight, isTrue);
         verify(
+          () => inspectionLocalDataSource.deleteInspectionsByHiveId(
+            'local-hive-1',
+          ),
+        ).called(1);
+        verify(
           () => hiveLocalDataSource.deleteHivesByApiaryLocalId('local-123'),
         ).called(1);
       },
     );
 
-    test('offline delete of a synced apiary does NOT cascade-delete its hives '
-        '(they remain independently manageable/syncable)', () async {
-      when(
-        () => localDataSource.getApiaryById('server-1'),
-      ).thenAnswer((_) async => sampleSyncedApiary);
-      when(
-        () => localDataSource.markPendingDelete('server-1'),
-      ).thenAnswer((_) async {});
+    test(
+      'offline delete of a synced apiary immediately cascade-deletes its local '
+      'hives and their inspections too, mirroring the backend cascade ahead of '
+      'the retryable apiary DELETE',
+      () async {
+        final descendantHive = Hive(
+          id: 'server-hive-1',
+          apiaryId: 'server-1',
+          localId: 'server-hive-1',
+          serverId: 'server-hive-1',
+          apiaryServerId: 'server-1',
+          name: 'Descendant Hive',
+          createdAt: DateTime(2026, 1, 1),
+          updatedAt: DateTime(2026, 1, 1),
+          syncStatus: SyncStatus.synced,
+        );
+        when(
+          () => localDataSource.getApiaryById('server-1'),
+        ).thenAnswer((_) async => sampleSyncedApiary);
+        when(
+          () => hiveLocalDataSource.getHivesByApiaryId('server-1'),
+        ).thenAnswer((_) async => [descendantHive]);
+        when(
+          () => inspectionLocalDataSource.deleteInspectionsByHiveId(
+            'server-hive-1',
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => localDataSource.markPendingDelete('server-1'),
+        ).thenAnswer((_) async {});
 
-      final result = await repository.deleteApiary('server-1');
+        final result = await repository.deleteApiary('server-1');
 
-      expect(result.isRight, isTrue);
-      verifyNever(() => hiveLocalDataSource.deleteHivesByApiaryLocalId(any()));
-    });
+        expect(result.isRight, isTrue);
+        verify(
+          () => inspectionLocalDataSource.deleteInspectionsByHiveId(
+            'server-hive-1',
+          ),
+        ).called(1);
+        verify(
+          () => hiveLocalDataSource.deleteHivesByApiaryId('server-1'),
+        ).called(1);
+        // The apiary itself stays retryable — it is not force-removed, only
+        // marked pendingDelete.
+        verify(() => localDataSource.markPendingDelete('server-1')).called(1);
+        verifyNever(() => localDataSource.deleteApiaryPermanently(any()));
+      },
+    );
 
     test(
       'offline delete of synced record marks pendingDelete in SQLite without deleting',

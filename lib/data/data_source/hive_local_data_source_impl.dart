@@ -233,6 +233,27 @@ final class HiveLocalDataSourceImpl implements IHiveLocalDataSource {
     );
   }
 
+  @override
+  Future<List<Hive>> getHivesByApiaryId(String apiaryId) async {
+    final db = await _db;
+    final rows = await db.query(
+      'hives',
+      where: 'apiary_local_id = ? OR apiary_server_id = ?',
+      whereArgs: [apiaryId, apiaryId],
+    );
+    return rows.map(_rowToHive).toList();
+  }
+
+  @override
+  Future<void> deleteHivesByApiaryId(String apiaryId) async {
+    final db = await _db;
+    await db.delete(
+      'hives',
+      where: 'apiary_local_id = ? OR apiary_server_id = ?',
+      whereArgs: [apiaryId, apiaryId],
+    );
+  }
+
   // --- Mapping helpers ---
 
   static Hive _rowToHive(Map<String, dynamic> row) {

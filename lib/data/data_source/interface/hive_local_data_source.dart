@@ -62,4 +62,16 @@ abstract interface class IHiveLocalDataSource {
   /// parent apiary does, none of these hives can have reached the backend
   /// either.
   Future<void> deleteHivesByApiaryLocalId(String apiaryLocalId);
+
+  /// Every hive (regardless of sync status) belonging to [apiaryId] —
+  /// matched against either the local or server apiary id. Used to
+  /// enumerate descendants before a cascade delete of an already-synced
+  /// apiary — see `ApiaryRepositoryImpl.deleteApiary`.
+  Future<List<Hive>> getHivesByApiaryId(String apiaryId);
+
+  /// Permanently removes every hive belonging to [apiaryId] (local or
+  /// server id), regardless of sync status. Mirrors
+  /// [deleteHivesByApiaryLocalId] for an apiary that has already
+  /// synchronized (and so may be tracked by its server id too).
+  Future<void> deleteHivesByApiaryId(String apiaryId);
 }

@@ -21,12 +21,18 @@ final class _ProfileSyncSectionState extends State<ProfileSyncSection> {
     try {
       final apiaryLocalDataSource = di<IApiaryLocalDataSource>();
       final hiveLocalDataSource = di<IHiveLocalDataSource>();
+      final inspectionLocalDataSource = di<IInspectionLocalDataSource>();
       final pendingApiaries = await apiaryLocalDataSource
           .getPendingSyncApiaries();
       final pendingHives = await hiveLocalDataSource.getPendingSyncHives();
+      final pendingInspections = await inspectionLocalDataSource
+          .getPendingSyncInspections();
       if (mounted) {
         setState(() {
-          _pendingCount = pendingApiaries.length + pendingHives.length;
+          _pendingCount =
+              pendingApiaries.length +
+              pendingHives.length +
+              pendingInspections.length;
         });
       }
     } catch (_) {

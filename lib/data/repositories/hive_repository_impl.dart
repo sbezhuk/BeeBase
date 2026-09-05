@@ -3,6 +3,7 @@ import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/core/networking/network_info.dart';
 import 'package:beebase/data/data_source/interface/hive_data_source.dart';
 import 'package:beebase/data/data_source/interface/hive_local_data_source.dart';
+import 'package:beebase/data/data_source/interface/inspection_local_data_source.dart';
 import 'package:beebase/data/models/extensions/hive_extension.dart';
 import 'package:beebase/data/models/hive_request.dart';
 import 'package:beebase/data/models/hive_response.dart';
@@ -28,11 +29,17 @@ final class HiveRepositoryImpl extends Repository
   HiveRepositoryImpl({
     required this.dataSource,
     this.localDataSource,
+    this.inspectionLocalDataSource,
     this.networkInfo,
   });
 
   final IHiveDataSource dataSource;
   final IHiveLocalDataSource? localDataSource;
+
+  /// Used only to cascade-remove a deleted hive's local inspections — see
+  /// [deleteHive]. Never queried for anything else here; Inspection's own
+  /// offline behavior lives entirely in `InspectionRepositoryImpl`.
+  final IInspectionLocalDataSource? inspectionLocalDataSource;
   final INetworkInfo? networkInfo;
 
   Future<bool> get _isOnline async =>
@@ -365,7 +372,15 @@ final class HiveRepositoryImpl extends Repository
           return;
         }
 
+        // Offline mode: mirror the backend's cascade delete locally and
+        // immediately, regardless of whether this hive itself has synced —
+        // see CLAUDE.md task spec §11-17. Only the hive's own pendingDelete
+        // (the retryable half) waits for a successful sync; its inspections
+        // have nothing left to retry once the hive's own DELETE succeeds,
+        // since inspection-service never needs to be told about them
+        // individually (the backend cascades on `DELETE /hives/{id}`).
         if (localDataSource != null) {
+          await inspectionLocalDataSource?.deleteInspectionsByHiveId(id);
           if (isLocalOnly) {
             await localDataSource!.deleteHivePermanently(id);
           } else {

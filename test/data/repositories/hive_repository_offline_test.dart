@@ -1,6 +1,7 @@
 import 'package:beebase/core/networking/network_info.dart';
 import 'package:beebase/data/data_source/interface/hive_data_source.dart';
 import 'package:beebase/data/data_source/interface/hive_local_data_source.dart';
+import 'package:beebase/data/data_source/interface/inspection_local_data_source.dart';
 import 'package:beebase/data/models/entity_image_response.dart';
 import 'package:beebase/data/models/hive_request.dart';
 import 'package:beebase/data/models/hive_response.dart';
@@ -17,11 +18,15 @@ class MockHiveDataSource extends Mock implements IHiveDataSource {}
 
 class MockHiveLocalDataSource extends Mock implements IHiveLocalDataSource {}
 
+class MockInspectionLocalDataSource extends Mock
+    implements IInspectionLocalDataSource {}
+
 class MockNetworkInfo extends Mock implements INetworkInfo {}
 
 void main() {
   late MockHiveDataSource remoteDataSource;
   late MockHiveLocalDataSource localDataSource;
+  late MockInspectionLocalDataSource inspectionLocalDataSource;
   late MockNetworkInfo networkInfo;
   late HiveRepositoryImpl repository;
 
@@ -70,12 +75,18 @@ void main() {
   setUp(() {
     remoteDataSource = MockHiveDataSource();
     localDataSource = MockHiveLocalDataSource();
+    inspectionLocalDataSource = MockInspectionLocalDataSource();
     networkInfo = MockNetworkInfo();
     repository = HiveRepositoryImpl(
       dataSource: remoteDataSource,
       localDataSource: localDataSource,
+      inspectionLocalDataSource: inspectionLocalDataSource,
       networkInfo: networkInfo,
     );
+
+    when(
+      () => inspectionLocalDataSource.deleteInspectionsByHiveId(any()),
+    ).thenAnswer((_) async {});
   });
 
   group('HiveRepositoryImpl - Online operations', () {
@@ -386,6 +397,55 @@ void main() {
         ).called(1);
         verifyNever(() => localDataSource.markPendingDelete(any()));
         verifyNever(() => remoteDataSource.deleteHive(any()));
+      },
+    );
+
+    test('offline delete of a never-synced hive cascades to permanently remove '
+        'its offline-only inspections too, since none of them could have synced '
+        'without it', () async {
+      when(
+        () => localDataSource.getHiveById('local-hive-123'),
+      ).thenAnswer((_) async => sampleOfflineHive);
+      when(
+        () => localDataSource.deleteHivePermanently('local-hive-123'),
+      ).thenAnswer((_) async {});
+
+      final result = await repository.deleteHive('local-hive-123');
+
+      expect(result.isRight, isTrue);
+      verify(
+        () => inspectionLocalDataSource.deleteInspectionsByHiveId(
+          'local-hive-123',
+        ),
+      ).called(1);
+    });
+
+    test(
+      'offline delete of a synced hive immediately cascade-deletes its local '
+      'inspections, mirroring the backend cascade ahead of the retryable hive '
+      'DELETE',
+      () async {
+        when(
+          () => localDataSource.getHiveById('server-hive-1'),
+        ).thenAnswer((_) async => sampleSyncedHive);
+        when(
+          () => localDataSource.markPendingDelete('server-hive-1'),
+        ).thenAnswer((_) async {});
+
+        final result = await repository.deleteHive('server-hive-1');
+
+        expect(result.isRight, isTrue);
+        verify(
+          () => inspectionLocalDataSource.deleteInspectionsByHiveId(
+            'server-hive-1',
+          ),
+        ).called(1);
+        // The hive itself stays retryable — it is not force-removed, only
+        // marked pendingDelete.
+        verify(
+          () => localDataSource.markPendingDelete('server-hive-1'),
+        ).called(1);
+        verifyNever(() => localDataSource.deleteHivePermanently(any()));
       },
     );
 

@@ -4,6 +4,7 @@ import 'package:beebase/core/networking/network_info.dart';
 import 'package:beebase/data/data_source/interface/apiary_data_source.dart';
 import 'package:beebase/data/data_source/interface/apiary_local_data_source.dart';
 import 'package:beebase/data/data_source/interface/hive_local_data_source.dart';
+import 'package:beebase/data/data_source/interface/inspection_local_data_source.dart';
 import 'package:beebase/data/models/apiary_request.dart';
 import 'package:beebase/data/models/extensions/apiary_extension.dart';
 import 'package:beebase/data/models/page_request.dart';
@@ -21,16 +22,21 @@ final class ApiaryRepositoryImpl extends Repository
     required this.dataSource,
     this.localDataSource,
     this.hiveLocalDataSource,
+    this.inspectionLocalDataSource,
     this.networkInfo,
   });
 
   final IApiaryDataSource dataSource;
   final IApiaryLocalDataSource? localDataSource;
 
-  /// Used only to cascade-remove a deleted offline-only apiary's offline-only
-  /// hives — see [deleteApiary]. Never queried for anything else here; Hive's
-  /// own offline behavior lives entirely in `HiveRepositoryImpl`.
+  /// Used only to cascade-remove a deleted apiary's hives — see
+  /// [deleteApiary]. Never queried for anything else here; Hive's own
+  /// offline behavior lives entirely in `HiveRepositoryImpl`.
   final IHiveLocalDataSource? hiveLocalDataSource;
+
+  /// Used only to cascade-remove the inspections belonging to a deleted
+  /// apiary's hives — see [deleteApiary]/[_cascadeDeleteInspectionsUnderHivesOf].
+  final IInspectionLocalDataSource? inspectionLocalDataSource;
   final INetworkInfo? networkInfo;
 
   Future<bool> get _isOnline async =>
@@ -438,13 +444,22 @@ final class ApiaryRepositoryImpl extends Repository
             // remove locally. Its hives (if any) can only reference this
             // apiary by local id — see `Hive.apiaryLocalId` — and a hive
             // never syncs before its parent apiary does, so none of them
-            // can have reached the backend either; remove them too rather
-            // than leaving orphaned local rows behind.
+            // can have reached the backend either; remove them (and their
+            // own inspections) too rather than leaving orphaned local rows
+            // behind.
             final localId = existingLocal.localId ?? id;
+            await _cascadeDeleteInspectionsUnderHivesOf(localId);
             await hiveLocalDataSource?.deleteHivesByApiaryLocalId(localId);
             await localDataSource!.deleteApiaryPermanently(id);
           } else {
-            // Exists on backend: mark pendingDelete until successful sync
+            // Exists on backend: the apiary itself stays `pendingDelete`
+            // (retryable — see CLAUDE.md task spec §15) but its descendants
+            // must disappear locally right away, mirroring the backend's own
+            // cascade delete before it has actually run. Once the retried
+            // `DELETE` succeeds there is nothing left for hive/inspection
+            // sync to do for them, since the backend cascades on its own.
+            await _cascadeDeleteInspectionsUnderHivesOf(id);
+            await hiveLocalDataSource?.deleteHivesByApiaryId(id);
             await localDataSource!.markPendingDelete(id);
           }
         }
@@ -452,5 +467,18 @@ final class ApiaryRepositoryImpl extends Repository
       ignoreStatusCode: 404,
       onIgnoredStatusCode: () {},
     );
+  }
+
+  /// Deletes every local inspection belonging to any hive under [apiaryId]
+  /// (matched against either the hive's local or server id) — the
+  /// grandchild half of the Apiary → Hive → Inspection cascade. Called
+  /// before the hives themselves are removed so their ids are still
+  /// available to look inspections up by.
+  Future<void> _cascadeDeleteInspectionsUnderHivesOf(String apiaryId) async {
+    final hives = await hiveLocalDataSource?.getHivesByApiaryId(apiaryId);
+    if (hives == null || hives.isEmpty) return;
+    for (final hive in hives) {
+      await inspectionLocalDataSource?.deleteInspectionsByHiveId(hive.id);
+    }
   }
 }

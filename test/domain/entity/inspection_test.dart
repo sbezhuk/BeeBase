@@ -1,5 +1,6 @@
 import 'package:beebase/domain/entity/inspection.dart';
 import 'package:beebase/domain/enum/backend/inspection_type.dart';
+import 'package:beebase/domain/enum/sync_status.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -39,6 +40,36 @@ void main() {
 
     test('instances with different fields are not equal', () {
       expect(inspection1 == inspection3, isFalse);
+    });
+  });
+
+  group('existsOnServer', () {
+    test(
+      'is false only for an inspection created offline and never synced',
+      () {
+        expect(
+          inspection1
+              .copyWith(syncStatus: SyncStatus.pendingCreate)
+              .existsOnServer,
+          isFalse,
+        );
+      },
+    );
+
+    test('is true for every status that implies a server counterpart', () {
+      const serverBacked = [
+        SyncStatus.synced,
+        SyncStatus.pendingUpdate,
+        SyncStatus.pendingDelete,
+        SyncStatus.syncing,
+      ];
+      for (final status in serverBacked) {
+        expect(
+          inspection1.copyWith(syncStatus: status).existsOnServer,
+          isTrue,
+          reason: status.name,
+        );
+      }
     });
   });
 }
