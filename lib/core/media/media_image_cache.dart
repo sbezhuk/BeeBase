@@ -22,5 +22,10 @@ abstract interface class IMediaImageCache {
 
   /// Returns the local cached file path for [imageUrl], downloading it if needed.
   Future<String?> getCachedFilePath(String imageUrl);
+
+  /// Empties the entire disk cache in one call, unlike [evict] which drops a
+  /// single [imageUrl] — used when every cached photo must go at once, e.g.
+  /// account deletion.
+  Future<void> clearAll();
 }
 

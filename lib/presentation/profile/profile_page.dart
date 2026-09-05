@@ -6,6 +6,7 @@ import 'package:beebase/data/sync/data_synchronizer.dart';
 import 'package:beebase/domain/entity/user.dart';
 import 'package:beebase/presentation/authentication/cubit/authentication_cubit/authentication_cubit.dart';
 import 'package:beebase/presentation/profile/avatar_image_resolver.dart';
+import 'package:beebase/presentation/profile/cubit/account_delete_cubit/account_delete_cubit.dart';
 import 'package:beebase/presentation/profile/cubit/profile_cubit/profile_cubit.dart';
 import 'package:beebase/presentation/profile/extension/profile_date_x.dart';
 import 'package:beebase/presentation/profile/widget/profile_avatar.dart';
@@ -14,7 +15,9 @@ import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold_action.dart';
 import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar.dart';
 import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar_variant.dart';
+import 'package:beebase/presentation/widgets/app_bottom_sheet/app_bottom_sheet.dart';
 import 'package:beebase/presentation/widgets/confirmation_sheet/confirmation_sheet.dart';
+import 'package:beebase/presentation/widgets/otp_input/otp_input_field.dart';
 import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
@@ -33,6 +36,8 @@ part 'profile_page/profile_info_row.dart';
 part 'profile_page/profile_app_version.dart';
 part 'profile_page/profile_change_password_link.dart';
 part 'profile_page/profile_logout_link.dart';
+part 'profile_page/profile_delete_account_link.dart';
+part 'profile_page/account_delete_otp_sheet.dart';
 
 @RoutePage()
 final class ProfilePage extends StatelessWidget implements AutoRouteWrapper {
@@ -40,8 +45,11 @@ final class ProfilePage extends StatelessWidget implements AutoRouteWrapper {
 
   @override
   Widget wrappedRoute(BuildContext context) {
-    return BlocProvider(
-      create: (_) => di.get<ProfileCubit>()..load(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => di.get<ProfileCubit>()..load()),
+        BlocProvider(create: (_) => di.get<AccountDeleteCubit>()),
+      ],
       child: this,
     );
   }
@@ -89,6 +97,8 @@ final class ProfilePage extends StatelessWidget implements AutoRouteWrapper {
                           const _ProfileChangePasswordLink(),
                           SizedBox(height: context.spacing.md),
                           const _ProfileLogoutLink(),
+                          SizedBox(height: context.spacing.md),
+                          const _ProfileDeleteAccountLink(),
                         ],
                       ),
               ),

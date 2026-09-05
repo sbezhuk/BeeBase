@@ -48,6 +48,7 @@ import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/entity/hive.dart';
 import 'package:beebase/domain/entity/inspection.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
+import 'package:beebase/domain/repositories/account_deleter.dart';
 import 'package:beebase/domain/repositories/apiary_reader.dart';
 import 'package:beebase/domain/repositories/apiary_writer.dart';
 import 'package:beebase/domain/repositories/authentication_repository.dart';
@@ -87,6 +88,7 @@ import 'package:beebase/presentation/inspection/cubit/inspection_list_cubit/insp
 import 'package:beebase/presentation/inspection/inspection_list_refresh_notifier.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/presentation/profile/avatar_image_resolver.dart';
+import 'package:beebase/presentation/profile/cubit/account_delete_cubit/account_delete_cubit.dart';
 import 'package:beebase/presentation/profile/cubit/change_password_cubit/change_password_cubit.dart';
 import 'package:beebase/presentation/profile/cubit/profile_cubit/profile_cubit.dart';
 import 'package:beebase/presentation/profile/cubit/profile_edit_cubit/profile_edit_cubit.dart';
@@ -260,10 +262,11 @@ Future<void> initDi() async {
   di.registerLazySingleton<IMediaReader>(() => di<MediaRepositoryImpl>());
   di.registerLazySingleton<IMediaWriter>(() => di<MediaRepositoryImpl>());
   di.registerLazySingleton<ProfileRepositoryImpl>(
-    () => ProfileRepositoryImpl(dataSource: di(), mediaDataSource: di(), imageCache: di()),
+    () => ProfileRepositoryImpl(dataSource: di(), mediaDataSource: di(), imageCache: di(), apiaryDatabase: di()),
   );
   di.registerLazySingleton<IProfileReader>(() => di<ProfileRepositoryImpl>());
   di.registerLazySingleton<IProfileWriter>(() => di<ProfileRepositoryImpl>());
+  di.registerLazySingleton<IAccountDeleter>(() => di<ProfileRepositoryImpl>());
   di.registerLazySingleton<StatisticsRepositoryImpl>(() => StatisticsRepositoryImpl(dataSource: di()));
   di.registerLazySingleton<IStatisticsReader>(() => di<StatisticsRepositoryImpl>());
   di.registerLazySingleton<AvatarImageResolver>(() => AvatarImageResolver(mediaReader: di()));
@@ -373,5 +376,6 @@ Future<void> initDi() async {
   );
   di.registerFactory<ProfileCubit>(() => ProfileCubit(reader: di(), authenticationCubit: di()));
   di.registerFactory<ProfileEditCubit>(() => ProfileEditCubit(writer: di(), authenticationCubit: di()));
+  di.registerFactory<AccountDeleteCubit>(() => AccountDeleteCubit(deleter: di(), authenticationCubit: di()));
   // #endregion
 }

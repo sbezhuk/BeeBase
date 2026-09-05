@@ -39,28 +39,27 @@ final class _ProfileLanguageSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'profile.page.language'.tr().toUpperCase(),
-          style: context.textStyles.label.copyWith(color: colors.honey.muted),
-        ),
+        Text('profile.page.language'.tr().toUpperCase(), style: context.textStyles.label.copyWith(color: colors.honey.muted)),
         SizedBox(height: context.spacing.sm),
         Material(
           type: MaterialType.transparency,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: () => _showLanguagePicker(context),
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: context.spacing.sm, horizontal: context.spacing.xs),
-              child: Row(
-                children: [
-                  Icon(Icons.language, size: 20, color: colors.brand.primary),
-                  SizedBox(width: context.spacing.sm),
-                  Expanded(child: Text('profile.page.language'.tr(), style: context.textStyles.body)),
-                  Text(_languageNameFor(context.locale), style: context.textStyles.body.copyWith(color: colors.text.secondary)),
-                  SizedBox(width: context.spacing.xs),
-                  Icon(Icons.chevron_right, size: 18, color: colors.text.secondary),
-                ],
-              ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: context.spacing.sm, horizontal: context.spacing.xs),
+            child: Row(
+              children: [
+                Icon(Icons.language, size: 20, color: colors.brand.primary),
+                SizedBox(width: context.spacing.sm),
+                Expanded(child: Text('profile.page.language'.tr(), style: context.textStyles.body)),
+                GestureDetector(
+                  onTap: () => _showLanguagePicker(context),
+                  child: Text(
+                    _languageNameFor(context.locale),
+                    style: context.textStyles.body.copyWith(color: colors.text.secondary),
+                  ),
+                ),
+                SizedBox(width: context.spacing.xs),
+                Icon(Icons.chevron_right, size: 18, color: colors.text.secondary),
+              ],
             ),
           ),
         ),
@@ -69,7 +68,11 @@ final class _ProfileLanguageSection extends StatelessWidget {
   }
 
   void _showLanguagePicker(BuildContext context) {
-    showModalBottomSheet<void>(context: context, backgroundColor: Colors.transparent, builder: (_) => const _LanguagePickerSheet());
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _LanguagePickerSheet(),
+    );
   }
 }
 

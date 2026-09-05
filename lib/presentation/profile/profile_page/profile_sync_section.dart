@@ -22,17 +22,12 @@ final class _ProfileSyncSectionState extends State<ProfileSyncSection> {
       final apiaryLocalDataSource = di<IApiaryLocalDataSource>();
       final hiveLocalDataSource = di<IHiveLocalDataSource>();
       final inspectionLocalDataSource = di<IInspectionLocalDataSource>();
-      final pendingApiaries = await apiaryLocalDataSource
-          .getPendingSyncApiaries();
+      final pendingApiaries = await apiaryLocalDataSource.getPendingSyncApiaries();
       final pendingHives = await hiveLocalDataSource.getPendingSyncHives();
-      final pendingInspections = await inspectionLocalDataSource
-          .getPendingSyncInspections();
+      final pendingInspections = await inspectionLocalDataSource.getPendingSyncInspections();
       if (mounted) {
         setState(() {
-          _pendingCount =
-              pendingApiaries.length +
-              pendingHives.length +
-              pendingInspections.length;
+          _pendingCount = pendingApiaries.length + pendingHives.length + pendingInspections.length;
         });
       }
     } catch (_) {
@@ -55,42 +50,22 @@ final class _ProfileSyncSectionState extends State<ProfileSyncSection> {
 
       await _loadPendingCount();
 
-      if (result.errors.isNotEmpty &&
-          result.syncedCount == 0 &&
-          result.failedCount == 0) {
-        AppSnackBar.show(
-          context,
-          message: 'profile.page.sync_no_internet'.tr(),
-          variant: AppSnackBarVariant.warning,
-        );
+      if (result.errors.isNotEmpty && result.syncedCount == 0 && result.failedCount == 0) {
+        AppSnackBar.show(context, message: 'profile.page.sync_no_internet'.tr(), variant: AppSnackBarVariant.warning);
       } else if (result.syncedCount > 0) {
         AppSnackBar.show(
           context,
-          message: 'profile.page.sync_success'.tr(
-            namedArgs: {'count': result.syncedCount.toString()},
-          ),
+          message: 'profile.page.sync_success'.tr(namedArgs: {'count': result.syncedCount.toString()}),
           variant: AppSnackBarVariant.success,
         );
       } else if (result.failedCount > 0) {
-        AppSnackBar.show(
-          context,
-          message: 'profile.page.sync_failed'.tr(),
-          variant: AppSnackBarVariant.error,
-        );
+        AppSnackBar.show(context, message: 'profile.page.sync_failed'.tr(), variant: AppSnackBarVariant.error);
       } else {
-        AppSnackBar.show(
-          context,
-          message: 'profile.page.sync_all_synced'.tr(),
-          variant: AppSnackBarVariant.neutral,
-        );
+        AppSnackBar.show(context, message: 'profile.page.sync_all_synced'.tr(), variant: AppSnackBarVariant.neutral);
       }
     } catch (_) {
       if (mounted) {
-        AppSnackBar.show(
-          context,
-          message: 'profile.page.sync_failed'.tr(),
-          variant: AppSnackBarVariant.error,
-        );
+        AppSnackBar.show(context, message: 'profile.page.sync_failed'.tr(), variant: AppSnackBarVariant.error);
       }
     } finally {
       if (mounted) {
@@ -107,65 +82,44 @@ final class _ProfileSyncSectionState extends State<ProfileSyncSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'profile.page.sync_section'.tr().toUpperCase(),
-          style: context.textStyles.label.copyWith(color: colors.honey.muted),
-        ),
+        Text('profile.page.sync_section'.tr().toUpperCase(), style: context.textStyles.label.copyWith(color: colors.honey.muted)),
         SizedBox(height: context.spacing.sm),
         Material(
           type: MaterialType.transparency,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: _isSyncing ? null : _sync,
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                vertical: context.spacing.sm,
-                horizontal: context.spacing.xs,
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.sync, size: 20, color: colors.brand.primary),
-                  SizedBox(width: context.spacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: context.spacing.sm, horizontal: context.spacing.xs),
+            child: Row(
+              children: [
+                Icon(Icons.sync, size: 20, color: colors.brand.primary),
+                SizedBox(width: context.spacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('profile.page.sync_data'.tr(), style: context.textStyles.body),
+                      if (_pendingCount != null) ...[
+                        const SizedBox(height: 2),
                         Text(
-                          'profile.page.sync_data'.tr(),
-                          style: context.textStyles.body,
-                        ),
-                        if (_pendingCount != null) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            _pendingCount == 0
-                                ? 'profile.page.sync_all_synced'.tr()
-                                : 'profile.page.sync_pending_count'.tr(
-                                    namedArgs: {'count': '$_pendingCount'},
-                                  ),
-                            style: context.textStyles.label.copyWith(
-                              color: _pendingCount == 0
-                                  ? colors.text.secondary
-                                  : colors.status.warning,
-                            ),
+                          _pendingCount == 0
+                              ? 'profile.page.sync_all_synced'.tr()
+                              : 'profile.page.sync_pending_count'.tr(namedArgs: {'count': '$_pendingCount'}),
+                          style: context.textStyles.label.copyWith(
+                            color: _pendingCount == 0 ? colors.text.secondary : colors.status.warning,
                           ),
-                        ],
+                        ),
                       ],
-                    ),
+                    ],
                   ),
-                  SizedBox(width: context.spacing.sm),
-                  if (_isSyncing)
-                    const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                    )
-                  else
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: context.spacing.sm,
-                        vertical: context.spacing.xs,
-                      ),
+                ),
+                SizedBox(width: context.spacing.sm),
+                if (_isSyncing)
+                  const SizedBox(width: 20, height: 20, child: CircularProgressIndicator.adaptive(strokeWidth: 2))
+                else
+                  GestureDetector(
+                    onTap: _isSyncing ? null : _sync,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: context.spacing.sm, vertical: context.spacing.xs),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
                         color: colors.brand.primary.withValues(alpha: 0.12),
@@ -173,24 +127,17 @@ final class _ProfileSyncSectionState extends State<ProfileSyncSection> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            Icons.refresh,
-                            size: 16,
-                            color: colors.brand.primary,
-                          ),
+                          Icon(Icons.refresh, size: 16, color: colors.brand.primary),
                           const SizedBox(width: 4),
                           Text(
                             'profile.page.sync_now'.tr(),
-                            style: context.textStyles.label.copyWith(
-                              color: colors.brand.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: context.textStyles.label.copyWith(color: colors.brand.primary, fontWeight: FontWeight.w600),
                           ),
                         ],
                       ),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
           ),
         ),

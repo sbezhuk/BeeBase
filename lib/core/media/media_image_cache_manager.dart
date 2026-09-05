@@ -64,6 +64,9 @@ final class MediaImageCacheManager extends CacheManager
   Future<void> evict(String imageUrl) => removeFile(imageUrl);
 
   @override
+  Future<void> clearAll() => emptyCache();
+
+  @override
   Future<String?> getCachedFilePath(String imageUrl) async {
     try {
       final fileInfo = await getFileFromCache(imageUrl);

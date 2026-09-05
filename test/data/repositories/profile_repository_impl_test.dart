@@ -1,6 +1,7 @@
 import 'package:beebase/core/media/media_image_cache.dart';
 import 'package:beebase/core/networking/exceptions/server_exception.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
+import 'package:beebase/core/storage/database/apiary_database.dart';
 import 'package:beebase/data/data_source/interface/media_data_source.dart';
 import 'package:beebase/data/data_source/interface/profile_data_source.dart';
 import 'package:beebase/data/models/media_response.dart';
@@ -56,6 +57,10 @@ void main() {
       dataSource: dataSource,
       mediaDataSource: mediaDataSource,
       imageCache: imageCache,
+      // Never opened here — every test below either doesn't reach
+      // `deleteAccount`'s local-wipe step, or exercises the failure path,
+      // where `dataSource.deleteAccount()` throws before this is touched.
+      apiaryDatabase: ApiaryDatabase(),
     );
     when(
       () => imageCache.seedFromFile(
@@ -161,6 +166,22 @@ void main() {
           filePath: '/path/to/avatar.jpg',
         ),
       ).called(1);
+    });
+  });
+
+  group('deleteAccount', () {
+    test('returns ServerFailure and never touches local storage when the backend call fails', () async {
+      when(() => dataSource.deleteAccount(otp: any(named: 'otp'))).thenThrow(
+        const ServerException(statusCode: 401, code: 'invalid_access_token', message: 'unauthorized'),
+      );
+
+      final result = await repository.deleteAccount(otp: '000000');
+
+      result.fold(
+        (failure) => expect(failure, isA<ServerFailure>()),
+        (_) => fail('expected Left'),
+      );
+      verifyNever(() => imageCache.clearAll());
     });
   });
 }

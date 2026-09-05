@@ -357,7 +357,19 @@
       "sync_in_progress": "Syncing data...",
       "sync_success": "Successfully synchronized {count} items",
       "sync_failed": "Sync failed. Will retry automatically.",
-      "sync_no_internet": "No internet connection to sync"
+      "sync_no_internet": "No internet connection to sync",
+      "delete_account": "Delete account",
+      "delete_account_cancel": "Cancel",
+      "delete_account_confirm_title": "Delete account?",
+      "delete_account_confirm_message": "This will permanently delete your account and all your BeeBase data, including apiaries, hives, inspections, and all associated media. This action cannot be undone.",
+      "delete_account_otp": {
+        "title": "Verify to Delete Account",
+        "message": "Enter the 6-digit code from Google Authenticator to confirm account deletion.",
+        "otp_label": "6-digit code",
+        "validations": {
+          "otp_invalid_format": "Enter the 6-digit code from Google Authenticator"
+        }
+      }
     },
     "edit": {
       "title": "Edit Profile",

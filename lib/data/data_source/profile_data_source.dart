@@ -3,6 +3,7 @@ import 'package:beebase/core/networking/http/dio_client.dart';
 import 'package:beebase/core/networking/interceptors/authentication_interceptor.dart';
 import 'package:beebase/core/networking/interceptors/interceptor_resolver.dart';
 import 'package:beebase/data/data_source/interface/profile_data_source.dart';
+import 'package:beebase/data/models/delete_account_request.dart';
 import 'package:beebase/data/models/profile_response.dart';
 import 'package:beebase/data/models/profile_update_request.dart';
 
@@ -23,4 +24,8 @@ final class ProfileDataSource implements IProfileDataSource {
     final response = await _dioClient.put<Map<String, dynamic>>(ApiEndpoints.profile.self, data: request.toJson());
     return ProfileResponse.fromJson(response.data!);
   }
+
+  @override
+  Future<void> deleteAccount({required String otp}) =>
+      _dioClient.delete<void>(ApiEndpoints.profile.self, data: DeleteAccountRequest(otp: otp).toJson());
 }

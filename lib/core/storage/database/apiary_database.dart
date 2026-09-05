@@ -150,4 +150,16 @@ final class ApiaryDatabase {
       _database = null;
     }
   }
+
+  /// Closes the database and deletes its underlying file, wiping every
+  /// apiary, hive, inspection and local-media row it holds in one go —
+  /// used on account deletion, where none of that offline data (synced or
+  /// still-pending) may survive. The next [database] access transparently
+  /// recreates an empty file via [_onCreate].
+  Future<void> deleteDatabaseFile() async {
+    await close();
+    final dbPath = await getDatabasesPath();
+    final path = p.join(dbPath, _databaseName);
+    await databaseFactory.deleteDatabase(path);
+  }
 }
