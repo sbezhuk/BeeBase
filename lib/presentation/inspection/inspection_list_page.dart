@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/entity/inspection.dart';
+import 'package:beebase/domain/enum/sync_status.dart';
 import 'package:beebase/presentation/component/honeycomb_pattern.dart';
 import 'package:beebase/presentation/inspection/cubit/inspection_list_cubit/inspection_list_cubit.dart';
 import 'package:beebase/presentation/inspection/extension/inspection_date_x.dart';
@@ -33,8 +34,13 @@ part 'inspection_list_page/inspection_list_error_view.dart';
 /// navigation — [InspectionFormRoute] and [InspectionDetailsRoute] are
 /// root-level routes, so AutoRoute's `didPopNext` never reaches this page.
 @RoutePage()
-final class InspectionListPage extends StatefulWidget implements AutoRouteWrapper {
-  const InspectionListPage({required this.hiveId, required this.hiveName, super.key});
+final class InspectionListPage extends StatefulWidget
+    implements AutoRouteWrapper {
+  const InspectionListPage({
+    required this.hiveId,
+    required this.hiveName,
+    super.key,
+  });
 
   final String hiveId;
   final String hiveName;
@@ -42,7 +48,8 @@ final class InspectionListPage extends StatefulWidget implements AutoRouteWrappe
   @override
   Widget wrappedRoute(BuildContext context) {
     return BlocProvider(
-      create: (_) => di.get<InspectionListCubit>(param1: hiveId)..loadInspections(),
+      create: (_) =>
+          di.get<InspectionListCubit>(param1: hiveId)..loadInspections(),
       child: this,
     );
   }
@@ -87,7 +94,9 @@ final class _InspectionListPageState extends State<InspectionListPage> {
   Widget build(BuildContext context) {
     final cubit = context.read<InspectionListCubit>();
     return BlocSelector<InspectionListCubit, InspectionListState, bool>(
-      selector: (state) => state is InspectionListLoading || (state is InspectionListLoaded && state.isRefreshing),
+      selector: (state) =>
+          state is InspectionListLoading ||
+          (state is InspectionListLoaded && state.isRefreshing),
       builder: (context, isLoading) {
         return LoadingOverlay(
           isLoading: isLoading,

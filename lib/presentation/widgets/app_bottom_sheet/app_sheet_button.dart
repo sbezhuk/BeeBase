@@ -1,10 +1,17 @@
-part of 'confirmation_sheet.dart';
+part of 'app_bottom_sheet.dart';
 
-/// A full-width sheet button: solid [color] fill when [filled], otherwise an
-/// outlined variant on [color]. Mirrors [PrimaryButton]'s proportions so the
-/// sheet's actions read as part of the same button language.
-final class _ConfirmationSheetButton extends StatelessWidget {
-  const _ConfirmationSheetButton({required this.label, required this.filled, required this.color, required this.onPressed});
+/// A full-width bottom-sheet action button: solid [color] fill when
+/// [filled], otherwise an outlined variant on [color]. Mirrors
+/// [PrimaryButton]'s proportions so every sheet's actions — confirm/cancel,
+/// date picker Done/Cancel — read as the same button language.
+final class AppSheetButton extends StatelessWidget {
+  const AppSheetButton({
+    required this.label,
+    required this.filled,
+    required this.color,
+    required this.onPressed,
+    super.key,
+  });
 
   final String label;
   final bool filled;
@@ -29,7 +36,12 @@ final class _ConfirmationSheetButton extends StatelessWidget {
               border: filled ? null : Border.all(color: colors.honey.border),
             ),
             child: Center(
-              child: Text(label, style: context.textStyles.button.copyWith(color: filled ? colors.brand.onPrimary : color)),
+              child: Text(
+                label,
+                style: context.textStyles.button.copyWith(
+                  color: filled ? colors.brand.onPrimary : color,
+                ),
+              ),
             ),
           ),
         ),

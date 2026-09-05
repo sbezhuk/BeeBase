@@ -23,20 +23,50 @@ final class _InspectionListTile extends StatelessWidget {
               Container(
                 width: 44,
                 height: 44,
-                decoration: BoxDecoration(color: colors.honey.border, shape: BoxShape.circle),
-                child: Icon(Icons.fact_check_outlined, color: colors.brand.primary),
+                decoration: BoxDecoration(
+                  color: colors.honey.border,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.fact_check_outlined,
+                  color: colors.brand.primary,
+                ),
               ),
               SizedBox(width: context.spacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(inspection.date.toInspectionDisplayDate(), style: context.textStyles.body),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            inspection.date.toInspectionDisplayDate(),
+                            style: context.textStyles.body,
+                          ),
+                        ),
+                        if (inspection.syncStatus != SyncStatus.synced) ...[
+                          SizedBox(width: context.spacing.xs),
+                          Tooltip(
+                            message:
+                                'inspection.sync_status.${inspection.syncStatus.name}'
+                                    .tr(),
+                            child: Icon(
+                              Icons.cloud_upload_outlined,
+                              size: 16,
+                              color: colors.brand.primary,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                     if (hasNotes) ...[
                       SizedBox(height: context.spacing.xs),
                       Text(
                         inspection.notes,
-                        style: context.textStyles.label.copyWith(color: colors.text.secondary),
+                        style: context.textStyles.label.copyWith(
+                          color: colors.text.secondary,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),

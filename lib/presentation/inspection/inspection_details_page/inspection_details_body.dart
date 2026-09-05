@@ -12,12 +12,7 @@ final class _InspectionDetailsBody extends StatelessWidget {
     final hasNotes = inspection.notes.isNotEmpty;
     Widget sectionDivider() => Divider(color: colors.surface.border, height: context.spacing.xl);
     return SliverPadding(
-      padding: EdgeInsets.fromLTRB(
-        context.spacing.md,
-        context.spacing.md,
-        context.spacing.md,
-        context.spacing.lg,
-      ),
+      padding: EdgeInsets.fromLTRB(context.spacing.md, context.spacing.md, context.spacing.md, context.spacing.lg),
       sliver: SliverToBoxAdapter(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -29,21 +24,31 @@ final class _InspectionDetailsBody extends StatelessWidget {
               child: Icon(Icons.fact_check_outlined, size: 36, color: colors.brand.primary),
             ),
             SizedBox(height: context.spacing.md),
-            Text(
-              'inspection.details.section_label'.tr(),
-              style: context.textStyles.label.copyWith(color: colors.honey.muted),
-            ),
+            Text('inspection.details.section_label'.tr(), style: context.textStyles.label.copyWith(color: colors.honey.muted)),
             SizedBox(height: context.spacing.xs),
             Text(inspection.date.toInspectionDisplayDate(), style: context.textStyles.title),
+            if (inspection.syncStatus != SyncStatus.synced) ...[
+              SizedBox(height: context.spacing.xs),
+              Row(
+                children: [
+                  Icon(Icons.cloud_upload_outlined, size: 14, color: colors.honey.muted),
+                  SizedBox(width: context.spacing.xs),
+                  Text(
+                    'inspection.sync_status.${inspection.syncStatus.name}'.tr(),
+                    style: context.textStyles.label.copyWith(color: colors.honey.muted),
+                  ),
+                ],
+              ),
+            ],
             SizedBox(height: context.spacing.sm),
             _InspectionDetailsDetailRow(icon: Icons.category_outlined, text: inspection.type.label),
             SizedBox(height: context.spacing.xs),
             _InspectionDetailsDetailRow(
               icon: Icons.calendar_today_outlined,
-              text: 'inspection.details.added_on'.tr(
-                namedArgs: {'date': inspection.createdAt.toInspectionDisplayDate()},
-              ),
+              text: 'inspection.details.added_on'.tr(namedArgs: {'date': inspection.createdAt.toInspectionDisplayDate()}),
             ),
+            sectionDivider(),
+            const MediaGallerySection(),
             if (hasNotes) ...[
               sectionDivider(),
               _InspectionDetailsInfoSection(

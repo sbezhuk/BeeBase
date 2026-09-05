@@ -291,6 +291,9 @@ mixin MediaGalleryEmitter on Cubit<MediaGalleryState> {
   MediaGalleryItem _itemFromAttachment(MediaAttachment attachment) {
     return MediaGalleryItem(
       localId: attachment.id,
+      // Carry the local file path so CachedMediaImage can render offline photos
+      // (those with no imageUrl yet) even after the gallery reloads from the DB.
+      localFilePath: attachment.localFilePath,
       originalFilename: attachment.originalFilename,
       contentType: attachment.contentType,
       status: MediaGalleryItemStatus.synced,

@@ -7,21 +7,26 @@ mixin DashboardEmitter on Cubit<DashboardState> {
   /// overwriting fresher state with stale data.
   int _generation = 0;
 
-  Future<void> emitLoad(IStatisticsReader statisticsReader) async {
+  Future<void> emitLoad(IStatisticsReader statisticsReader, INetworkInfo networkInfo) async {
+    if (!await networkInfo.isConnected) {
+      emit(const DashboardOffline());
+      return;
+    }
     emit(const DashboardLoading());
     await _fetchAll(statisticsReader, ++_generation);
   }
 
-  Future<void> emitRefresh(IStatisticsReader statisticsReader) async {
+  Future<void> emitRefresh(IStatisticsReader statisticsReader, INetworkInfo networkInfo) async {
+    if (!await networkInfo.isConnected) {
+      emit(const DashboardOffline());
+      return;
+    }
     final current = state;
     if (current is DashboardLoaded) emit(current.copyWith(isRefreshing: true));
     await _fetchAll(statisticsReader, ++_generation);
   }
 
-  Future<void> _fetchAll(
-    IStatisticsReader statisticsReader,
-    int generation,
-  ) async {
+  Future<void> _fetchAll(IStatisticsReader statisticsReader, int generation) async {
     final overviewFuture = statisticsReader.getOverview();
     final apiaryStatsFuture = statisticsReader.getApiaryStats();
     final inspectionStatsFuture = statisticsReader.getInspectionStats();
@@ -83,17 +88,12 @@ mixin DashboardEmitter on Cubit<DashboardState> {
     if (generation != _generation || state is! DashboardLoaded) return;
     emit(
       (state as DashboardLoaded).copyWith(
-        apiaryStats: result.fold(
-          (failure) => SectionError<ApiaryStats>(failure),
-          (value) => SectionData<ApiaryStats>(value),
-        ),
+        apiaryStats: result.fold((failure) => SectionError<ApiaryStats>(failure), (value) => SectionData<ApiaryStats>(value)),
       ),
     );
   }
 
-  Future<void> emitRetryInspectionStats(
-    IStatisticsReader statisticsReader,
-  ) async {
+  Future<void> emitRetryInspectionStats(IStatisticsReader statisticsReader) async {
     final current = state;
     if (current is! DashboardLoaded) return;
     final generation = _generation;
@@ -111,9 +111,7 @@ mixin DashboardEmitter on Cubit<DashboardState> {
     );
   }
 
-  Future<void> emitRetryRecentActivity(
-    IStatisticsReader statisticsReader,
-  ) async {
+  Future<void> emitRetryRecentActivity(IStatisticsReader statisticsReader) async {
     final current = state;
     if (current is! DashboardLoaded) return;
     final generation = _generation;

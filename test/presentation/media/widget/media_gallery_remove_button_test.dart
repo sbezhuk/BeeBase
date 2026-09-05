@@ -1,9 +1,11 @@
+import 'package:beebase/core/networking/network_info.dart';
 import 'package:beebase/domain/entity/media_attachment.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/domain/repositories/media_reader.dart';
 import 'package:beebase/domain/repositories/media_writer.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/presentation/media/widget/media_gallery_section.dart';
+import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/either.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,6 +15,8 @@ import 'package:mocktail/mocktail.dart';
 class MockMediaReader extends Mock implements IMediaReader {}
 
 class MockMediaWriter extends Mock implements IMediaWriter {}
+
+class MockNetworkInfo extends Mock implements INetworkInfo {}
 
 void main() {
   late MockMediaReader reader;
@@ -163,5 +167,28 @@ void main() {
         ),
       );
     });
+
+    testWidgets('tapping remove on server photo while offline shows blocked dialog and does not delete', (tester) async {
+      final mockNetwork = MockNetworkInfo();
+      when(() => mockNetwork.isConnected).thenAnswer((_) async => false);
+      di.registerSingleton<INetworkInfo>(mockNetwork);
+      addTearDown(() => di.unregister<INetworkInfo>());
+
+      await pumpGallery(tester, attachment);
+
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pumpAndSettle();
+
+      expect(find.text('media.gallery.delete_offline_blocked_title'), findsOneWidget);
+      expect(find.text('media.gallery.delete_offline_blocked_message'), findsOneWidget);
+      verifyNever(
+        () => writer.removeMedia(
+          ownerType: any(named: 'ownerType'),
+          ownerId: any(named: 'ownerId'),
+          id: any(named: 'id'),
+        ),
+      );
+    });
   });
 }
+

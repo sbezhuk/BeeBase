@@ -33,10 +33,11 @@ final class _InspectionFormContent extends StatelessWidget {
           controller: notesController,
           hintText: 'inspection.form.notes_hint'.tr(),
           maxLines: 4,
-          validator: (value) => (value == null || value.trim().isEmpty)
-              ? 'inspection.form.validations.notes_required'.tr()
-              : null,
+          validator: (value) =>
+              (value == null || value.trim().isEmpty) ? 'inspection.form.validations.notes_required'.tr() : null,
         ),
+        SizedBox(height: context.spacing.md),
+        const MediaGallerySection(),
         SizedBox(height: context.spacing.xl),
         _InspectionFormSubmitButton(isEditing: isEditing, onPressed: onSubmit),
       ],

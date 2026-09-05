@@ -36,6 +36,11 @@ final class MediaGalleryItem {
 
   final String? errorMessage;
 
+  /// Whether this item represents a photo that originated from the server / online object,
+  /// rather than an un-synced offline pick.
+  bool get isServerMedia =>
+      !localId.startsWith('local-media-') && !localId.startsWith('staged-');
+
   MediaGalleryItem copyWith({
     MediaGalleryItemStatus? status,
     MediaAttachment? attachment,

@@ -10,5 +10,6 @@ extension InspectionResponseX on InspectionResponse {
     notes: notes,
     createdAt: createdAt,
     updatedAt: updatedAt,
+    images: images.map((image) => image.id).toList(),
   );
 }

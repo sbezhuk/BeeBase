@@ -1,4 +1,5 @@
 import 'package:beebase/domain/entity/hive.dart';
+import 'package:beebase/domain/enum/sync_status.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -34,6 +35,31 @@ void main() {
 
     test('instances with different fields are not equal', () {
       expect(hive1 == hive3, isFalse);
+    });
+  });
+
+  group('existsOnServer', () {
+    test('is false only for a hive created offline and never synced', () {
+      expect(
+        hive1.copyWith(syncStatus: SyncStatus.pendingCreate).existsOnServer,
+        isFalse,
+      );
+    });
+
+    test('is true for every status that implies a server counterpart', () {
+      const serverBacked = [
+        SyncStatus.synced,
+        SyncStatus.pendingUpdate,
+        SyncStatus.pendingDelete,
+        SyncStatus.syncing,
+      ];
+      for (final status in serverBacked) {
+        expect(
+          hive1.copyWith(syncStatus: status).existsOnServer,
+          isTrue,
+          reason: status.name,
+        );
+      }
     });
   });
 }

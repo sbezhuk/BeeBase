@@ -1,4 +1,5 @@
 import 'package:beebase/domain/entity/apiary.dart';
+import 'package:beebase/domain/enum/sync_status.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -29,6 +30,19 @@ void main() {
 
     test('instances with different fields are not equal', () {
       expect(apiary1 == apiary3, isFalse);
+    });
+  });
+
+  group('existsOnServer', () {
+    test('is false only for an apiary created offline and never synced', () {
+      expect(apiary1.copyWith(syncStatus: SyncStatus.pendingCreate).existsOnServer, isFalse);
+    });
+
+    test('is true for every status that implies a server counterpart', () {
+      const serverBacked = [SyncStatus.synced, SyncStatus.pendingUpdate, SyncStatus.pendingDelete, SyncStatus.syncing];
+      for (final status in serverBacked) {
+        expect(apiary1.copyWith(syncStatus: status).existsOnServer, isTrue, reason: status.name);
+      }
     });
   });
 }

@@ -5,17 +5,25 @@ import 'package:beebase/core/location/location_service.dart';
 import 'package:beebase/core/media/media_image_cache.dart';
 import 'package:beebase/core/media/media_image_cache_manager.dart';
 import 'package:beebase/core/networking/interceptors/interceptor_resolver.dart';
+import 'package:beebase/core/networking/network_info.dart';
 import 'package:beebase/core/services/session_service.dart';
+import 'package:beebase/core/storage/database/apiary_database.dart';
 import 'package:beebase/core/storage/secure_storage.dart';
 import 'package:beebase/core/storage/token_storage.dart';
 import 'package:beebase/data/data_source/apiary_data_source.dart';
+import 'package:beebase/data/data_source/apiary_local_data_source_impl.dart';
+import 'package:beebase/data/data_source/interface/apiary_local_data_source.dart';
 import 'package:beebase/data/data_source/authentication_data_source.dart';
 import 'package:beebase/data/data_source/hive_data_source.dart';
+import 'package:beebase/data/data_source/hive_local_data_source_impl.dart';
 import 'package:beebase/data/data_source/inspection_data_source.dart';
+import 'package:beebase/data/data_source/inspection_local_data_source_impl.dart';
 import 'package:beebase/data/data_source/interface/apiary_data_source.dart';
 import 'package:beebase/data/data_source/interface/authentication_data_source.dart';
 import 'package:beebase/data/data_source/interface/hive_data_source.dart';
+import 'package:beebase/data/data_source/interface/hive_local_data_source.dart';
 import 'package:beebase/data/data_source/interface/inspection_data_source.dart';
+import 'package:beebase/data/data_source/interface/inspection_local_data_source.dart';
 import 'package:beebase/data/data_source/interface/media_data_source.dart';
 import 'package:beebase/data/data_source/interface/password_change_data_source.dart';
 import 'package:beebase/data/data_source/interface/password_reset_data_source.dart';
@@ -32,6 +40,10 @@ import 'package:beebase/data/repositories/media_repository_impl.dart';
 import 'package:beebase/data/repositories/owner_image_writer.dart';
 import 'package:beebase/data/repositories/profile_repository_impl.dart';
 import 'package:beebase/data/repositories/statistics_repository_impl.dart';
+import 'package:beebase/data/sync/apiary_synchronizer.dart';
+import 'package:beebase/data/sync/data_synchronizer.dart';
+import 'package:beebase/data/sync/hive_synchronizer.dart';
+import 'package:beebase/data/sync/inspection_synchronizer.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/entity/hive.dart';
 import 'package:beebase/domain/entity/inspection.dart';
@@ -92,31 +104,22 @@ final di = GetIt.instance;
 Future<void> initDi() async {
   // #region Core
   di.registerLazySingleton<SecureStorage>(() => const SecureStorage());
-  di.registerLazySingleton<TokenStorage>(
-    () => TokenStorage(secureStorage: di()),
-  );
+  di.registerLazySingleton<TokenStorage>(() => TokenStorage(secureStorage: di()));
+  di.registerLazySingleton<ApiaryDatabase>(() => ApiaryDatabase());
+  di.registerLazySingleton<NetworkInfo>(() => NetworkInfo()..startMonitoring());
+  di.registerLazySingleton<INetworkInfo>(() => di<NetworkInfo>());
   di.registerLazySingleton<SessionService>(() => SessionService());
   di.registerLazySingleton<LocationService>(LocationService.new);
-  di.registerLazySingleton<ApiaryListRefreshNotifier>(
-    ApiaryListRefreshNotifier.new,
-  );
-  di.registerLazySingleton<HiveListRefreshNotifier>(
-    HiveListRefreshNotifier.new,
-  );
-  di.registerLazySingleton<InspectionListRefreshNotifier>(
-    InspectionListRefreshNotifier.new,
-  );
+  di.registerLazySingleton<ApiaryListRefreshNotifier>(ApiaryListRefreshNotifier.new);
+  di.registerLazySingleton<HiveListRefreshNotifier>(HiveListRefreshNotifier.new);
+  di.registerLazySingleton<InspectionListRefreshNotifier>(InspectionListRefreshNotifier.new);
   // #endregion
 
   // #region External
-  di.registerFactory<DioClient>(
-    () => DioClient(baseUrl: AppConfig.apiEndPoint),
-  );
+  di.registerFactory<DioClient>(() => DioClient(baseUrl: AppConfig.apiEndPoint));
 
   final cookieDirectory = await getApplicationSupportDirectory();
-  final cookieJar = PersistCookieJar(
-    storage: FileStorage('${cookieDirectory.path}/.cookies'),
-  );
+  final cookieJar = PersistCookieJar(storage: FileStorage('${cookieDirectory.path}/.cookies'));
   di.registerLazySingleton<CookieJar>(() => cookieJar);
   di.registerLazySingleton<CookieManager>(() => CookieManager(di()));
 
@@ -124,16 +127,12 @@ Future<void> initDi() async {
   // access token per request (media URLs are authenticated) rather than
   // capturing one, so an image loaded after a token refresh still succeeds.
   di
-    ..registerLazySingleton<MediaImageCacheManager>(
-      () => MediaImageCacheManager(accessToken: di<TokenStorage>().accessToken),
-    )
+    ..registerLazySingleton<MediaImageCacheManager>(() => MediaImageCacheManager(accessToken: di<TokenStorage>().accessToken))
     ..registerLazySingleton<IMediaImageCache>(() => di<MediaImageCacheManager>())
     // `CachedMediaImage` resolves the manager by its `flutter_cache_manager`
     // supertype rather than the concrete class, so a widget test can stand
     // in its own without touching the filesystem.
-    ..registerLazySingleton<BaseCacheManager>(
-      () => di<MediaImageCacheManager>(),
-    );
+    ..registerLazySingleton<BaseCacheManager>(() => di<MediaImageCacheManager>());
   // #endregion
 
   // #region Interceptors
@@ -145,61 +144,36 @@ Future<void> initDi() async {
     ),
   );
   di.registerLazySingleton<AuthenticationInterceptor>(
-    () => AuthenticationInterceptor(
-      tokenStorage: di(),
-      tokenRefresher: di(),
-      sessionService: di(),
-    ),
+    () => AuthenticationInterceptor(tokenStorage: di(), tokenRefresher: di(), sessionService: di()),
   );
   di.registerLazySingleton<InterceptorResolver>(
-    () => InterceptorResolver({
-      CookieManager: di<CookieManager>(),
-      AuthenticationInterceptor: di<AuthenticationInterceptor>(),
-    }),
+    () => InterceptorResolver({CookieManager: di<CookieManager>(), AuthenticationInterceptor: di<AuthenticationInterceptor>()}),
   );
   // #endregion
 
   // #region Data Source
-  di.registerLazySingleton<AuthenticationDataSource>(
-    () => AuthenticationDataSource(dioClient: di(), resolver: di()),
-  );
-  di.registerLazySingleton<IAuthenticationDataSource>(
-    () => di<AuthenticationDataSource>(),
-  );
-  di.registerLazySingleton<IPasswordChangeDataSource>(
-    () => di<AuthenticationDataSource>(),
-  );
-  di.registerLazySingleton<IPasswordResetDataSource>(
-    () => di<AuthenticationDataSource>(),
-  );
-  di.registerLazySingleton<ApiaryDataSource>(
-    () => ApiaryDataSource(dioClient: di(), resolver: di()),
-  );
+  di.registerLazySingleton<AuthenticationDataSource>(() => AuthenticationDataSource(dioClient: di(), resolver: di()));
+  di.registerLazySingleton<IAuthenticationDataSource>(() => di<AuthenticationDataSource>());
+  di.registerLazySingleton<IPasswordChangeDataSource>(() => di<AuthenticationDataSource>());
+  di.registerLazySingleton<IPasswordResetDataSource>(() => di<AuthenticationDataSource>());
+  di.registerLazySingleton<ApiaryDataSource>(() => ApiaryDataSource(dioClient: di(), resolver: di()));
   di.registerLazySingleton<IApiaryDataSource>(() => di<ApiaryDataSource>());
-  di.registerLazySingleton<HiveDataSource>(
-    () => HiveDataSource(dioClient: di(), resolver: di()),
-  );
+  di.registerLazySingleton<ApiaryLocalDataSourceImpl>(() => ApiaryLocalDataSourceImpl(database: di()));
+  di.registerLazySingleton<IApiaryLocalDataSource>(() => di<ApiaryLocalDataSourceImpl>());
+  di.registerLazySingleton<HiveDataSource>(() => HiveDataSource(dioClient: di(), resolver: di()));
   di.registerLazySingleton<IHiveDataSource>(() => di<HiveDataSource>());
-  di.registerLazySingleton<InspectionDataSource>(
-    () => InspectionDataSource(dioClient: di(), resolver: di()),
-  );
-  di.registerLazySingleton<IInspectionDataSource>(
-    () => di<InspectionDataSource>(),
-  );
-  di.registerLazySingleton<MediaDataSource>(
-    () => MediaDataSource(dioClient: di(), resolver: di()),
-  );
+  di.registerLazySingleton<HiveLocalDataSourceImpl>(() => HiveLocalDataSourceImpl(database: di()));
+  di.registerLazySingleton<IHiveLocalDataSource>(() => di<HiveLocalDataSourceImpl>());
+  di.registerLazySingleton<InspectionDataSource>(() => InspectionDataSource(dioClient: di(), resolver: di()));
+  di.registerLazySingleton<IInspectionDataSource>(() => di<InspectionDataSource>());
+  di.registerLazySingleton<InspectionLocalDataSourceImpl>(() => InspectionLocalDataSourceImpl(database: di()));
+  di.registerLazySingleton<IInspectionLocalDataSource>(() => di<InspectionLocalDataSourceImpl>());
+  di.registerLazySingleton<MediaDataSource>(() => MediaDataSource(dioClient: di(), resolver: di()));
   di.registerLazySingleton<IMediaDataSource>(() => di<MediaDataSource>());
-  di.registerLazySingleton<ProfileDataSource>(
-    () => ProfileDataSource(dioClient: di(), resolver: di()),
-  );
+  di.registerLazySingleton<ProfileDataSource>(() => ProfileDataSource(dioClient: di(), resolver: di()));
   di.registerLazySingleton<IProfileDataSource>(() => di<ProfileDataSource>());
-  di.registerLazySingleton<StatisticsDataSource>(
-    () => StatisticsDataSource(dioClient: di(), resolver: di()),
-  );
-  di.registerLazySingleton<IStatisticsDataSource>(
-    () => di<StatisticsDataSource>(),
-  );
+  di.registerLazySingleton<StatisticsDataSource>(() => StatisticsDataSource(dioClient: di(), resolver: di()));
+  di.registerLazySingleton<IStatisticsDataSource>(() => di<StatisticsDataSource>());
   // #endregion
 
   // #region Repositories
@@ -211,176 +185,147 @@ Future<void> initDi() async {
       tokenStorage: di(),
     ),
   );
-  di.registerLazySingleton<AuthenticationRepository>(
-    () => di<AuthenticationRepositoryImpl>(),
-  );
-  di.registerLazySingleton<IPasswordChanger>(
-    () => di<AuthenticationRepositoryImpl>(),
-  );
-  di.registerLazySingleton<IPasswordResetFlow>(
-    () => di<AuthenticationRepositoryImpl>(),
-  );
+  di.registerLazySingleton<AuthenticationRepository>(() => di<AuthenticationRepositoryImpl>());
+  di.registerLazySingleton<IPasswordChanger>(() => di<AuthenticationRepositoryImpl>());
+  di.registerLazySingleton<IPasswordResetFlow>(() => di<AuthenticationRepositoryImpl>());
   di.registerLazySingleton<ApiaryRepositoryImpl>(
-    () => ApiaryRepositoryImpl(dataSource: di()),
+    () => ApiaryRepositoryImpl(
+      dataSource: di(),
+      localDataSource: di(),
+      hiveLocalDataSource: di(),
+      inspectionLocalDataSource: di(),
+      networkInfo: di(),
+    ),
   );
   di.registerLazySingleton<IApiaryReader>(() => di<ApiaryRepositoryImpl>());
   di.registerLazySingleton<IApiaryWriter>(() => di<ApiaryRepositoryImpl>());
+  di.registerLazySingleton<ApiarySynchronizer>(
+    () => ApiarySynchronizer(
+      localDataSource: di(),
+      apiaryRemoteDataSource: di(),
+      mediaRemoteDataSource: di(),
+      networkInfo: di(),
+      refreshNotifier: di(),
+    ),
+  );
+  di.registerLazySingleton<IApiarySynchronizer>(() => di<ApiarySynchronizer>());
   di.registerLazySingleton<HiveRepositoryImpl>(
-    () => HiveRepositoryImpl(dataSource: di()),
+    () => HiveRepositoryImpl(dataSource: di(), localDataSource: di(), inspectionLocalDataSource: di(), networkInfo: di()),
   );
   di.registerLazySingleton<IHiveReader>(() => di<HiveRepositoryImpl>());
   di.registerLazySingleton<IHiveWriter>(() => di<HiveRepositoryImpl>());
-  di.registerLazySingleton<IOwnerImageWriter>(
-    () => OwnerImageWriter(apiaryWriter: di(), hiveWriter: di()),
-  );
-  di.registerLazySingleton<InspectionRepositoryImpl>(
-    () => InspectionRepositoryImpl(dataSource: di()),
-  );
-  di.registerLazySingleton<IInspectionReader>(
-    () => di<InspectionRepositoryImpl>(),
-  );
-  di.registerLazySingleton<IInspectionWriter>(
-    () => di<InspectionRepositoryImpl>(),
-  );
-  di.registerLazySingleton<MediaRepositoryImpl>(
-    () => MediaRepositoryImpl(
-      dataSource: di(),
-      imageCache: di(),
-      ownerImageWriter: di(),
+  di.registerLazySingleton<HiveSynchronizer>(
+    () => HiveSynchronizer(
+      localDataSource: di(),
+      apiaryLocalDataSource: di(),
+      hiveRemoteDataSource: di(),
+      mediaRemoteDataSource: di(),
+      networkInfo: di(),
+      refreshNotifier: di(),
     ),
+  );
+  di.registerLazySingleton<IHiveSynchronizer>(() => di<HiveSynchronizer>());
+  di.registerLazySingleton<InspectionRepositoryImpl>(
+    () => InspectionRepositoryImpl(dataSource: di(), localDataSource: di(), networkInfo: di()),
+  );
+  di.registerLazySingleton<IInspectionReader>(() => di<InspectionRepositoryImpl>());
+  di.registerLazySingleton<IInspectionWriter>(() => di<InspectionRepositoryImpl>());
+  di.registerLazySingleton<IOwnerImageWriter>(
+    () => OwnerImageWriter(apiaryWriter: di(), hiveWriter: di(), inspectionWriter: di()),
+  );
+  di.registerLazySingleton<InspectionSynchronizer>(
+    () => InspectionSynchronizer(
+      localDataSource: di(),
+      hiveLocalDataSource: di(),
+      apiaryLocalDataSource: di(),
+      inspectionRemoteDataSource: di(),
+      mediaRemoteDataSource: di(),
+      networkInfo: di(),
+      refreshNotifier: di(),
+    ),
+  );
+  di.registerLazySingleton<IInspectionSynchronizer>(() => di<InspectionSynchronizer>());
+  di.registerLazySingleton<DataSynchronizer>(
+    () => DataSynchronizer(
+      apiarySynchronizer: di<IApiarySynchronizer>(),
+      hiveSynchronizer: di<IHiveSynchronizer>(),
+      inspectionSynchronizer: di<IInspectionSynchronizer>(),
+    ),
+  );
+  di.registerLazySingleton<IDataSynchronizer>(() => di<DataSynchronizer>());
+  di.registerLazySingleton<MediaRepositoryImpl>(
+    () =>
+        MediaRepositoryImpl(dataSource: di(), imageCache: di(), ownerImageWriter: di(), localDataSource: di(), networkInfo: di()),
   );
   di.registerLazySingleton<IMediaReader>(() => di<MediaRepositoryImpl>());
   di.registerLazySingleton<IMediaWriter>(() => di<MediaRepositoryImpl>());
   di.registerLazySingleton<ProfileRepositoryImpl>(
-    () => ProfileRepositoryImpl(
-      dataSource: di(),
-      mediaDataSource: di(),
-      imageCache: di(),
-    ),
+    () => ProfileRepositoryImpl(dataSource: di(), mediaDataSource: di(), imageCache: di()),
   );
   di.registerLazySingleton<IProfileReader>(() => di<ProfileRepositoryImpl>());
   di.registerLazySingleton<IProfileWriter>(() => di<ProfileRepositoryImpl>());
-  di.registerLazySingleton<StatisticsRepositoryImpl>(
-    () => StatisticsRepositoryImpl(dataSource: di()),
-  );
-  di.registerLazySingleton<IStatisticsReader>(
-    () => di<StatisticsRepositoryImpl>(),
-  );
-  di.registerLazySingleton<AvatarImageResolver>(
-    () => AvatarImageResolver(mediaReader: di()),
-  );
+  di.registerLazySingleton<StatisticsRepositoryImpl>(() => StatisticsRepositoryImpl(dataSource: di()));
+  di.registerLazySingleton<IStatisticsReader>(() => di<StatisticsRepositoryImpl>());
+  di.registerLazySingleton<AvatarImageResolver>(() => AvatarImageResolver(mediaReader: di()));
   // #endregion
 
   // #region Router
-  di.registerLazySingleton<AuthenticationGuard>(
-    () => AuthenticationGuard(tokenStorage: di()),
-  );
-  di.registerLazySingleton<AppRouter>(
-    () => AppRouter(authenticationGuard: di()),
-  );
+  di.registerLazySingleton<AuthenticationGuard>(() => AuthenticationGuard(tokenStorage: di()));
+  di.registerLazySingleton<AppRouter>(() => AppRouter(authenticationGuard: di()));
   // #endregion
 
   // #region Blocs
-  di.registerLazySingleton<AuthenticationCubit>(
-    () => AuthenticationCubit(repository: di(), sessionService: di()),
-  );
+  di.registerLazySingleton<AuthenticationCubit>(() => AuthenticationCubit(repository: di(), sessionService: di()));
   di.registerFactory<LoginCubit>(() => LoginCubit(repository: di()));
   di.registerFactory<RegisterCubit>(() => RegisterCubit(repository: di()));
-  di.registerFactory<TotpSetupCubit>(
-    () => TotpSetupCubit(repository: di(), authenticationCubit: di()),
-  );
-  di.registerFactory<LoginOtpCubit>(
-    () => LoginOtpCubit(repository: di(), authenticationCubit: di()),
-  );
-  di.registerFactory<ChangePasswordCubit>(
-    () => ChangePasswordCubit(repository: di(), authenticationCubit: di()),
-  );
-  di.registerFactory<ForgotPasswordEmailCubit>(
-    () => ForgotPasswordEmailCubit(repository: di()),
-  );
-  di.registerFactory<ForgotPasswordOtpCubit>(
-    () => ForgotPasswordOtpCubit(repository: di()),
-  );
-  di.registerFactory<ResetPasswordCubit>(
-    () => ResetPasswordCubit(repository: di()),
-  );
+  di.registerFactory<TotpSetupCubit>(() => TotpSetupCubit(repository: di(), authenticationCubit: di()));
+  di.registerFactory<LoginOtpCubit>(() => LoginOtpCubit(repository: di(), authenticationCubit: di()));
+  di.registerFactory<ChangePasswordCubit>(() => ChangePasswordCubit(repository: di(), authenticationCubit: di()));
+  di.registerFactory<ForgotPasswordEmailCubit>(() => ForgotPasswordEmailCubit(repository: di()));
+  di.registerFactory<ForgotPasswordOtpCubit>(() => ForgotPasswordOtpCubit(repository: di()));
+  di.registerFactory<ResetPasswordCubit>(() => ResetPasswordCubit(repository: di()));
   di.registerFactory<DashboardCubit>(
     () => DashboardCubit(
       statisticsReader: di(),
       apiaryReader: di(),
       hiveReader: di(),
       inspectionReader: di(),
+      networkInfo: di(),
       apiaryRefreshNotifier: di(),
       hiveRefreshNotifier: di(),
       inspectionRefreshNotifier: di(),
     ),
   );
   di.registerFactory<ApiaryListCubit>(
-    () => ApiaryListCubit(
-      reader: di(),
-      hiveReader: di(),
-      refreshNotifier: di(),
-      hiveRefreshNotifier: di(),
-    ),
+    () => ApiaryListCubit(reader: di(), hiveReader: di(), refreshNotifier: di(), hiveRefreshNotifier: di()),
   );
   di.registerFactoryParam<ApiaryFormCubit, Apiary?, void>(
-    (initial, _) => ApiaryFormCubit(
-      writer: di(),
-      refreshNotifier: di(),
-      locationService: di(),
-      initial: initial,
-    ),
+    (initial, _) => ApiaryFormCubit(writer: di(), refreshNotifier: di(), locationService: di(), initial: initial),
   );
   di.registerFactoryParam<ApiaryDeleteCubit, Apiary, void>(
-    (apiary, _) =>
-        ApiaryDeleteCubit(writer: di(), apiary: apiary, refreshNotifier: di()),
+    (apiary, _) => ApiaryDeleteCubit(writer: di(), apiary: apiary, refreshNotifier: di()),
   );
   di.registerFactoryParam<ApiaryDetailsCubit, Apiary, void>(
-    (apiary, _) => ApiaryDetailsCubit(
-      apiary: apiary,
-      reader: di(),
-      hiveReader: di(),
-      refreshNotifier: di(),
-      hiveRefreshNotifier: di(),
-    ),
+    (apiary, _) =>
+        ApiaryDetailsCubit(apiary: apiary, reader: di(), hiveReader: di(), refreshNotifier: di(), hiveRefreshNotifier: di()),
   );
   di.registerFactoryParam<HiveListCubit, String, void>(
-    (apiaryId, _) =>
-        HiveListCubit(reader: di(), apiaryId: apiaryId, refreshNotifier: di()),
+    (apiaryId, _) => HiveListCubit(reader: di(), apiaryId: apiaryId, refreshNotifier: di()),
   );
   di.registerFactoryParam<HiveFormCubit, String, Hive?>(
-    (apiaryId, initial) => HiveFormCubit(
-      writer: di(),
-      apiaryId: apiaryId,
-      refreshNotifier: di(),
-      initial: initial,
-    ),
+    (apiaryId, initial) => HiveFormCubit(writer: di(), apiaryId: apiaryId, refreshNotifier: di(), initial: initial),
   );
   di.registerFactoryParam<HiveDeleteCubit, Hive, void>(
-    (hive, _) =>
-        HiveDeleteCubit(writer: di(), hive: hive, refreshNotifier: di()),
+    (hive, _) => HiveDeleteCubit(writer: di(), hive: hive, refreshNotifier: di()),
   );
   di.registerFactoryParam<InspectionListCubit, String, void>(
-    (hiveId, _) => InspectionListCubit(
-      reader: di(),
-      hiveId: hiveId,
-      refreshNotifier: di(),
-    ),
+    (hiveId, _) => InspectionListCubit(reader: di(), hiveId: hiveId, refreshNotifier: di()),
   );
   di.registerFactoryParam<InspectionFormCubit, String, Inspection?>(
-    (hiveId, initial) => InspectionFormCubit(
-      writer: di(),
-      hiveId: hiveId,
-      refreshNotifier: di(),
-      initial: initial,
-    ),
+    (hiveId, initial) => InspectionFormCubit(writer: di(), hiveId: hiveId, refreshNotifier: di(), initial: initial),
   );
   di.registerFactoryParam<InspectionDeleteCubit, Inspection, void>(
-    (inspection, _) => InspectionDeleteCubit(
-      writer: di(),
-      inspection: inspection,
-      refreshNotifier: di(),
-    ),
+    (inspection, _) => InspectionDeleteCubit(writer: di(), inspection: inspection, refreshNotifier: di()),
   );
   di.registerFactoryParam<MediaGalleryCubit, MediaOwnerType, String?>(
     (ownerType, ownerId) => MediaGalleryCubit(
@@ -391,34 +336,42 @@ Future<void> initDi() async {
       notifyOwnerListChanged: switch (ownerType) {
         MediaOwnerType.apiary => di<ApiaryListRefreshNotifier>().notify,
         MediaOwnerType.hive => di<HiveListRefreshNotifier>().notify,
+        MediaOwnerType.inspection => di<InspectionListRefreshNotifier>().notify,
       },
       ownerListChanges: switch (ownerType) {
         MediaOwnerType.apiary => di<ApiaryListRefreshNotifier>().onChanged,
         MediaOwnerType.hive => di<HiveListRefreshNotifier>().onChanged,
+        MediaOwnerType.inspection => di<InspectionListRefreshNotifier>().onChanged,
       },
-      // Apiary/hive-service is the source of truth for "which media ids
-      // belong to me" (see `ApiaryResponse.images`/`HiveResponse.images`) —
-      // a gallery reload sources its `ids` from here instead of asking
-      // media-service "what's attached to owner X" the old owner-scoped way.
+      // Apiary/hive/inspection-service is the source of truth for "which
+      // media ids belong to me" (see `ApiaryResponse.images`/
+      // `HiveResponse.images`/`InspectionResponse.images`) — a gallery
+      // reload sources its `ids` from here instead of asking media-service
+      // "what's attached to owner X" the old owner-scoped way.
       resolveImages: switch (ownerType) {
-        MediaOwnerType.apiary =>
-          (id) async => (await di<IApiaryReader>().getApiary(id)).fold(
-            (_) => const <String>[],
-            (apiary) => apiary.images,
-          ),
-        MediaOwnerType.hive =>
-          (id) async => (await di<IHiveReader>().getHive(id)).fold(
-            (_) => const <String>[],
-            (hive) => hive.images,
-          ),
+        MediaOwnerType.apiary => (id) async => (await di<IApiaryReader>().getApiary(
+          id,
+        )).fold((_) => const <String>[], (apiary) => apiary.images),
+        MediaOwnerType.hive => (id) async => (await di<IHiveReader>().getHive(
+          id,
+        )).fold((_) => const <String>[], (hive) => hive.images),
+        // Unlike Apiary/Hive's single-id readers, `IInspectionReader.
+        // getInspection` also requires a hiveId — resolved here from the
+        // cached local record (already populated by the initial `load()`
+        // this same id was fetched through) rather than adding a
+        // hiveId-less overload just for this call site.
+        MediaOwnerType.inspection => (id) async {
+          final local = await di<IInspectionLocalDataSource>().getInspectionById(id);
+          final hiveId = local?.hiveServerId ?? local?.hiveLocalId ?? local?.hiveId ?? '';
+          return (await di<IInspectionReader>().getInspection(
+            hiveId: hiveId,
+            id: id,
+          )).fold((_) => const <String>[], (inspection) => inspection.images);
+        },
       },
     ),
   );
-  di.registerFactory<ProfileCubit>(
-    () => ProfileCubit(reader: di(), authenticationCubit: di()),
-  );
-  di.registerFactory<ProfileEditCubit>(
-    () => ProfileEditCubit(writer: di(), authenticationCubit: di()),
-  );
+  di.registerFactory<ProfileCubit>(() => ProfileCubit(reader: di(), authenticationCubit: di()));
+  di.registerFactory<ProfileEditCubit>(() => ProfileEditCubit(writer: di(), authenticationCubit: di()));
   // #endregion
 }

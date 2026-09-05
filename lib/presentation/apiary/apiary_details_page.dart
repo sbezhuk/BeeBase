@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
+import 'package:beebase/core/networking/network_info.dart';
 import 'package:beebase/domain/entity/apiary.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
+import 'package:beebase/domain/enum/sync_status.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_delete_cubit/apiary_delete_cubit.dart';
 import 'package:beebase/presentation/apiary/cubit/apiary_details_cubit/apiary_details_cubit.dart';
 import 'package:beebase/presentation/apiary/extension/apiary_date_x.dart';
@@ -29,7 +33,8 @@ part 'apiary_details_page/apiary_details_hives_link.dart';
 part 'apiary_details_page/apiary_details_info_section.dart';
 
 @RoutePage()
-final class ApiaryDetailsPage extends StatefulWidget implements AutoRouteWrapper {
+final class ApiaryDetailsPage extends StatefulWidget
+    implements AutoRouteWrapper {
   const ApiaryDetailsPage({required this.apiary, super.key});
 
   final Apiary apiary;
@@ -39,9 +44,15 @@ final class ApiaryDetailsPage extends StatefulWidget implements AutoRouteWrapper
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => di.get<ApiaryDeleteCubit>(param1: apiary)),
-        BlocProvider(create: (_) => di.get<ApiaryDetailsCubit>(param1: apiary)..loadHiveCount()),
         BlocProvider(
-          create: (_) => di.get<MediaGalleryCubit>(param1: MediaOwnerType.apiary, param2: apiary.id)..load(),
+          create: (_) =>
+              di.get<ApiaryDetailsCubit>(param1: apiary)..loadHiveCount(),
+        ),
+        BlocProvider(
+          create: (_) => di.get<MediaGalleryCubit>(
+            param1: MediaOwnerType.apiary,
+            param2: apiary.id,
+          )..load(),
         ),
       ],
       child: this,
@@ -74,7 +85,11 @@ final class _ApiaryDetailsPageState extends State<ApiaryDetailsPage> {
               listener: _handleStateChange,
               builder: (context, state) {
                 _isDeleting = state is ApiaryDeleteLoading;
-                return _ApiaryDetailsBody(apiary: apiary, isDeleting: _isDeleting, hiveCount: detailsState.hiveCount);
+                return _ApiaryDetailsBody(
+                  apiary: apiary,
+                  isDeleting: _isDeleting,
+                  hiveCount: detailsState.hiveCount,
+                );
               },
             ),
           ],
@@ -84,16 +99,45 @@ final class _ApiaryDetailsPageState extends State<ApiaryDetailsPage> {
   }
 
   Future<void> _edit(BuildContext context, Apiary apiary) async {
+    // If the apiary has unsynchronized local changes, block online editing to
+    // prevent accidentally overwriting the pending local data. Offline users
+    // can always edit — the guard only fires when connectivity is available.
+    if (apiary.syncStatus.isPending) {
+      final networkInfo = di.get<INetworkInfo>();
+      final isOnline = await networkInfo.isConnected;
+      if (isOnline && context.mounted) {
+        _showSyncBlockedDialog(context);
+        return;
+      }
+    }
+    if (!context.mounted) return;
     final detailsCubit = context.read<ApiaryDetailsCubit>();
-    final updated = await context.router.push<Apiary>(ApiaryFormRoute(apiary: apiary));
+    final updated = await context.router.push<Apiary>(
+      ApiaryFormRoute(apiary: apiary),
+    );
     if (updated != null) detailsCubit.setApiary(updated);
+  }
+
+  void _showSyncBlockedDialog(BuildContext context) {
+    showConfirmationSheet(
+      context: context,
+      title: 'apiary.sync_blocked_title'.tr(),
+      message: 'apiary.sync_blocked_message'.tr(),
+      confirmLabel: 'apiary.sync_blocked_action'.tr(),
+      icon: Icons.cloud_off_outlined,
+      isDestructive: false,
+    );
   }
 
   void _handleStateChange(BuildContext context, ApiaryDeleteState state) {
     if (state is ApiaryDeleteSuccess) {
       context.router.maybePop(true);
     } else if (state is ApiaryDeleteError) {
-      AppSnackBar.show(context, message: state.failure.message.resolve(), variant: AppSnackBarVariant.error);
+      AppSnackBar.show(
+        context,
+        message: state.failure.message.resolve(),
+        variant: AppSnackBarVariant.error,
+      );
     }
   }
 }

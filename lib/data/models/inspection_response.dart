@@ -1,3 +1,4 @@
+import 'package:beebase/data/models/entity_image_response.dart';
 import 'package:beebase/domain/enum/backend/inspection_type.dart';
 import 'package:json_annotation/json_annotation.dart';
 
@@ -13,10 +14,10 @@ final class InspectionResponse {
     required this.notes,
     required this.createdAt,
     required this.updatedAt,
+    this.images = const [],
   });
 
-  factory InspectionResponse.fromJson(Map<String, dynamic> json) =>
-      _$InspectionResponseFromJson(json);
+  factory InspectionResponse.fromJson(Map<String, dynamic> json) => _$InspectionResponseFromJson(json);
 
   final String id;
 
@@ -28,6 +29,12 @@ final class InspectionResponse {
 
   final InspectionType type;
   final String notes;
+
+  /// Media attached to this inspection — inspection-service's own source of
+  /// truth, returned on every read/write response.
+  @EntityImageListConverter()
+  @JsonKey(defaultValue: <EntityImageResponse>[])
+  final List<EntityImageResponse> images;
 
   @JsonKey(name: 'created_at')
   final DateTime createdAt;

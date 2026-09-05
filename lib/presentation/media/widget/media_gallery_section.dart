@@ -1,7 +1,9 @@
+import 'package:beebase/core/networking/network_info.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_item.dart';
 import 'package:beebase/presentation/media/widget/media_thumbnail.dart';
 import 'package:beebase/presentation/widgets/confirmation_sheet/confirmation_sheet.dart';
+import 'package:beebase/utils/di.dart';
 import 'package:beebase/utils/extensions/theme_colors.dart';
 import 'package:beebase/utils/extensions/theme_spacing.dart';
 import 'package:beebase/utils/extensions/theme_text_styles.dart';
@@ -27,24 +29,38 @@ final class MediaGallerySection extends StatelessWidget {
     final spacing = context.spacing;
     return BlocBuilder<MediaGalleryCubit, MediaGalleryState>(
       builder: (context, state) {
-        final items = state is MediaGalleryLoaded ? state.items : const <MediaGalleryItem>[];
+        final items = state is MediaGalleryLoaded
+            ? state.items
+            : const <MediaGalleryItem>[];
         final isLoading = state is MediaGalleryLoading;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('media.gallery.title'.tr(), style: context.textStyles.label.copyWith(color: context.colors.honey.muted)),
+            Text(
+              'media.gallery.title'.tr(),
+              style: context.textStyles.label.copyWith(
+                color: context.colors.honey.muted,
+              ),
+            ),
             SizedBox(height: spacing.xs),
             SizedBox(
               height: _tileSize,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: items.length + 1,
-                separatorBuilder: (context, index) => SizedBox(width: spacing.sm),
+                separatorBuilder: (context, index) =>
+                    SizedBox(width: spacing.sm),
                 itemBuilder: (context, index) {
                   if (index == items.length) {
-                    return _MediaGalleryAddTile(size: _tileSize, isLoading: isLoading);
+                    return _MediaGalleryAddTile(
+                      size: _tileSize,
+                      isLoading: isLoading,
+                    );
                   }
-                  return _MediaGalleryItemTile(item: items[index], size: _tileSize);
+                  return _MediaGalleryItemTile(
+                    item: items[index],
+                    size: _tileSize,
+                  );
                 },
               ),
             ),

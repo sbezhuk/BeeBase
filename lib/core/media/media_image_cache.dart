@@ -19,4 +19,8 @@ abstract interface class IMediaImageCache {
   /// Drops [imageUrl]'s cached copy — called when its photo is deleted, so a
   /// later id/URL reuse can never render the old bytes.
   Future<void> evict(String imageUrl);
+
+  /// Returns the local cached file path for [imageUrl], downloading it if needed.
+  Future<String?> getCachedFilePath(String imageUrl);
 }
+

@@ -147,10 +147,21 @@
       "yesterday": "Yesterday",
       "empty_title": "No recent activity",
       "empty_subtitle": "Inspections you record will show up here."
+    },
+    "offline": {
+      "title": "You're offline",
+      "message": "The Dashboard requires an internet connection. Please reconnect and try again."
     }
   },
   "apiary": {
     "photo_placeholder": "Photo coming soon",
+    "sync_status": {
+      "synced": "Synced",
+      "pendingCreate": "Not synced (pending upload)",
+      "pendingUpdate": "Not synced (pending update)",
+      "pendingDelete": "Pending deletion",
+      "syncing": "Syncing..."
+    },
     "list": {
       "title": "Apiaries",
       "add_apiary": "Add Apiary",
@@ -171,6 +182,7 @@
       "added_on": "Added {date}",
       "delete_confirm_title": "Delete apiary?",
       "delete_confirm_message": "This will permanently remove this apiary. This action cannot be undone.",
+      "delete_offline_blocked": "Deleting this apiary is only available in online mode.",
       "manage_hives": "Manage Hives",
       "hives_count": "{count} hives",
       "no_hives": "No hives"
@@ -200,9 +212,19 @@
       "validations": {
         "name_required": "Apiary name is required"
       }
-    }
+    },
+    "sync_blocked_title": "Unsynchronized Changes",
+    "sync_blocked_message": "This apiary has local changes that haven't been synced to the server yet. Please sync your data from the Profile tab before editing.",
+    "sync_blocked_action": "OK"
   },
   "hive": {
+    "sync_status": {
+      "synced": "Synced",
+      "pendingCreate": "Not synced (pending upload)",
+      "pendingUpdate": "Not synced (pending update)",
+      "pendingDelete": "Pending deletion",
+      "syncing": "Syncing..."
+    },
     "list": {
       "add_hive": "Add Hive",
       "empty_title": "No hives yet",
@@ -218,6 +240,7 @@
       "added_on": "Added {date}",
       "delete_confirm_title": "Delete hive?",
       "delete_confirm_message": "This will permanently remove this hive. This action cannot be undone.",
+      "delete_offline_blocked": "Deleting this hive is only available in online mode.",
       "manage_inspections": "Manage Inspections"
     },
     "form": {
@@ -233,9 +256,19 @@
       "validations": {
         "name_required": "Hive name is required"
       }
-    }
+    },
+    "sync_blocked_title": "Unsynchronized Changes",
+    "sync_blocked_message": "This hive has local changes that haven't been synced to the server yet. Please sync your data from the Profile tab before editing.",
+    "sync_blocked_action": "OK"
   },
   "inspection": {
+    "sync_status": {
+      "synced": "Synced",
+      "pendingCreate": "Not synced (pending upload)",
+      "pendingUpdate": "Not synced (pending update)",
+      "pendingDelete": "Pending deletion",
+      "syncing": "Syncing..."
+    },
     "list": {
       "add_inspection": "Add Inspection",
       "empty_title": "No inspections yet",
@@ -250,7 +283,8 @@
       "cancel": "Cancel",
       "added_on": "Added {date}",
       "delete_confirm_title": "Delete inspection?",
-      "delete_confirm_message": "This will permanently remove this inspection. This action cannot be undone."
+      "delete_confirm_message": "This will permanently remove this inspection. This action cannot be undone.",
+      "delete_offline_blocked": "Deleting this inspection is only available in online mode."
     },
     "form": {
       "create_title": "New Inspection",
@@ -272,7 +306,10 @@
       "health": "Health",
       "feeding": "Feeding",
       "seasonal": "Seasonal"
-    }
+    },
+    "sync_blocked_title": "Unsynchronized Changes",
+    "sync_blocked_message": "This inspection has local changes that haven't been synced to the server yet. Please sync your data from the Profile tab before editing.",
+    "sync_blocked_action": "OK"
   },
   "media": {
     "gallery": {
@@ -286,8 +323,12 @@
       "delete": "Delete",
       "cancel": "Cancel",
       "uploading": "Uploading…",
-      "upload_failed_retry": "Upload failed — tap to retry"
+      "upload_failed_retry": "Upload failed — tap to retry",
+      "delete_offline_blocked_title": "Cannot Delete Offline",
+      "delete_offline_blocked_message": "Photos from online objects cannot be deleted while offline. Please connect to the internet to delete this photo.",
+      "delete_offline_blocked_action": "OK"
     },
+
     "errors": {
       "update_not_supported": "Media cannot be updated."
     }
@@ -307,7 +348,16 @@
       "logout_confirm_message": "You'll need to sign in again to access your apiaries and hives.",
       "language": "Language",
       "language_sheet_title": "Choose language",
-      "change_password": "Change password"
+      "change_password": "Change password",
+      "sync_section": "Synchronization",
+      "sync_data": "Sync data",
+      "sync_now": "Sync now",
+      "sync_all_synced": "All data is up to date",
+      "sync_pending_count": "{count} pending changes",
+      "sync_in_progress": "Syncing data...",
+      "sync_success": "Successfully synchronized {count} items",
+      "sync_failed": "Sync failed. Will retry automatically.",
+      "sync_no_internet": "No internet connection to sync"
     },
     "edit": {
       "title": "Edit Profile",
@@ -351,7 +401,10 @@
   "core": {
     "common": {
       "back": "Back",
-      "retry": "Retry"
+      "retry": "Retry",
+      "cancel": "Cancel",
+      "done": "Done",
+      "select_date": "Select date"
     },
     "errors": {
       "request_cancelled": "The request was cancelled. Please try again.",
@@ -361,6 +414,10 @@
     },
     "snackbar": {
       "dismiss": "Dismiss"
+    },
+    "connectivity": {
+      "offline": "You're offline",
+      "online": "You're back online"
     }
   },
   "server": {

@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/core/networking/failures/failure.dart';
 import 'package:beebase/domain/entity/hive.dart';
+import 'package:beebase/domain/enum/sync_status.dart';
 import 'package:beebase/presentation/component/honeycomb_pattern.dart';
 import 'package:beebase/presentation/hive/cubit/hive_list_cubit/hive_list_cubit.dart';
 import 'package:beebase/presentation/router/app_router.dart';
@@ -33,7 +34,11 @@ part 'hive_list_page/hive_list_error_view.dart';
 /// AutoRoute's `didPopNext` never reaches this page.
 @RoutePage()
 final class HiveListPage extends StatefulWidget implements AutoRouteWrapper {
-  const HiveListPage({required this.apiaryId, required this.apiaryName, super.key});
+  const HiveListPage({
+    required this.apiaryId,
+    required this.apiaryName,
+    super.key,
+  });
 
   final String apiaryId;
   final String apiaryName;
@@ -86,7 +91,9 @@ final class _HiveListPageState extends State<HiveListPage> {
   Widget build(BuildContext context) {
     final cubit = context.read<HiveListCubit>();
     return BlocSelector<HiveListCubit, HiveListState, bool>(
-      selector: (state) => state is HiveListLoading || (state is HiveListLoaded && state.isRefreshing),
+      selector: (state) =>
+          state is HiveListLoading ||
+          (state is HiveListLoaded && state.isRefreshing),
       builder: (context, isLoading) {
         return LoadingOverlay(
           isLoading: isLoading,

@@ -35,6 +35,8 @@ dependencies:
   cached_network_image: ^3.4.1
   flutter_cache_manager: ^3.4.1
   http: ^1.2.2
+  sqflite: ^2.4.3
+  connectivity_plus: ^7.3.1
 
 dev_dependencies:
   flutter_test:

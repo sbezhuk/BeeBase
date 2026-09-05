@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
+import 'package:beebase/core/networking/network_info.dart';
 import 'package:beebase/domain/entity/hive.dart';
 import 'package:beebase/domain/enum/backend/media_owner_type.dart';
+import 'package:beebase/domain/enum/sync_status.dart';
 import 'package:beebase/presentation/hive/cubit/hive_delete_cubit/hive_delete_cubit.dart';
 import 'package:beebase/presentation/hive/extension/hive_date_x.dart';
 import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
@@ -38,7 +42,10 @@ final class HiveDetailsPage extends StatefulWidget implements AutoRouteWrapper {
       providers: [
         BlocProvider(create: (_) => di.get<HiveDeleteCubit>(param1: hive)),
         BlocProvider(
-          create: (_) => di.get<MediaGalleryCubit>(param1: MediaOwnerType.hive, param2: hive.id)..load(),
+          create: (_) => di.get<MediaGalleryCubit>(
+            param1: MediaOwnerType.hive,
+            param2: hive.id,
+          )..load(),
         ),
       ],
       child: this,
@@ -77,15 +84,44 @@ final class _HiveDetailsPageState extends State<HiveDetailsPage> {
   }
 
   Future<void> _edit(BuildContext context) async {
-    final updated = await context.router.push<Hive>(HiveFormRoute(apiaryId: _hive.apiaryId, hive: _hive));
+    // If the hive has unsynchronized local changes, block online editing to
+    // prevent accidentally overwriting the pending local data. Offline users
+    // can always edit — the guard only fires when connectivity is available.
+    if (_hive.syncStatus.isPending) {
+      final networkInfo = di.get<INetworkInfo>();
+      final isOnline = await networkInfo.isConnected;
+      if (isOnline && context.mounted) {
+        _showSyncBlockedDialog(context);
+        return;
+      }
+    }
+    if (!context.mounted) return;
+    final updated = await context.router.push<Hive>(
+      HiveFormRoute(apiaryId: _hive.apiaryId, hive: _hive),
+    );
     if (updated != null && mounted) setState(() => _hive = updated);
+  }
+
+  void _showSyncBlockedDialog(BuildContext context) {
+    showConfirmationSheet(
+      context: context,
+      title: 'hive.sync_blocked_title'.tr(),
+      message: 'hive.sync_blocked_message'.tr(),
+      confirmLabel: 'hive.sync_blocked_action'.tr(),
+      icon: Icons.cloud_off_outlined,
+      isDestructive: false,
+    );
   }
 
   void _handleStateChange(BuildContext context, HiveDeleteState state) {
     if (state is HiveDeleteSuccess) {
       context.router.maybePop(true);
     } else if (state is HiveDeleteError) {
-      AppSnackBar.show(context, message: state.failure.message.resolve(), variant: AppSnackBarVariant.error);
+      AppSnackBar.show(
+        context,
+        message: state.failure.message.resolve(),
+        variant: AppSnackBarVariant.error,
+      );
     }
   }
 }
