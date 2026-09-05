@@ -1,11 +1,14 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/domain/entity/inspection.dart';
 import 'package:beebase/domain/enum/backend/inspection_type.dart';
+import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/presentation/component/buttons/primary_button.dart';
 import 'package:beebase/presentation/component/text_field/app_text_field.dart';
 import 'package:beebase/presentation/inspection/cubit/inspection_form_cubit/inspection_form_cubit.dart';
 import 'package:beebase/presentation/inspection/extension/inspection_date_x.dart';
 import 'package:beebase/presentation/inspection/extension/inspection_type_x.dart';
+import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
+import 'package:beebase/presentation/media/widget/media_gallery_section.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold.dart';
 import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar.dart';
 import 'package:beebase/presentation/widgets/app_snackbar/app_snackbar_variant.dart';
@@ -34,8 +37,15 @@ final class InspectionFormPage extends StatefulWidget implements AutoRouteWrappe
 
   @override
   Widget wrappedRoute(BuildContext context) {
-    return BlocProvider(
-      create: (_) => di.get<InspectionFormCubit>(param1: hiveId, param2: inspection),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) => di.get<InspectionFormCubit>(param1: hiveId, param2: inspection),
+        ),
+        BlocProvider(
+          create: (_) => di.get<MediaGalleryCubit>(param1: MediaOwnerType.inspection, param2: inspection?.id)..load(),
+        ),
+      ],
       child: this,
     );
   }
@@ -55,6 +65,28 @@ final class _InspectionFormPageState extends State<InspectionFormPage> {
   late InspectionType _selectedType = widget.inspection?.type ?? InspectionType.routine;
 
   bool get _isEditing => widget.inspection != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_isEditing) {
+      // Lets the first photo picked materialize this inspection as a draft
+      // and upload against it immediately, instead of waiting for Save —
+      // see `InspectionFormCubit.ensureDraft`.
+      context.read<MediaGalleryCubit>().configureDraftCreation(() {
+        return context.read<InspectionFormCubit>().ensureDraft(
+          date: _selectedDate,
+          type: _selectedType,
+          notes: _notesController.text.trim(),
+        );
+      });
+    } else {
+      // This inspection already exists, so picks/removes could upload/delete
+      // immediately — deferred mode keeps them purely local until Save
+      // succeeds, matching every other field on this form.
+      context.read<MediaGalleryCubit>().deferChangesUntilCommit();
+    }
+  }
 
   @override
   void dispose() {
@@ -78,6 +110,7 @@ final class _InspectionFormPageState extends State<InspectionFormPage> {
         date: _selectedDate,
         type: _selectedType,
         notes: _notesController.text.trim(),
+        mediaGalleryCubit: context.read<MediaGalleryCubit>(),
       );
     }
   }
@@ -86,11 +119,7 @@ final class _InspectionFormPageState extends State<InspectionFormPage> {
     if (state is InspectionFormSuccess) {
       context.router.pop(state.inspection);
     } else if (state is InspectionFormError) {
-      AppSnackBar.show(
-        context,
-        message: state.failure.message.resolve(),
-        variant: AppSnackBarVariant.error,
-      );
+      AppSnackBar.show(context, message: state.failure.message.resolve(), variant: AppSnackBarVariant.error);
     }
   }
 

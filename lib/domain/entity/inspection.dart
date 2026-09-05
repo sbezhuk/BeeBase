@@ -10,6 +10,7 @@ final class Inspection {
     required this.notes,
     required this.createdAt,
     required this.updatedAt,
+    this.images = const [],
     this.localId,
     this.serverId,
     this.hiveLocalId,
@@ -30,6 +31,11 @@ final class Inspection {
   final String notes;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// Media ids currently attached to this inspection — inspection-service's
+  /// own source of truth (see `InspectionResponse.images`), not something
+  /// media-service is asked about anymore.
+  final List<String> images;
 
   /// Local identifier used in SQLite and offline operations.
   final String? localId;
@@ -65,6 +71,7 @@ final class Inspection {
     String? notes,
     DateTime? createdAt,
     DateTime? updatedAt,
+    List<String>? images,
     String? localId,
     String? serverId,
     String? hiveLocalId,
@@ -79,6 +86,7 @@ final class Inspection {
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      images: images ?? this.images,
       localId: localId ?? this.localId,
       serverId: serverId ?? this.serverId,
       hiveLocalId: hiveLocalId ?? this.hiveLocalId,
@@ -102,7 +110,8 @@ final class Inspection {
           other.serverId == serverId &&
           other.hiveLocalId == hiveLocalId &&
           other.hiveServerId == hiveServerId &&
-          other.syncStatus == syncStatus);
+          other.syncStatus == syncStatus &&
+          _listEquals(other.images, images));
 
   @override
   int get hashCode => Object.hash(
@@ -118,5 +127,15 @@ final class Inspection {
     hiveLocalId,
     hiveServerId,
     syncStatus,
+    Object.hashAll(images),
   );
+}
+
+bool _listEquals(List<String> a, List<String> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }

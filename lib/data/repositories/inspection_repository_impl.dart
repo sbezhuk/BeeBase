@@ -22,50 +22,32 @@ import 'package:beebase/utils/pagination/page.dart';
 /// the device's own connectivity.
 const _localIdPrefix = 'local-';
 
-final class InspectionRepositoryImpl extends Repository
-    implements IInspectionReader, IInspectionWriter {
-  InspectionRepositoryImpl({
-    required this.dataSource,
-    this.localDataSource,
-    this.networkInfo,
-  });
+final class InspectionRepositoryImpl extends Repository implements IInspectionReader, IInspectionWriter {
+  InspectionRepositoryImpl({required this.dataSource, this.localDataSource, this.networkInfo});
 
   final IInspectionDataSource dataSource;
   final IInspectionLocalDataSource? localDataSource;
   final INetworkInfo? networkInfo;
 
-  Future<bool> get _isOnline async =>
-      networkInfo == null || await networkInfo!.isConnected;
+  Future<bool> get _isOnline async => networkInfo == null || await networkInfo!.isConnected;
 
   @override
-  Future<Either<Failure, Page<Inspection>>> getInspections({
-    required String hiveId,
-    required int page,
-    required int limit,
-  }) {
+  Future<Either<Failure, Page<Inspection>>> getInspections({required String hiveId, required int page, required int limit}) {
     return on(() async {
       final online = await _isOnline;
       if (online) {
         try {
-          final paginated = await dataSource.getInspections(
-            hiveId,
-            PageRequest(page: page, limit: limit),
-          );
-          final serverItems = paginated.items
-              .map((response) => response.toEntity())
-              .toList();
+          final paginated = await dataSource.getInspections(hiveId, PageRequest(page: page, limit: limit));
+          final serverItems = paginated.items.map((response) => response.toEntity()).toList();
 
           if (localDataSource != null) {
             await localDataSource!.saveServerInspections(serverItems);
 
-            final pending = await localDataSource!
-                .getPendingSyncInspectionsForHive(hiveId);
+            final pending = await localDataSource!.getPendingSyncInspectionsForHive(hiveId);
 
             final pendingByServerId = <String, Inspection>{
               for (final i in pending)
-                if (i.serverId != null &&
-                    (i.syncStatus == SyncStatus.pendingUpdate ||
-                        i.syncStatus == SyncStatus.pendingDelete))
+                if (i.serverId != null && (i.syncStatus == SyncStatus.pendingUpdate || i.syncStatus == SyncStatus.pendingDelete))
                   i.serverId!: i,
             };
 
@@ -82,33 +64,17 @@ final class InspectionRepositoryImpl extends Repository
             }
 
             if (page == 1) {
-              final pendingCreates = pending.where(
-                (i) => i.syncStatus == SyncStatus.pendingCreate,
-              );
-              return Page(
-                items: [...pendingCreates, ...mergedServerItems],
-                hasNext: paginated.pagination.hasNext,
-              );
+              final pendingCreates = pending.where((i) => i.syncStatus == SyncStatus.pendingCreate);
+              return Page(items: [...pendingCreates, ...mergedServerItems], hasNext: paginated.pagination.hasNext);
             }
 
-            return Page(
-              items: mergedServerItems,
-              hasNext: paginated.pagination.hasNext,
-            );
+            return Page(items: mergedServerItems, hasNext: paginated.pagination.hasNext);
           }
 
-          return Page(
-            items: serverItems,
-            hasNext: paginated.pagination.hasNext,
-          );
+          return Page(items: serverItems, hasNext: paginated.pagination.hasNext);
         } catch (e) {
           if (localDataSource != null) {
-            final localItems = await localDataSource!
-                .getActiveInspectionsForHive(
-                  hiveId: hiveId,
-                  page: page,
-                  limit: limit,
-                );
+            final localItems = await localDataSource!.getActiveInspectionsForHive(hiveId: hiveId, page: page, limit: limit);
             return Page(items: localItems, hasNext: localItems.length >= limit);
           }
           rethrow;
@@ -117,11 +83,7 @@ final class InspectionRepositoryImpl extends Repository
 
       // Offline read
       if (localDataSource != null) {
-        final localItems = await localDataSource!.getActiveInspectionsForHive(
-          hiveId: hiveId,
-          page: page,
-          limit: limit,
-        );
+        final localItems = await localDataSource!.getActiveInspectionsForHive(hiveId: hiveId, page: page, limit: limit);
         return Page(items: localItems, hasNext: localItems.length >= limit);
       }
 
@@ -130,10 +92,7 @@ final class InspectionRepositoryImpl extends Repository
   }
 
   @override
-  Future<Either<Failure, Inspection>> getInspection({
-    required String hiveId,
-    required String id,
-  }) {
+  Future<Either<Failure, Inspection>> getInspection({required String hiveId, required String id}) {
     return on(() async {
       final online = await _isOnline;
       if (online) {
@@ -144,10 +103,7 @@ final class InspectionRepositoryImpl extends Repository
           }
         }
         try {
-          final remote = (await dataSource.getInspection(
-            hiveId,
-            id,
-          )).toEntity();
+          final remote = (await dataSource.getInspection(hiveId, id)).toEntity();
           if (localDataSource != null) {
             await localDataSource!.saveServerInspections([remote]);
           }
@@ -166,11 +122,7 @@ final class InspectionRepositoryImpl extends Repository
         final local = await localDataSource!.getInspectionById(id);
         if (local != null) return local;
       }
-      throw const ServerException(
-        statusCode: 404,
-        code: 'inspection_not_found',
-        message: 'Inspection not found offline',
-      );
+      throw const ServerException(statusCode: 404, code: 'inspection_not_found', message: 'Inspection not found offline');
     });
   }
 
@@ -187,10 +139,7 @@ final class InspectionRepositoryImpl extends Repository
 
       if (online && !parentIsLocalOnly) {
         final request = InspectionRequest(date: date, type: type, notes: notes);
-        final created = (await dataSource.createInspection(
-          hiveId,
-          request,
-        )).toEntity();
+        final created = (await dataSource.createInspection(hiveId, request)).toEntity();
         if (localDataSource != null) {
           await localDataSource!.saveServerInspections([created]);
         }
@@ -232,20 +181,12 @@ final class InspectionRepositoryImpl extends Repository
   }) {
     return on(() async {
       final online = await _isOnline;
-      final existingLocal = localDataSource != null
-          ? await localDataSource!.getInspectionById(id)
-          : null;
-      final isLocalOnly =
-          existingLocal != null &&
-          existingLocal.syncStatus == SyncStatus.pendingCreate;
+      final existingLocal = localDataSource != null ? await localDataSource!.getInspectionById(id) : null;
+      final isLocalOnly = existingLocal != null && existingLocal.syncStatus == SyncStatus.pendingCreate;
 
       if (online && !isLocalOnly) {
         final request = InspectionRequest(date: date, type: type, notes: notes);
-        final updated = (await dataSource.updateInspection(
-          hiveId,
-          id,
-          request,
-        )).toEntity();
+        final updated = (await dataSource.updateInspection(hiveId, id, request)).toEntity();
         if (localDataSource != null) {
           await localDataSource!.saveServerInspections([updated]);
         }
@@ -255,11 +196,7 @@ final class InspectionRepositoryImpl extends Repository
       if (existingLocal == null) {
         // No cached record to fall back on and no way to know which hive
         // this inspection belongs to — refuse rather than guess.
-        throw const ServerException(
-          statusCode: 404,
-          code: 'inspection_not_found',
-          message: 'Inspection not found offline',
-        );
+        throw const ServerException(statusCode: 404, code: 'inspection_not_found', message: 'Inspection not found offline');
       }
 
       final now = DateTime.now();
@@ -285,19 +222,12 @@ final class InspectionRepositoryImpl extends Repository
   /// A 404 means the server has already forgotten this inspection, so the
   /// desired end state is already true — see [on]'s `ignoreStatusCode`.
   @override
-  Future<Either<Failure, void>> deleteInspection({
-    required String hiveId,
-    required String id,
-  }) {
+  Future<Either<Failure, void>> deleteInspection({required String hiveId, required String id}) {
     return on(
       () async {
         final online = await _isOnline;
-        final existingLocal = localDataSource != null
-            ? await localDataSource!.getInspectionById(id)
-            : null;
-        final isLocalOnly =
-            existingLocal != null &&
-            existingLocal.syncStatus == SyncStatus.pendingCreate;
+        final existingLocal = localDataSource != null ? await localDataSource!.getInspectionById(id) : null;
+        final isLocalOnly = existingLocal != null && existingLocal.syncStatus == SyncStatus.pendingCreate;
 
         if (online && !isLocalOnly) {
           await dataSource.deleteInspection(hiveId, id);
@@ -318,5 +248,85 @@ final class InspectionRepositoryImpl extends Repository
       ignoreStatusCode: 404,
       onIgnoredStatusCode: () {},
     );
+  }
+
+  /// [hiveId] is required by [IInspectionDataSource.getInspection]/
+  /// [IInspectionDataSource.updateInspection] but unused by their
+  /// implementation (see those methods' own docs) — `existingLocal?.hiveId`
+  /// (falling back to an empty string when there's no cached record at all)
+  /// satisfies the signature without another network round trip.
+  @override
+  Future<Either<Failure, void>> addInspectionImage({required String inspectionId, required String mediaId}) {
+    return on(() async {
+      final online = await _isOnline;
+      final existingLocal = localDataSource != null ? await localDataSource!.getInspectionById(inspectionId) : null;
+      final isLocalOnly = existingLocal != null && existingLocal.syncStatus == SyncStatus.pendingCreate;
+
+      if (online && !isLocalOnly) {
+        final hiveId = existingLocal?.hiveId ?? '';
+        final current = await dataSource.getInspection(hiveId, inspectionId);
+        final newImages = {...current.images.map((img) => img.id), mediaId}.toList();
+        final request = InspectionRequest(date: current.date, type: current.type, notes: current.notes, images: newImages);
+        await dataSource.updateInspection(hiveId, inspectionId, request);
+        if (localDataSource != null) {
+          final updated = current.toEntity().copyWith(images: newImages);
+          await localDataSource!.updateInspection(updated);
+        }
+        return;
+      }
+
+      // Offline mode
+      if (localDataSource != null && existingLocal != null) {
+        final newImages = {...existingLocal.images, mediaId}.toList();
+        final newStatus = existingLocal.syncStatus == SyncStatus.pendingCreate
+            ? SyncStatus.pendingCreate
+            : SyncStatus.pendingUpdate;
+        final updated = existingLocal.copyWith(images: newImages, updatedAt: DateTime.now(), syncStatus: newStatus);
+        await localDataSource!.updateInspection(updated);
+      }
+    });
+  }
+
+  /// The reverse of [addInspectionImage]. See its doc on why an unused
+  /// `hiveId` is threaded through to [dataSource].
+  @override
+  Future<Either<Failure, void>> removeInspectionImage({required String inspectionId, required String mediaId}) {
+    return on(() async {
+      final online = await _isOnline;
+      final existingLocal = localDataSource != null ? await localDataSource!.getInspectionById(inspectionId) : null;
+      final isLocalOnly = existingLocal != null && existingLocal.syncStatus == SyncStatus.pendingCreate;
+
+      if (online && !isLocalOnly) {
+        final hiveId = existingLocal?.hiveId ?? '';
+        final current = await dataSource.getInspection(hiveId, inspectionId);
+        if (!current.images.any((img) => img.id == mediaId)) return;
+        final newImages = current.images.map((img) => img.id).where((id) => id != mediaId).toList();
+        final request = InspectionRequest(date: current.date, type: current.type, notes: current.notes, images: newImages);
+        await dataSource.updateInspection(hiveId, inspectionId, request);
+        if (localDataSource != null) {
+          final updated = current.toEntity().copyWith(images: newImages);
+          await localDataSource!.updateInspection(updated);
+        }
+        return;
+      }
+
+      // Offline mode
+      if (localDataSource != null && existingLocal != null) {
+        final isMediaLocalOnly = mediaId.startsWith('local-media-') || mediaId.startsWith('staged-');
+        if (!isMediaLocalOnly) {
+          throw const ServerException(
+            statusCode: 400,
+            code: 'cannot_delete_offline',
+            message: 'Photos from online objects cannot be deleted offline',
+          );
+        }
+        final newImages = existingLocal.images.where((id) => id != mediaId).toList();
+        final newStatus = existingLocal.syncStatus == SyncStatus.pendingCreate
+            ? SyncStatus.pendingCreate
+            : SyncStatus.pendingUpdate;
+        final updated = existingLocal.copyWith(images: newImages, updatedAt: DateTime.now(), syncStatus: newStatus);
+        await localDataSource!.updateInspection(updated);
+      }
+    });
   }
 }

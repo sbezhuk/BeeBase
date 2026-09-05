@@ -4,11 +4,7 @@ abstract interface class IInspectionLocalDataSource {
   /// Fetches active inspections (excluding [SyncStatus.pendingDelete])
   /// belonging to [hiveId] — matched against either the local or server
   /// hive id, so it works whether the parent has synced yet or not.
-  Future<List<Inspection>> getActiveInspectionsForHive({
-    required String hiveId,
-    required int page,
-    required int limit,
-  });
+  Future<List<Inspection>> getActiveInspectionsForHive({required String hiveId, required int page, required int limit});
 
   /// Finds an inspection by its [localId] or [serverId].
   Future<Inspection?> getInspectionById(String id);
@@ -39,15 +35,14 @@ abstract interface class IInspectionLocalDataSource {
   Future<List<Inspection>> getPendingSyncInspectionsForHive(String hiveId);
 
   /// Updates an inspection's sync status and backend serverId atomically.
-  Future<void> markSynced({required String localId, required String serverId});
+  /// [images], when given, persists the server's canonical attached-media
+  /// id list (mirrors `IApiaryLocalDataSource.markSynced`).
+  Future<void> markSynced({required String localId, required String serverId, List<String>? images});
 
   /// Called once the owning hive's [Inspection.hiveLocalId] resolves to a
   /// real backend id — updates every inspection still tracking that local
   /// hive so they can be synchronized with the correct `hive_id`.
-  Future<void> resolveHiveServerId({
-    required String hiveLocalId,
-    required String hiveServerId,
-  });
+  Future<void> resolveHiveServerId({required String hiveLocalId, required String hiveServerId});
 
   /// Every inspection (regardless of sync status) belonging to [hiveId] —
   /// matched against either the local or server hive id. Used to enumerate

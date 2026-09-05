@@ -13,8 +13,7 @@ import 'package:mocktail/mocktail.dart';
 
 class MockInspectionDataSource extends Mock implements IInspectionDataSource {}
 
-class MockInspectionLocalDataSource extends Mock
-    implements IInspectionLocalDataSource {}
+class MockInspectionLocalDataSource extends Mock implements IInspectionLocalDataSource {}
 
 class MockNetworkInfo extends Mock implements INetworkInfo {}
 
@@ -62,13 +61,7 @@ void main() {
   );
 
   setUpAll(() {
-    registerFallbackValue(
-      InspectionRequest(
-        date: DateTime(2026),
-        type: InspectionType.routine,
-        notes: 'fallback',
-      ),
-    );
+    registerFallbackValue(InspectionRequest(date: DateTime(2026), type: InspectionType.routine, notes: 'fallback'));
     registerFallbackValue(const PageRequest(page: 1, limit: 20));
     registerFallbackValue(sampleOfflineInspection);
   });
@@ -90,12 +83,8 @@ void main() {
     });
 
     test('online create calls remote API and caches to local SQLite', () async {
-      when(
-        () => remoteDataSource.createInspection('hive-server-1', any()),
-      ).thenAnswer((_) async => sampleResponse);
-      when(
-        () => localDataSource.saveServerInspections(any()),
-      ).thenAnswer((_) async {});
+      when(() => remoteDataSource.createInspection('hive-server-1', any())).thenAnswer((_) async => sampleResponse);
+      when(() => localDataSource.saveServerInspections(any())).thenAnswer((_) async {});
 
       final result = await repository.createInspection(
         hiveId: 'hive-server-1',
@@ -108,17 +97,15 @@ void main() {
       result.fold((_) => fail('should succeed'), (inspection) {
         expect(inspection.id, 'server-inspection-1');
       });
-      verify(
-        () => remoteDataSource.createInspection('hive-server-1', any()),
-      ).called(1);
+      verify(() => remoteDataSource.createInspection('hive-server-1', any())).called(1);
       verify(() => localDataSource.saveServerInspections(any())).called(1);
     });
 
     test('create while online but parent hive is still local-only stores the '
         'inspection offline instead of calling the API', () async {
-      when(() => localDataSource.insertInspection(any())).thenAnswer(
-        (invocation) async => invocation.positionalArguments[0] as Inspection,
-      );
+      when(
+        () => localDataSource.insertInspection(any()),
+      ).thenAnswer((invocation) async => invocation.positionalArguments[0] as Inspection);
 
       final result = await repository.createInspection(
         hiveId: 'local-hive-999',
@@ -137,62 +124,34 @@ void main() {
       verify(() => localDataSource.insertInspection(any())).called(1);
     });
 
-    test(
-      'online getInspection returns local pendingUpdate version instead of server version',
-      () async {
-        final pendingUpdateInspection = sampleSyncedInspection.copyWith(
-          notes: 'Locally edited notes',
-          syncStatus: SyncStatus.pendingUpdate,
-        );
-        when(
-          () => localDataSource.getInspectionById('server-inspection-1'),
-        ).thenAnswer((_) async => pendingUpdateInspection);
+    test('online getInspection returns local pendingUpdate version instead of server version', () async {
+      final pendingUpdateInspection = sampleSyncedInspection.copyWith(
+        notes: 'Locally edited notes',
+        syncStatus: SyncStatus.pendingUpdate,
+      );
+      when(() => localDataSource.getInspectionById('server-inspection-1')).thenAnswer((_) async => pendingUpdateInspection);
 
-        final result = await repository.getInspection(
-          hiveId: 'hive-server-1',
-          id: 'server-inspection-1',
-        );
+      final result = await repository.getInspection(hiveId: 'hive-server-1', id: 'server-inspection-1');
 
-        expect(result.isRight, isTrue);
-        result.fold((_) => fail('should succeed'), (inspection) {
-          expect(inspection.notes, 'Locally edited notes');
-          expect(inspection.syncStatus, SyncStatus.pendingUpdate);
-        });
-        verifyNever(() => remoteDataSource.getInspection(any(), any()));
-      },
-    );
+      expect(result.isRight, isTrue);
+      result.fold((_) => fail('should succeed'), (inspection) {
+        expect(inspection.notes, 'Locally edited notes');
+        expect(inspection.syncStatus, SyncStatus.pendingUpdate);
+      });
+      verifyNever(() => remoteDataSource.getInspection(any(), any()));
+    });
 
-    test(
-      'online delete calls remote API and deletes permanently from SQLite',
-      () async {
-        when(
-          () => localDataSource.getInspectionById('server-inspection-1'),
-        ).thenAnswer((_) async => sampleSyncedInspection);
-        when(
-          () => remoteDataSource.deleteInspection(any(), 'server-inspection-1'),
-        ).thenAnswer((_) async {});
-        when(
-          () => localDataSource.deleteInspectionPermanently(
-            'server-inspection-1',
-          ),
-        ).thenAnswer((_) async {});
+    test('online delete calls remote API and deletes permanently from SQLite', () async {
+      when(() => localDataSource.getInspectionById('server-inspection-1')).thenAnswer((_) async => sampleSyncedInspection);
+      when(() => remoteDataSource.deleteInspection(any(), 'server-inspection-1')).thenAnswer((_) async {});
+      when(() => localDataSource.deleteInspectionPermanently('server-inspection-1')).thenAnswer((_) async {});
 
-        final result = await repository.deleteInspection(
-          hiveId: 'hive-server-1',
-          id: 'server-inspection-1',
-        );
+      final result = await repository.deleteInspection(hiveId: 'hive-server-1', id: 'server-inspection-1');
 
-        expect(result.isRight, isTrue);
-        verify(
-          () => remoteDataSource.deleteInspection(any(), 'server-inspection-1'),
-        ).called(1);
-        verify(
-          () => localDataSource.deleteInspectionPermanently(
-            'server-inspection-1',
-          ),
-        ).called(1);
-      },
-    );
+      expect(result.isRight, isTrue);
+      verify(() => remoteDataSource.deleteInspection(any(), 'server-inspection-1')).called(1);
+      verify(() => localDataSource.deleteInspectionPermanently('server-inspection-1')).called(1);
+    });
   });
 
   group('InspectionRepositoryImpl - Offline operations', () {
@@ -200,93 +159,71 @@ void main() {
       when(() => networkInfo.isConnected).thenAnswer((_) async => false);
     });
 
-    test(
-      'offline create does NOT call remote API and saves to SQLite as pendingCreate',
-      () async {
-        when(() => localDataSource.insertInspection(any())).thenAnswer(
-          (invocation) async => invocation.positionalArguments[0] as Inspection,
-        );
+    test('offline create does NOT call remote API and saves to SQLite as pendingCreate', () async {
+      when(
+        () => localDataSource.insertInspection(any()),
+      ).thenAnswer((invocation) async => invocation.positionalArguments[0] as Inspection);
 
-        final result = await repository.createInspection(
-          hiveId: 'hive-server-1',
-          date: DateTime(2026, 1, 1),
-          type: InspectionType.health,
-          notes: 'Offline note',
-        );
+      final result = await repository.createInspection(
+        hiveId: 'hive-server-1',
+        date: DateTime(2026, 1, 1),
+        type: InspectionType.health,
+        notes: 'Offline note',
+      );
 
-        expect(result.isRight, isTrue);
-        result.fold((_) => fail('should succeed'), (inspection) {
-          expect(inspection.notes, 'Offline note');
-          expect(inspection.syncStatus, SyncStatus.pendingCreate);
-          expect(inspection.localId, isNotNull);
-          expect(inspection.id, startsWith('local-'));
-          expect(inspection.hiveServerId, 'hive-server-1');
-          expect(inspection.hiveLocalId, isNull);
-        });
-        verifyNever(() => remoteDataSource.createInspection(any(), any()));
-        verify(() => localDataSource.insertInspection(any())).called(1);
-      },
-    );
+      expect(result.isRight, isTrue);
+      result.fold((_) => fail('should succeed'), (inspection) {
+        expect(inspection.notes, 'Offline note');
+        expect(inspection.syncStatus, SyncStatus.pendingCreate);
+        expect(inspection.localId, isNotNull);
+        expect(inspection.id, startsWith('local-'));
+        expect(inspection.hiveServerId, 'hive-server-1');
+        expect(inspection.hiveLocalId, isNull);
+      });
+      verifyNever(() => remoteDataSource.createInspection(any(), any()));
+      verify(() => localDataSource.insertInspection(any())).called(1);
+    });
 
-    test(
-      'offline create under an offline-created hive references it by local id, '
-      'not a fake server id',
-      () async {
-        when(() => localDataSource.insertInspection(any())).thenAnswer(
-          (invocation) async => invocation.positionalArguments[0] as Inspection,
-        );
+    test('offline create under an offline-created hive references it by local id, '
+        'not a fake server id', () async {
+      when(
+        () => localDataSource.insertInspection(any()),
+      ).thenAnswer((invocation) async => invocation.positionalArguments[0] as Inspection);
 
-        final result = await repository.createInspection(
-          hiveId: 'local-hive-1',
-          date: DateTime(2026, 1, 1),
-          type: InspectionType.routine,
-          notes: 'notes',
-        );
+      final result = await repository.createInspection(
+        hiveId: 'local-hive-1',
+        date: DateTime(2026, 1, 1),
+        type: InspectionType.routine,
+        notes: 'notes',
+      );
 
-        expect(result.isRight, isTrue);
-        result.fold((_) => fail('should succeed'), (inspection) {
-          expect(inspection.hiveLocalId, 'local-hive-1');
-          expect(inspection.hiveServerId, isNull);
-          expect(inspection.syncStatus, SyncStatus.pendingCreate);
-        });
-      },
-    );
+      expect(result.isRight, isTrue);
+      result.fold((_) => fail('should succeed'), (inspection) {
+        expect(inspection.hiveLocalId, 'local-hive-1');
+        expect(inspection.hiveServerId, isNull);
+        expect(inspection.syncStatus, SyncStatus.pendingCreate);
+      });
+    });
 
-    test(
-      'offline getInspections reads active records scoped to the hive from SQLite',
-      () async {
-        when(
-          () => localDataSource.getActiveInspectionsForHive(
-            hiveId: 'hive-server-1',
-            page: 1,
-            limit: 20,
-          ),
-        ).thenAnswer((_) async => [sampleOfflineInspection]);
+    test('offline getInspections reads active records scoped to the hive from SQLite', () async {
+      when(
+        () => localDataSource.getActiveInspectionsForHive(hiveId: 'hive-server-1', page: 1, limit: 20),
+      ).thenAnswer((_) async => [sampleOfflineInspection]);
 
-        final result = await repository.getInspections(
-          hiveId: 'hive-server-1',
-          page: 1,
-          limit: 20,
-        );
+      final result = await repository.getInspections(hiveId: 'hive-server-1', page: 1, limit: 20);
 
-        expect(result.isRight, isTrue);
-        result.fold((_) => fail('should succeed'), (page) {
-          expect(page.items.length, 1);
-          expect(page.items.first.id, 'local-inspection-123');
-        });
-        verifyNever(() => remoteDataSource.getInspections(any(), any()));
-      },
-    );
+      expect(result.isRight, isTrue);
+      result.fold((_) => fail('should succeed'), (page) {
+        expect(page.items.length, 1);
+        expect(page.items.first.id, 'local-inspection-123');
+      });
+      verifyNever(() => remoteDataSource.getInspections(any(), any()));
+    });
 
     test('offline getInspection reads record from SQLite', () async {
-      when(
-        () => localDataSource.getInspectionById('local-inspection-123'),
-      ).thenAnswer((_) async => sampleOfflineInspection);
+      when(() => localDataSource.getInspectionById('local-inspection-123')).thenAnswer((_) async => sampleOfflineInspection);
 
-      final result = await repository.getInspection(
-        hiveId: 'hive-server-1',
-        id: 'local-inspection-123',
-      );
+      final result = await repository.getInspection(hiveId: 'hive-server-1', id: 'local-inspection-123');
 
       expect(result.isRight, isTrue);
       result.fold((_) => fail('should succeed'), (inspection) {
@@ -296,169 +233,176 @@ void main() {
       verifyNever(() => remoteDataSource.getInspection(any(), any()));
     });
 
-    test(
-      'offline update modifies SQLite and marks pendingUpdate if previously synced',
-      () async {
-        when(
-          () => localDataSource.getInspectionById('server-inspection-1'),
-        ).thenAnswer((_) async => sampleSyncedInspection);
-        when(() => localDataSource.updateInspection(any())).thenAnswer(
-          (invocation) async => invocation.positionalArguments[0] as Inspection,
-        );
+    test('offline update modifies SQLite and marks pendingUpdate if previously synced', () async {
+      when(() => localDataSource.getInspectionById('server-inspection-1')).thenAnswer((_) async => sampleSyncedInspection);
+      when(
+        () => localDataSource.updateInspection(any()),
+      ).thenAnswer((invocation) async => invocation.positionalArguments[0] as Inspection);
 
-        final result = await repository.updateInspection(
-          hiveId: 'hive-server-1',
-          id: 'server-inspection-1',
-          date: DateTime(2026, 1, 2),
-          type: InspectionType.queen,
-          notes: 'Updated notes',
-        );
+      final result = await repository.updateInspection(
+        hiveId: 'hive-server-1',
+        id: 'server-inspection-1',
+        date: DateTime(2026, 1, 2),
+        type: InspectionType.queen,
+        notes: 'Updated notes',
+      );
 
-        expect(result.isRight, isTrue);
-        result.fold((_) => fail('should succeed'), (inspection) {
-          expect(inspection.notes, 'Updated notes');
-          expect(inspection.type, InspectionType.queen);
-          expect(inspection.syncStatus, SyncStatus.pendingUpdate);
-        });
-        verifyNever(
-          () => remoteDataSource.updateInspection(any(), any(), any()),
-        );
-        verify(() => localDataSource.updateInspection(any())).called(1);
-      },
-    );
+      expect(result.isRight, isTrue);
+      result.fold((_) => fail('should succeed'), (inspection) {
+        expect(inspection.notes, 'Updated notes');
+        expect(inspection.type, InspectionType.queen);
+        expect(inspection.syncStatus, SyncStatus.pendingUpdate);
+      });
+      verifyNever(() => remoteDataSource.updateInspection(any(), any(), any()));
+      verify(() => localDataSource.updateInspection(any())).called(1);
+    });
 
-    test(
-      'offline update keeps pendingCreate if entity was created offline',
-      () async {
-        when(
-          () => localDataSource.getInspectionById('local-inspection-123'),
-        ).thenAnswer((_) async => sampleOfflineInspection);
-        when(() => localDataSource.updateInspection(any())).thenAnswer(
-          (invocation) async => invocation.positionalArguments[0] as Inspection,
-        );
+    test('offline update keeps pendingCreate if entity was created offline', () async {
+      when(() => localDataSource.getInspectionById('local-inspection-123')).thenAnswer((_) async => sampleOfflineInspection);
+      when(
+        () => localDataSource.updateInspection(any()),
+      ).thenAnswer((invocation) async => invocation.positionalArguments[0] as Inspection);
 
-        final result = await repository.updateInspection(
-          hiveId: 'hive-server-1',
-          id: 'local-inspection-123',
-          date: DateTime(2026, 1, 1),
-          type: InspectionType.routine,
-          notes: 'New offline notes',
-        );
+      final result = await repository.updateInspection(
+        hiveId: 'hive-server-1',
+        id: 'local-inspection-123',
+        date: DateTime(2026, 1, 1),
+        type: InspectionType.routine,
+        notes: 'New offline notes',
+      );
 
-        expect(result.isRight, isTrue);
-        result.fold((_) => fail('should succeed'), (inspection) {
-          expect(inspection.notes, 'New offline notes');
-          expect(inspection.syncStatus, SyncStatus.pendingCreate);
-        });
-      },
-    );
+      expect(result.isRight, isTrue);
+      result.fold((_) => fail('should succeed'), (inspection) {
+        expect(inspection.notes, 'New offline notes');
+        expect(inspection.syncStatus, SyncStatus.pendingCreate);
+      });
+    });
 
-    test(
-      'multiple offline edits overwrite the same local record with only the '
-      'latest state, rather than accumulating separate sync operations',
-      () async {
-        // First edit: the repository reads the originally-synced version.
-        when(
-          () => localDataSource.getInspectionById('server-inspection-1'),
-        ).thenAnswer((_) async => sampleSyncedInspection);
-        when(() => localDataSource.updateInspection(any())).thenAnswer(
-          (invocation) async => invocation.positionalArguments[0] as Inspection,
-        );
+    test('multiple offline edits overwrite the same local record with only the '
+        'latest state, rather than accumulating separate sync operations', () async {
+      // First edit: the repository reads the originally-synced version.
+      when(() => localDataSource.getInspectionById('server-inspection-1')).thenAnswer((_) async => sampleSyncedInspection);
+      when(
+        () => localDataSource.updateInspection(any()),
+      ).thenAnswer((invocation) async => invocation.positionalArguments[0] as Inspection);
 
-        final firstEdit = await repository.updateInspection(
-          hiveId: 'hive-server-1',
-          id: 'server-inspection-1',
-          date: DateTime(2026, 1, 2),
-          type: InspectionType.queen,
-          notes: 'First edit',
-        );
-        final firstUpdated = firstEdit.fold(
-          (_) => fail('should succeed'),
-          (inspection) => inspection,
-        );
+      final firstEdit = await repository.updateInspection(
+        hiveId: 'hive-server-1',
+        id: 'server-inspection-1',
+        date: DateTime(2026, 1, 2),
+        type: InspectionType.queen,
+        notes: 'First edit',
+      );
+      final firstUpdated = firstEdit.fold((_) => fail('should succeed'), (inspection) => inspection);
 
-        // Second edit: the repository now reads back the pendingUpdate
-        // record produced by the first edit — not the original synced one.
-        when(
-          () => localDataSource.getInspectionById('server-inspection-1'),
-        ).thenAnswer((_) async => firstUpdated);
+      // Second edit: the repository now reads back the pendingUpdate
+      // record produced by the first edit — not the original synced one.
+      when(() => localDataSource.getInspectionById('server-inspection-1')).thenAnswer((_) async => firstUpdated);
 
-        final secondEdit = await repository.updateInspection(
-          hiveId: 'hive-server-1',
-          id: 'server-inspection-1',
-          date: DateTime(2026, 1, 3),
-          type: InspectionType.health,
-          notes: 'Second edit',
-        );
+      final secondEdit = await repository.updateInspection(
+        hiveId: 'hive-server-1',
+        id: 'server-inspection-1',
+        date: DateTime(2026, 1, 3),
+        type: InspectionType.health,
+        notes: 'Second edit',
+      );
 
-        expect(secondEdit.isRight, isTrue);
-        secondEdit.fold((_) => fail('should succeed'), (inspection) {
-          expect(inspection.notes, 'Second edit');
-          expect(inspection.type, InspectionType.health);
-          expect(inspection.syncStatus, SyncStatus.pendingUpdate);
-          // Same underlying local record — an edit never creates a second
-          // local/server id pair for the same inspection.
-          expect(inspection.localId, sampleSyncedInspection.localId);
-          expect(inspection.serverId, sampleSyncedInspection.serverId);
-        });
-        // Exactly two writes to SQLite — one per edit — and both target the
-        // same row (`localDataSource.updateInspection` always keys off
-        // local_id/server_id), never a second, separate pending record.
-        verify(() => localDataSource.updateInspection(any())).called(2);
-        verifyNever(() => localDataSource.insertInspection(any()));
-      },
-    );
+      expect(secondEdit.isRight, isTrue);
+      secondEdit.fold((_) => fail('should succeed'), (inspection) {
+        expect(inspection.notes, 'Second edit');
+        expect(inspection.type, InspectionType.health);
+        expect(inspection.syncStatus, SyncStatus.pendingUpdate);
+        // Same underlying local record — an edit never creates a second
+        // local/server id pair for the same inspection.
+        expect(inspection.localId, sampleSyncedInspection.localId);
+        expect(inspection.serverId, sampleSyncedInspection.serverId);
+      });
+      // Exactly two writes to SQLite — one per edit — and both target the
+      // same row (`localDataSource.updateInspection` always keys off
+      // local_id/server_id), never a second, separate pending record.
+      verify(() => localDataSource.updateInspection(any())).called(2);
+      verifyNever(() => localDataSource.insertInspection(any()));
+    });
 
-    test(
-      'offline delete of unsynced record deletes permanently from SQLite',
-      () async {
-        when(
-          () => localDataSource.getInspectionById('local-inspection-123'),
-        ).thenAnswer((_) async => sampleOfflineInspection);
-        when(
-          () => localDataSource.deleteInspectionPermanently(
-            'local-inspection-123',
-          ),
-        ).thenAnswer((_) async {});
+    test('offline delete of unsynced record deletes permanently from SQLite', () async {
+      when(() => localDataSource.getInspectionById('local-inspection-123')).thenAnswer((_) async => sampleOfflineInspection);
+      when(() => localDataSource.deleteInspectionPermanently('local-inspection-123')).thenAnswer((_) async {});
 
-        final result = await repository.deleteInspection(
-          hiveId: 'hive-server-1',
-          id: 'local-inspection-123',
-        );
+      final result = await repository.deleteInspection(hiveId: 'hive-server-1', id: 'local-inspection-123');
 
-        expect(result.isRight, isTrue);
-        verify(
-          () => localDataSource.deleteInspectionPermanently(
-            'local-inspection-123',
-          ),
-        ).called(1);
-        verifyNever(() => localDataSource.markPendingDelete(any()));
-        verifyNever(() => remoteDataSource.deleteInspection(any(), any()));
-      },
-    );
+      expect(result.isRight, isTrue);
+      verify(() => localDataSource.deleteInspectionPermanently('local-inspection-123')).called(1);
+      verifyNever(() => localDataSource.markPendingDelete(any()));
+      verifyNever(() => remoteDataSource.deleteInspection(any(), any()));
+    });
 
-    test(
-      'offline delete of synced record marks pendingDelete in SQLite without deleting',
-      () async {
-        when(
-          () => localDataSource.getInspectionById('server-inspection-1'),
-        ).thenAnswer((_) async => sampleSyncedInspection);
-        when(
-          () => localDataSource.markPendingDelete('server-inspection-1'),
-        ).thenAnswer((_) async {});
+    test('offline delete of synced record marks pendingDelete in SQLite without deleting', () async {
+      when(() => localDataSource.getInspectionById('server-inspection-1')).thenAnswer((_) async => sampleSyncedInspection);
+      when(() => localDataSource.markPendingDelete('server-inspection-1')).thenAnswer((_) async {});
 
-        final result = await repository.deleteInspection(
-          hiveId: 'hive-server-1',
-          id: 'server-inspection-1',
-        );
+      final result = await repository.deleteInspection(hiveId: 'hive-server-1', id: 'server-inspection-1');
 
-        expect(result.isRight, isTrue);
-        verify(
-          () => localDataSource.markPendingDelete('server-inspection-1'),
-        ).called(1);
-        verifyNever(() => localDataSource.deleteInspectionPermanently(any()));
-        verifyNever(() => remoteDataSource.deleteInspection(any(), any()));
-      },
-    );
+      expect(result.isRight, isTrue);
+      verify(() => localDataSource.markPendingDelete('server-inspection-1')).called(1);
+      verifyNever(() => localDataSource.deleteInspectionPermanently(any()));
+      verifyNever(() => remoteDataSource.deleteInspection(any(), any()));
+    });
+
+    test('addInspectionImage offline on synced inspection promotes syncStatus to '
+        'pendingUpdate so the synchronizer will pick it up', () async {
+      when(() => localDataSource.getInspectionById('server-inspection-1')).thenAnswer((_) async => sampleSyncedInspection);
+      when(() => localDataSource.updateInspection(any())).thenAnswer((inv) async => inv.positionalArguments[0] as Inspection);
+
+      final result = await repository.addInspectionImage(inspectionId: 'server-inspection-1', mediaId: 'local-media-123');
+
+      expect(result.isRight, isTrue);
+      final captured = verify(() => localDataSource.updateInspection(captureAny())).captured;
+      final updated = captured.first as Inspection;
+      expect(
+        updated.syncStatus,
+        SyncStatus.pendingUpdate,
+        reason: 'Adding a photo offline should mark the inspection as pendingUpdate',
+      );
+      expect(updated.images, contains('local-media-123'));
+    });
+
+    test('addInspectionImage offline on pendingCreate inspection keeps syncStatus as pendingCreate', () async {
+      when(() => localDataSource.getInspectionById('local-inspection-123')).thenAnswer((_) async => sampleOfflineInspection);
+      when(() => localDataSource.updateInspection(any())).thenAnswer((inv) async => inv.positionalArguments[0] as Inspection);
+
+      final result = await repository.addInspectionImage(inspectionId: 'local-inspection-123', mediaId: 'local-media-456');
+
+      expect(result.isRight, isTrue);
+      final captured = verify(() => localDataSource.updateInspection(captureAny())).captured;
+      final updated = captured.first as Inspection;
+      expect(
+        updated.syncStatus,
+        SyncStatus.pendingCreate,
+        reason: 'A pendingCreate inspection should remain pendingCreate after an offline image add',
+      );
+    });
+
+    test('removeInspectionImage offline on server photo fails because online photos cannot be deleted offline', () async {
+      final inspectionWithImage = sampleSyncedInspection.copyWith(images: ['existing-img-id']);
+      when(() => localDataSource.getInspectionById('server-inspection-1')).thenAnswer((_) async => inspectionWithImage);
+
+      final result = await repository.removeInspectionImage(inspectionId: 'server-inspection-1', mediaId: 'existing-img-id');
+
+      expect(result.isLeft, isTrue);
+      verifyNever(() => localDataSource.updateInspection(any()));
+    });
+
+    test('removeInspectionImage offline on local-only photo succeeds and removes it', () async {
+      final inspectionWithImage = sampleSyncedInspection.copyWith(images: ['local-media-123']);
+      when(() => localDataSource.getInspectionById('server-inspection-1')).thenAnswer((_) async => inspectionWithImage);
+      when(() => localDataSource.updateInspection(any())).thenAnswer((inv) async => inv.positionalArguments[0] as Inspection);
+
+      final result = await repository.removeInspectionImage(inspectionId: 'server-inspection-1', mediaId: 'local-media-123');
+
+      expect(result.isRight, isTrue);
+      final captured = verify(() => localDataSource.updateInspection(captureAny())).captured;
+      final updated = captured.first as Inspection;
+      expect(updated.images, isNot(contains('local-media-123')));
+    });
   });
 }

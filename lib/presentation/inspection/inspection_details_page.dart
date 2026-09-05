@@ -3,10 +3,13 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:beebase/core/networking/network_info.dart';
 import 'package:beebase/domain/entity/inspection.dart';
+import 'package:beebase/domain/enum/backend/media_owner_type.dart';
 import 'package:beebase/domain/enum/sync_status.dart';
 import 'package:beebase/presentation/inspection/cubit/inspection_delete_cubit/inspection_delete_cubit.dart';
 import 'package:beebase/presentation/inspection/extension/inspection_date_x.dart';
 import 'package:beebase/presentation/inspection/extension/inspection_type_x.dart';
+import 'package:beebase/presentation/media/cubit/media_gallery_cubit/media_gallery_cubit.dart';
+import 'package:beebase/presentation/media/widget/media_gallery_section.dart';
 import 'package:beebase/presentation/router/app_router.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold.dart';
 import 'package:beebase/presentation/widgets/app_scaffold/app_scaffold_action.dart';
@@ -28,16 +31,20 @@ part 'inspection_details_page/inspection_details_delete_link.dart';
 part 'inspection_details_page/inspection_details_info_section.dart';
 
 @RoutePage()
-final class InspectionDetailsPage extends StatefulWidget
-    implements AutoRouteWrapper {
+final class InspectionDetailsPage extends StatefulWidget implements AutoRouteWrapper {
   const InspectionDetailsPage({required this.inspection, super.key});
 
   final Inspection inspection;
 
   @override
   Widget wrappedRoute(BuildContext context) {
-    return BlocProvider(
-      create: (_) => di.get<InspectionDeleteCubit>(param1: inspection),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => di.get<InspectionDeleteCubit>(param1: inspection)),
+        BlocProvider(
+          create: (_) => di.get<MediaGalleryCubit>(param1: MediaOwnerType.inspection, param2: inspection.id)..load(),
+        ),
+      ],
       child: this,
     );
   }
@@ -66,10 +73,7 @@ final class _InspectionDetailsPageState extends State<InspectionDetailsPage> {
           listener: _handleStateChange,
           builder: (context, state) {
             _isDeleting = state is InspectionDeleteLoading;
-            return _InspectionDetailsBody(
-              inspection: _inspection,
-              isDeleting: _isDeleting,
-            );
+            return _InspectionDetailsBody(inspection: _inspection, isDeleting: _isDeleting);
           },
         ),
       ],
@@ -103,10 +107,7 @@ final class _InspectionDetailsPageState extends State<InspectionDetailsPage> {
         title: Text('inspection.sync_blocked_title'.tr()),
         content: Text('inspection.sync_blocked_message'.tr()),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text('inspection.sync_blocked_action'.tr()),
-          ),
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text('inspection.sync_blocked_action'.tr())),
         ],
       ),
     );
@@ -116,11 +117,7 @@ final class _InspectionDetailsPageState extends State<InspectionDetailsPage> {
     if (state is InspectionDeleteSuccess) {
       context.router.maybePop(true);
     } else if (state is InspectionDeleteError) {
-      AppSnackBar.show(
-        context,
-        message: state.failure.message.resolve(),
-        variant: AppSnackBarVariant.error,
-      );
+      AppSnackBar.show(context, message: state.failure.message.resolve(), variant: AppSnackBarVariant.error);
     }
   }
 }
