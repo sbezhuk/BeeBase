@@ -21,5 +21,6 @@ final class AccountDeleteCubit extends Cubit<AccountDeleteState>
   final IAccountDeleter deleter;
   final AuthenticationCubit authenticationCubit;
 
-  Future<void> delete({required String otp}) => emitDelete(deleter, authenticationCubit, otp: otp);
+  Future<void> delete({required String otp}) =>
+      emitDelete(deleter, authenticationCubit, otp: otp);
 }

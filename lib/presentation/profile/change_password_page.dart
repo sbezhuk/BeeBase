@@ -56,7 +56,11 @@ final class _ChangePasswordPageState extends State<ChangePasswordPage> {
     if (!mounted) return;
     setState(() => _isNavigating = false);
     if (errorMessage != null) {
-      AppSnackBar.show(context, message: errorMessage, variant: AppSnackBarVariant.error);
+      AppSnackBar.show(
+        context,
+        message: errorMessage,
+        variant: AppSnackBarVariant.error,
+      );
     }
   }
 

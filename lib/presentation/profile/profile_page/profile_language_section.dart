@@ -29,41 +29,26 @@ String _languageNameFor(Locale locale) {
 /// `easy_localization`'s own locale machinery (already wired into
 /// [Application]'s `MaterialApp.router`), so [context.setLocale] alone is
 /// enough for every `.tr()` call in the tree to rebuild in the new language
-/// immediately, with no app restart.
+/// immediately, with no app restart. Styled as a `_ProfileSettingsTile` (the
+/// whole row is tappable) rather than the old bare icon+text row — the
+/// row's own title already says "Language", so no separate overline section
+/// header is added above it.
 final class _ProfileLanguageSection extends StatelessWidget {
   const _ProfileLanguageSection();
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('profile.page.language'.tr().toUpperCase(), style: context.textStyles.label.copyWith(color: colors.honey.muted)),
-        SizedBox(height: context.spacing.sm),
-        Material(
-          type: MaterialType.transparency,
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: context.spacing.sm, horizontal: context.spacing.xs),
-            child: Row(
-              children: [
-                Icon(Icons.language, size: 20, color: colors.brand.primary),
-                SizedBox(width: context.spacing.sm),
-                Expanded(child: Text('profile.page.language'.tr(), style: context.textStyles.body)),
-                GestureDetector(
-                  onTap: () => _showLanguagePicker(context),
-                  child: Text(
-                    _languageNameFor(context.locale),
-                    style: context.textStyles.body.copyWith(color: colors.text.secondary),
-                  ),
-                ),
-                SizedBox(width: context.spacing.xs),
-                Icon(Icons.chevron_right, size: 18, color: colors.text.secondary),
-              ],
-            ),
-          ),
+    return _ProfileSettingsTile(
+      icon: Icons.language,
+      title: 'profile.page.language'.tr(),
+      trailing: Text(
+        _languageNameFor(context.locale),
+        style: context.textStyles.body.copyWith(
+          color: context.colors.text.secondary,
         ),
-      ],
+      ),
+      showChevron: true,
+      onTap: () => _showLanguagePicker(context),
     );
   }
 
@@ -103,15 +88,23 @@ final class _LanguagePickerSheet extends StatelessWidget {
                 width: 36,
                 height: 4,
                 margin: EdgeInsets.symmetric(vertical: spacing.sm),
-                decoration: BoxDecoration(color: colors.honey.border, borderRadius: BorderRadius.circular(2)),
+                decoration: BoxDecoration(
+                  color: colors.honey.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: spacing.md, vertical: spacing.xs),
+                padding: EdgeInsets.symmetric(
+                  horizontal: spacing.md,
+                  vertical: spacing.xs,
+                ),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'profile.page.language_sheet_title'.tr(),
-                    style: context.textStyles.label.copyWith(color: colors.honey.muted),
+                    style: context.textStyles.label.copyWith(
+                      color: colors.honey.muted,
+                    ),
                   ),
                 ),
               ),
@@ -119,7 +112,8 @@ final class _LanguagePickerSheet extends StatelessWidget {
                 ListTile(
                   leading: Icon(Icons.language, color: colors.brand.primary),
                   title: Text(option.name, style: context.textStyles.body),
-                  trailing: option.locale.languageCode == currentLocale.languageCode
+                  trailing:
+                      option.locale.languageCode == currentLocale.languageCode
                       ? Icon(Icons.check, color: colors.brand.primary)
                       : null,
                   onTap: () {

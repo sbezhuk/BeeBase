@@ -7,7 +7,8 @@ final class _CurrentPasswordField extends StatelessWidget {
 
   String? _validate(String? value) {
     if (value == null || value.isEmpty) {
-      return 'profile.change_password.validations.current_password_required'.tr();
+      return 'profile.change_password.validations.current_password_required'
+          .tr();
     }
     return null;
   }

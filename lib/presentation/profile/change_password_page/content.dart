@@ -24,7 +24,10 @@ final class _ChangePasswordContent extends StatelessWidget {
         SizedBox(height: context.spacing.md),
         _NewPasswordField(controller: newPasswordController),
         SizedBox(height: context.spacing.md),
-        _ConfirmPasswordField(controller: confirmPasswordController, newPasswordController: newPasswordController),
+        _ConfirmPasswordField(
+          controller: confirmPasswordController,
+          newPasswordController: newPasswordController,
+        ),
         SizedBox(height: context.spacing.lg),
         _SubmitButton(isLoading: isLoading, onPressed: onSubmit),
       ],

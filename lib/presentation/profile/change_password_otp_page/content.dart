@@ -18,9 +18,16 @@ final class _ChangePasswordOtpContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('profile.change_password.otp.subtitle'.tr(), style: context.textStyles.body),
+        Text(
+          'profile.change_password.otp.subtitle'.tr(),
+          style: context.textStyles.body,
+        ),
         SizedBox(height: context.spacing.lg),
-        _OtpField(controller: otpController, serverError: otpServerError, onChanged: onOtpChanged),
+        _OtpField(
+          controller: otpController,
+          serverError: otpServerError,
+          onChanged: onOtpChanged,
+        ),
         SizedBox(height: context.spacing.lg),
         _SubmitButton(onPressed: onSubmit),
       ],

@@ -40,7 +40,8 @@ final class _AccountDeleteOtpSheetState extends State<_AccountDeleteOtpSheet> {
 
   String? _validate(String? value) {
     if (value == null || !RegExp(r'^[0-9]{6}$').hasMatch(value)) {
-      return 'profile.page.delete_account_otp.validations.otp_invalid_format'.tr();
+      return 'profile.page.delete_account_otp.validations.otp_invalid_format'
+          .tr();
     }
     return null;
   }

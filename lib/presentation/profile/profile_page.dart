@@ -31,8 +31,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 part 'profile_page/profile_language_section.dart';
 part 'profile_page/profile_sync_section.dart';
 part 'profile_page/profile_header.dart';
-part 'profile_page/profile_info_section.dart';
-part 'profile_page/profile_info_row.dart';
+part 'profile_page/profile_settings_tile.dart';
 part 'profile_page/profile_app_version.dart';
 part 'profile_page/profile_change_password_link.dart';
 part 'profile_page/profile_logout_link.dart';
@@ -65,15 +64,13 @@ final class ProfilePage extends StatelessWidget implements AutoRouteWrapper {
         return AppScaffold(
           title: 'profile.page.title'.tr(),
           showBackButton: false,
-          fadeEdges: true,
           trailingAction: user == null
               ? null
               : AppScaffoldAction(
                   label: 'profile.page.edit'.tr(),
                   materialIcon: Icons.edit_outlined,
                   cupertinoIcon: CupertinoIcons.pencil,
-                  onPressed: () =>
-                      context.router.push(ProfileEditRoute(user: user)),
+                  onPressed: () => context.router.push(ProfileEditRoute(user: user)),
                 ),
           slivers: [
             SliverPadding(
@@ -86,19 +83,22 @@ final class ProfilePage extends StatelessWidget implements AutoRouteWrapper {
                         children: [
                           _ProfileHeader(user: user),
                           SizedBox(height: context.spacing.xl),
-                          _ProfileInfoSection(user: user),
-                          SizedBox(height: context.spacing.xl),
                           const _ProfileLanguageSection(),
-                          SizedBox(height: context.spacing.xl),
+                          SizedBox(height: context.spacing.md),
                           const ProfileSyncSection(),
-                          SizedBox(height: context.spacing.xl),
-                          const _ProfileAppVersion(),
-                          SizedBox(height: context.spacing.lg),
+                          SizedBox(height: context.spacing.md),
                           const _ProfileChangePasswordLink(),
+                          SizedBox(height: context.spacing.md),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: context.spacing.xs),
+                            child: Divider(),
+                          ),
                           SizedBox(height: context.spacing.md),
                           const _ProfileLogoutLink(),
                           SizedBox(height: context.spacing.md),
                           const _ProfileDeleteAccountLink(),
+                          SizedBox(height: context.spacing.lg),
+                          const _ProfileAppVersion(),
                         ],
                       ),
               ),

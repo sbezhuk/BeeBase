@@ -6,7 +6,9 @@ final class ChangePasswordError extends ChangePasswordState {
   final Failure failure;
 
   @override
-  bool operator ==(Object other) => identical(this, other) || (other is ChangePasswordError && other.failure == failure);
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ChangePasswordError && other.failure == failure);
 
   @override
   int get hashCode => failure.hashCode;

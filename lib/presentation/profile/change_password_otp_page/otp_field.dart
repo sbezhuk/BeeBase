@@ -1,7 +1,11 @@
 part of '../change_password_otp_page.dart';
 
 final class _OtpField extends StatelessWidget {
-  const _OtpField({required this.controller, required this.serverError, required this.onChanged});
+  const _OtpField({
+    required this.controller,
+    required this.serverError,
+    required this.onChanged,
+  });
 
   final TextEditingController controller;
   final String? serverError;

@@ -18,9 +18,15 @@ mixin ProfileEditEmitter on Cubit<ProfileEditState> {
     );
     result.fold((failure) => emit(ProfileEditError(failure)), (profile) {
       final currentState = authenticationCubit.state;
-      final baseUser = currentState is AuthenticationAuthenticated ? currentState.user : null;
+      final baseUser = currentState is AuthenticationAuthenticated
+          ? currentState.user
+          : null;
       if (baseUser == null) {
-        emit(const ProfileEditError(InternalFailure(ErrorTextKey('core.errors.no_active_session'))));
+        emit(
+          const ProfileEditError(
+            InternalFailure(ErrorTextKey('core.errors.no_active_session')),
+          ),
+        );
         return;
       }
       final mergedUser = profile.mergeOnto(baseUser);

@@ -1,7 +1,8 @@
 part of '../profile_page.dart';
 
-/// A plain destructive text link, matching `_ProfileLogoutLink`'s and
-/// `_ApiaryDeleteLink`'s treatment of rare, deliberate destructive actions.
+/// Delete account, styled as a `_ProfileSettingsTile` row like
+/// `_ProfileLogoutLink` and every other action on this page (tinted with
+/// `colors.status.error` rather than the brand color).
 /// Deletion goes through [AccountDeleteCubit] rather than firing and
 /// forgetting like logout does, so the loading state can disable the link
 /// (preventing a duplicate request) and a failure can be shown without
@@ -32,25 +33,23 @@ final class _ProfileDeleteAccountLink extends StatelessWidget {
       },
       builder: (context, state) {
         final isDeleting = state is AccountDeleteLoading;
-        return Center(
-          child: GestureDetector(
-            onTap: isDeleting ? null : () => _confirmDelete(context),
-            child: isDeleting
-                ? SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator.adaptive(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation(colors.status.error),
-                    ),
-                  )
-                : Text(
-                    'profile.page.delete_account'.tr(),
-                    style: context.textStyles.action.copyWith(
-                      color: colors.status.error,
-                    ),
+        return _ProfileSettingsTile(
+          icon: Icons.delete_forever_outlined,
+          iconColor: colors.status.error,
+          iconBackgroundColor: colors.status.error.withValues(alpha: 0.12),
+          titleColor: colors.status.error,
+          title: 'profile.page.delete_account'.tr(),
+          trailing: isDeleting
+              ? SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator.adaptive(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation(colors.status.error),
                   ),
-          ),
+                )
+              : null,
+          onTap: isDeleting ? null : () => _confirmDelete(context),
         );
       },
     );
@@ -69,7 +68,10 @@ final class _ProfileDeleteAccountLink extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmWithOtp(BuildContext context, AccountDeleteCubit cubit) async {
+  Future<void> _confirmWithOtp(
+    BuildContext context,
+    AccountDeleteCubit cubit,
+  ) async {
     final otp = await showAccountDeleteOtpSheet(context);
     if (otp == null) return;
     await cubit.delete(otp: otp);

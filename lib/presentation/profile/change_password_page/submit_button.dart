@@ -8,6 +8,10 @@ final class _SubmitButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PrimaryButton(label: 'profile.change_password.submit'.tr(), isLoading: isLoading, onPressed: onPressed);
+    return PrimaryButton(
+      label: 'profile.change_password.submit'.tr(),
+      isLoading: isLoading,
+      onPressed: onPressed,
+    );
   }
 }

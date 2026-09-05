@@ -24,15 +24,23 @@ part 'change_password_otp_page/submit_button.dart';
 /// fires here together with the OTP the user enters — so the password
 /// change is only ever completed once OTP verification succeeds.
 @RoutePage()
-final class ChangePasswordOtpPage extends StatefulWidget implements AutoRouteWrapper {
-  const ChangePasswordOtpPage({required this.currentPassword, required this.newPassword, super.key});
+final class ChangePasswordOtpPage extends StatefulWidget
+    implements AutoRouteWrapper {
+  const ChangePasswordOtpPage({
+    required this.currentPassword,
+    required this.newPassword,
+    super.key,
+  });
 
   final String currentPassword;
   final String newPassword;
 
   @override
   Widget wrappedRoute(BuildContext context) {
-    return BlocProvider(create: (_) => di.get<ChangePasswordCubit>(), child: this);
+    return BlocProvider(
+      create: (_) => di.get<ChangePasswordCubit>(),
+      child: this,
+    );
   }
 
   @override
@@ -85,13 +93,19 @@ final class _ChangePasswordOtpPageState extends State<ChangePasswordOtpPage> {
     // A current/new password error can only be fixed on the previous
     // screen, which collected those fields — surface it there by popping
     // with the message as the push's result rather than showing it here.
-    final passwordError = fields?['current_password']?.authFieldErrorMessage ?? fields?['new_password']?.authFieldErrorMessage;
+    final passwordError =
+        fields?['current_password']?.authFieldErrorMessage ??
+        fields?['new_password']?.authFieldErrorMessage;
     if (passwordError != null) {
       context.router.pop(passwordError);
       return;
     }
 
-    AppSnackBar.show(context, message: failure.message.resolve(), variant: AppSnackBarVariant.error);
+    AppSnackBar.show(
+      context,
+      message: failure.message.resolve(),
+      variant: AppSnackBarVariant.error,
+    );
   }
 
   @override

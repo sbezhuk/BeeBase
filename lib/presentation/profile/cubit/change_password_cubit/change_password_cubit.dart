@@ -14,14 +14,27 @@ part 'mixin/change_password_emitter.dart';
 /// every refresh token for the account on success, so this cubit logs the
 /// app out locally right after — the caller's own session should
 /// re-authenticate, matching the server-side revocation.
-final class ChangePasswordCubit extends Cubit<ChangePasswordState> with ChangePasswordEmitter {
-  ChangePasswordCubit({required this.repository, required this.authenticationCubit})
-    : super(const ChangePasswordInitial());
+final class ChangePasswordCubit extends Cubit<ChangePasswordState>
+    with ChangePasswordEmitter {
+  ChangePasswordCubit({
+    required this.repository,
+    required this.authenticationCubit,
+  }) : super(const ChangePasswordInitial());
 
   final IPasswordChanger repository;
   final AuthenticationCubit authenticationCubit;
 
-  Future<void> submit({required String currentPassword, required String newPassword, required String otp}) {
-    return emitSubmit(repository, authenticationCubit, currentPassword: currentPassword, newPassword: newPassword, otp: otp);
+  Future<void> submit({
+    required String currentPassword,
+    required String newPassword,
+    required String otp,
+  }) {
+    return emitSubmit(
+      repository,
+      authenticationCubit,
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+      otp: otp,
+    );
   }
 }

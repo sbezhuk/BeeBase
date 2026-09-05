@@ -1,22 +1,23 @@
 part of '../profile_page.dart';
 
-/// A plain destructive text link, matching `_ApiaryDeleteLink`'s treatment
-/// of rare, deliberate destructive actions — logout stays visually quiet
-/// until confirmed, while edit (the common action) lives up in the nav bar.
+/// Logout, styled as a `_ProfileSettingsTile` row like every other action on
+/// this page, tinted with `colors.status.error` instead of the brand color
+/// so it still reads as a deliberate, rare action rather than a common
+/// setting — without falling back to the plain floating text link the rest
+/// of the page moved away from.
 final class _ProfileLogoutLink extends StatelessWidget {
   const _ProfileLogoutLink();
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Center(
-      child: GestureDetector(
-        onTap: () => _confirmLogout(context),
-        child: Text(
-          'profile.page.logout'.tr(),
-          style: context.textStyles.action.copyWith(color: colors.status.error),
-        ),
-      ),
+    return _ProfileSettingsTile(
+      icon: Icons.logout,
+      iconColor: colors.status.error,
+      iconBackgroundColor: colors.status.error.withValues(alpha: 0.12),
+      titleColor: colors.status.error,
+      title: 'profile.page.logout'.tr(),
+      onTap: () => _confirmLogout(context),
     );
   }
 

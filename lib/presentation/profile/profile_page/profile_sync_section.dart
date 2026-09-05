@@ -82,64 +82,38 @@ final class _ProfileSyncSectionState extends State<ProfileSyncSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('profile.page.sync_section'.tr().toUpperCase(), style: context.textStyles.label.copyWith(color: colors.honey.muted)),
-        SizedBox(height: context.spacing.sm),
-        Material(
-          type: MaterialType.transparency,
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: context.spacing.sm, horizontal: context.spacing.xs),
-            child: Row(
-              children: [
-                Icon(Icons.sync, size: 20, color: colors.brand.primary),
-                SizedBox(width: context.spacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('profile.page.sync_data'.tr(), style: context.textStyles.body),
-                      if (_pendingCount != null) ...[
-                        const SizedBox(height: 2),
+        _ProfileSettingsTile(
+          icon: Icons.sync,
+          title: 'profile.page.sync_data'.tr(),
+          subtitle: _pendingCount == null
+              ? null
+              : _pendingCount == 0
+              ? 'profile.page.sync_all_synced'.tr()
+              : 'profile.page.sync_pending_count'.tr(namedArgs: {'count': '$_pendingCount'}),
+          subtitleColor: _pendingCount == 0 ? null : colors.status.warning,
+          trailing: _isSyncing
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator.adaptive(strokeWidth: 2))
+              : GestureDetector(
+                  onTap: _isSyncing ? null : _sync,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: context.spacing.sm, vertical: context.spacing.xs),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: colors.brand.primary.withValues(alpha: 0.12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.refresh, size: 16, color: colors.brand.primary),
+                        const SizedBox(width: 4),
                         Text(
-                          _pendingCount == 0
-                              ? 'profile.page.sync_all_synced'.tr()
-                              : 'profile.page.sync_pending_count'.tr(namedArgs: {'count': '$_pendingCount'}),
-                          style: context.textStyles.label.copyWith(
-                            color: _pendingCount == 0 ? colors.text.secondary : colors.status.warning,
-                          ),
+                          'profile.page.sync_now'.tr(),
+                          style: context.textStyles.label.copyWith(color: colors.brand.primary, fontWeight: FontWeight.w600),
                         ),
                       ],
-                    ],
-                  ),
-                ),
-                SizedBox(width: context.spacing.sm),
-                if (_isSyncing)
-                  const SizedBox(width: 20, height: 20, child: CircularProgressIndicator.adaptive(strokeWidth: 2))
-                else
-                  GestureDetector(
-                    onTap: _isSyncing ? null : _sync,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: context.spacing.sm, vertical: context.spacing.xs),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color: colors.brand.primary.withValues(alpha: 0.12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.refresh, size: 16, color: colors.brand.primary),
-                          const SizedBox(width: 4),
-                          Text(
-                            'profile.page.sync_now'.tr(),
-                            style: context.textStyles.label.copyWith(color: colors.brand.primary, fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
-              ],
-            ),
-          ),
+                ),
         ),
       ],
     );

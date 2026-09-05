@@ -1,14 +1,18 @@
 part of '../change_password_page.dart';
 
 final class _ConfirmPasswordField extends StatelessWidget {
-  const _ConfirmPasswordField({required this.controller, required this.newPasswordController});
+  const _ConfirmPasswordField({
+    required this.controller,
+    required this.newPasswordController,
+  });
 
   final TextEditingController controller;
   final TextEditingController newPasswordController;
 
   String? _validate(String? value) {
     if (value != newPasswordController.text) {
-      return 'profile.change_password.validations.confirm_password_mismatch'.tr();
+      return 'profile.change_password.validations.confirm_password_mismatch'
+          .tr();
     }
     return null;
   }
