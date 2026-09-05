@@ -401,7 +401,10 @@
   "core": {
     "common": {
       "back": "Back",
-      "retry": "Retry"
+      "retry": "Retry",
+      "cancel": "Cancel",
+      "done": "Done",
+      "select_date": "Select date"
     },
     "errors": {
       "request_cancelled": "The request was cancelled. Please try again.",

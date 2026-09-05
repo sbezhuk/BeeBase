@@ -31,7 +31,8 @@ part 'inspection_details_page/inspection_details_delete_link.dart';
 part 'inspection_details_page/inspection_details_info_section.dart';
 
 @RoutePage()
-final class InspectionDetailsPage extends StatefulWidget implements AutoRouteWrapper {
+final class InspectionDetailsPage extends StatefulWidget
+    implements AutoRouteWrapper {
   const InspectionDetailsPage({required this.inspection, super.key});
 
   final Inspection inspection;
@@ -40,9 +41,14 @@ final class InspectionDetailsPage extends StatefulWidget implements AutoRouteWra
   Widget wrappedRoute(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (_) => di.get<InspectionDeleteCubit>(param1: inspection)),
         BlocProvider(
-          create: (_) => di.get<MediaGalleryCubit>(param1: MediaOwnerType.inspection, param2: inspection.id)..load(),
+          create: (_) => di.get<InspectionDeleteCubit>(param1: inspection),
+        ),
+        BlocProvider(
+          create: (_) => di.get<MediaGalleryCubit>(
+            param1: MediaOwnerType.inspection,
+            param2: inspection.id,
+          )..load(),
         ),
       ],
       child: this,
@@ -73,7 +79,10 @@ final class _InspectionDetailsPageState extends State<InspectionDetailsPage> {
           listener: _handleStateChange,
           builder: (context, state) {
             _isDeleting = state is InspectionDeleteLoading;
-            return _InspectionDetailsBody(inspection: _inspection, isDeleting: _isDeleting);
+            return _InspectionDetailsBody(
+              inspection: _inspection,
+              isDeleting: _isDeleting,
+            );
           },
         ),
       ],
@@ -101,15 +110,13 @@ final class _InspectionDetailsPageState extends State<InspectionDetailsPage> {
   }
 
   void _showSyncBlockedDialog(BuildContext context) {
-    showDialog<void>(
+    showConfirmationSheet(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('inspection.sync_blocked_title'.tr()),
-        content: Text('inspection.sync_blocked_message'.tr()),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text('inspection.sync_blocked_action'.tr())),
-        ],
-      ),
+      title: 'inspection.sync_blocked_title'.tr(),
+      message: 'inspection.sync_blocked_message'.tr(),
+      confirmLabel: 'inspection.sync_blocked_action'.tr(),
+      icon: Icons.cloud_off_outlined,
+      isDestructive: false,
     );
   }
 
@@ -117,7 +124,11 @@ final class _InspectionDetailsPageState extends State<InspectionDetailsPage> {
     if (state is InspectionDeleteSuccess) {
       context.router.maybePop(true);
     } else if (state is InspectionDeleteError) {
-      AppSnackBar.show(context, message: state.failure.message.resolve(), variant: AppSnackBarVariant.error);
+      AppSnackBar.show(
+        context,
+        message: state.failure.message.resolve(),
+        variant: AppSnackBarVariant.error,
+      );
     }
   }
 }

@@ -33,7 +33,8 @@ part 'apiary_details_page/apiary_details_hives_link.dart';
 part 'apiary_details_page/apiary_details_info_section.dart';
 
 @RoutePage()
-final class ApiaryDetailsPage extends StatefulWidget implements AutoRouteWrapper {
+final class ApiaryDetailsPage extends StatefulWidget
+    implements AutoRouteWrapper {
   const ApiaryDetailsPage({required this.apiary, super.key});
 
   final Apiary apiary;
@@ -43,9 +44,15 @@ final class ApiaryDetailsPage extends StatefulWidget implements AutoRouteWrapper
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => di.get<ApiaryDeleteCubit>(param1: apiary)),
-        BlocProvider(create: (_) => di.get<ApiaryDetailsCubit>(param1: apiary)..loadHiveCount()),
         BlocProvider(
-          create: (_) => di.get<MediaGalleryCubit>(param1: MediaOwnerType.apiary, param2: apiary.id)..load(),
+          create: (_) =>
+              di.get<ApiaryDetailsCubit>(param1: apiary)..loadHiveCount(),
+        ),
+        BlocProvider(
+          create: (_) => di.get<MediaGalleryCubit>(
+            param1: MediaOwnerType.apiary,
+            param2: apiary.id,
+          )..load(),
         ),
       ],
       child: this,
@@ -78,7 +85,11 @@ final class _ApiaryDetailsPageState extends State<ApiaryDetailsPage> {
               listener: _handleStateChange,
               builder: (context, state) {
                 _isDeleting = state is ApiaryDeleteLoading;
-                return _ApiaryDetailsBody(apiary: apiary, isDeleting: _isDeleting, hiveCount: detailsState.hiveCount);
+                return _ApiaryDetailsBody(
+                  apiary: apiary,
+                  isDeleting: _isDeleting,
+                  hiveCount: detailsState.hiveCount,
+                );
               },
             ),
           ],
@@ -101,23 +112,20 @@ final class _ApiaryDetailsPageState extends State<ApiaryDetailsPage> {
     }
     if (!context.mounted) return;
     final detailsCubit = context.read<ApiaryDetailsCubit>();
-    final updated = await context.router.push<Apiary>(ApiaryFormRoute(apiary: apiary));
+    final updated = await context.router.push<Apiary>(
+      ApiaryFormRoute(apiary: apiary),
+    );
     if (updated != null) detailsCubit.setApiary(updated);
   }
 
   void _showSyncBlockedDialog(BuildContext context) {
-    showDialog<void>(
+    showConfirmationSheet(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('apiary.sync_blocked_title'.tr()),
-        content: Text('apiary.sync_blocked_message'.tr()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text('apiary.sync_blocked_action'.tr()),
-          ),
-        ],
-      ),
+      title: 'apiary.sync_blocked_title'.tr(),
+      message: 'apiary.sync_blocked_message'.tr(),
+      confirmLabel: 'apiary.sync_blocked_action'.tr(),
+      icon: Icons.cloud_off_outlined,
+      isDestructive: false,
     );
   }
 
@@ -125,7 +133,11 @@ final class _ApiaryDetailsPageState extends State<ApiaryDetailsPage> {
     if (state is ApiaryDeleteSuccess) {
       context.router.maybePop(true);
     } else if (state is ApiaryDeleteError) {
-      AppSnackBar.show(context, message: state.failure.message.resolve(), variant: AppSnackBarVariant.error);
+      AppSnackBar.show(
+        context,
+        message: state.failure.message.resolve(),
+        variant: AppSnackBarVariant.error,
+      );
     }
   }
 }

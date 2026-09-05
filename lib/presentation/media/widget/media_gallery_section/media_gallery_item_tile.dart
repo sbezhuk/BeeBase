@@ -6,7 +6,9 @@ final class _MediaGalleryItemTile extends StatelessWidget {
   final MediaGalleryItem item;
   final double size;
 
-  bool get _isBusy => item.status == MediaGalleryItemStatus.uploading || item.status == MediaGalleryItemStatus.removing;
+  bool get _isBusy =>
+      item.status == MediaGalleryItemStatus.uploading ||
+      item.status == MediaGalleryItemStatus.removing;
 
   @override
   Widget build(BuildContext context) {
@@ -14,11 +16,20 @@ final class _MediaGalleryItemTile extends StatelessWidget {
       children: [
         MediaThumbnail(item: item, size: size),
         if (item.status == MediaGalleryItemStatus.failed)
-          Positioned(bottom: 2, left: 2, child: _MediaGalleryRetryBadge(item: item)),
+          Positioned(
+            bottom: 2,
+            left: 2,
+            child: _MediaGalleryRetryBadge(item: item),
+          ),
         // Hidden while busy — the overlay spinner already covers the tile,
         // and a tap mid-request (e.g. remove during an in-flight upload,
         // before there's even a server id to delete) is a dead end today.
-        if (!_isBusy) Positioned(top: 2, right: 2, child: _MediaGalleryRemoveButton(item: item)),
+        if (!_isBusy)
+          Positioned(
+            top: 2,
+            right: 2,
+            child: _MediaGalleryRemoveButton(item: item),
+          ),
       ],
     );
   }
@@ -41,7 +52,10 @@ final class _MediaGalleryRetryBadge extends StatelessWidget {
         child: Container(
           width: 20,
           height: 20,
-          decoration: BoxDecoration(color: colors.status.error, shape: BoxShape.circle),
+          decoration: BoxDecoration(
+            color: colors.status.error,
+            shape: BoxShape.circle,
+          ),
           alignment: Alignment.center,
           child: Icon(Icons.refresh, size: 12, color: colors.brand.onPrimary),
         ),
@@ -66,7 +80,10 @@ final class _MediaGalleryRemoveButton extends StatelessWidget {
         child: Container(
           width: 20,
           height: 20,
-          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.55), shape: BoxShape.circle),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.55),
+            shape: BoxShape.circle,
+          ),
           alignment: Alignment.center,
           child: const Icon(Icons.close, size: 14, color: Colors.white),
         ),
@@ -97,19 +114,13 @@ final class _MediaGalleryRemoveButton extends StatelessWidget {
   }
 
   void _showOfflineDeleteBlockedDialog(BuildContext context) {
-    showDialog<void>(
+    showConfirmationSheet(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('media.gallery.delete_offline_blocked_title'.tr()),
-        content: Text('media.gallery.delete_offline_blocked_message'.tr()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text('media.gallery.delete_offline_blocked_action'.tr()),
-          ),
-        ],
-      ),
+      title: 'media.gallery.delete_offline_blocked_title'.tr(),
+      message: 'media.gallery.delete_offline_blocked_message'.tr(),
+      confirmLabel: 'media.gallery.delete_offline_blocked_action'.tr(),
+      icon: Icons.cloud_off_outlined,
+      isDestructive: false,
     );
   }
 }
-

@@ -103,18 +103,13 @@ final class _HiveDetailsPageState extends State<HiveDetailsPage> {
   }
 
   void _showSyncBlockedDialog(BuildContext context) {
-    showDialog<void>(
+    showConfirmationSheet(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('hive.sync_blocked_title'.tr()),
-        content: Text('hive.sync_blocked_message'.tr()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text('hive.sync_blocked_action'.tr()),
-          ),
-        ],
-      ),
+      title: 'hive.sync_blocked_title'.tr(),
+      message: 'hive.sync_blocked_message'.tr(),
+      confirmLabel: 'hive.sync_blocked_action'.tr(),
+      icon: Icons.cloud_off_outlined,
+      isDestructive: false,
     );
   }
 
